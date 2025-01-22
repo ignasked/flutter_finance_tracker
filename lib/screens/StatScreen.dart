@@ -9,12 +9,12 @@ class StatScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Statistics'),
+        title: const Text('Statistics'),
       ),
       body: BlocBuilder<TransactionCubit, List<Transaction>>(
         builder: (context, transactions) {
           if (transactions.isEmpty) {
-            return Center(child: Text('No transactions available'));
+            return const Center(child: Text('No transactions available'));
           }
 
           // Process transaction data for the chart
@@ -28,7 +28,7 @@ class StatScreen extends StatelessWidget {
                 dataSource: chartData,
                 xValueMapper: (_ChartData data, _) => data.category,
                 yValueMapper: (_ChartData data, _) => data.amount,
-                dataLabelSettings: DataLabelSettings(isVisible: true),
+                dataLabelSettings: const DataLabelSettings(isVisible: true),
               ),
             ],
           );
@@ -43,7 +43,7 @@ class StatScreen extends StatelessWidget {
     for (final transaction in transactions) {
       categoryTotals.update(
         transaction.category,
-            (value) => value + transaction.amount,
+        (value) => value + transaction.amount,
         ifAbsent: () => transaction.amount,
       );
     }

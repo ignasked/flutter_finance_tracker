@@ -187,6 +187,20 @@ class _AddTransactionScreen extends State<AddTransactionScreen> {
                           : const Text('Add Transaction'),
                     ),
                   ),
+
+                  const SizedBox(height: 20),
+                  // Delete Button (only in edit mode)
+                  if (_editorType == EditorType.edit)
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red, // Use red for delete button
+                        ),
+                        onPressed: _deleteTransaction,
+                        child: const Text('Delete Transaction'),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -253,6 +267,44 @@ class _AddTransactionScreen extends State<AddTransactionScreen> {
 
       // Save to ObjectBox or pass back
       Navigator.pop(context, transaction);
+    }
+  }
+
+  void _deleteTransaction() async {
+    if (widget.transaction != null) {
+      // Confirm deletion
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('Delete Transaction'),
+            content: const Text('Are you sure you want to delete this transaction?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false), // Cancel
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true), // Confirm
+                child: const Text('Delete'),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (confirm == true) {
+        // Remove the transaction from ObjectBox
+        objectbox.store.box<Transaction>().remove(widget.transaction!.id);
+
+        // Show a success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Transaction deleted successfully!')),
+        );
+
+        // Navigate back to the previous screen
+        Navigator.pop(context);
+      }
     }
   }
 
