@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:pvp_projektas/Screens/HomeScreen.dart';
+import 'package:pvp_projektas/Screens/home_screen.dart';
 import 'package:pvp_projektas/screens/StatScreen.dart';
-import 'package:pvp_projektas/screens/AddTransactionScreen.dart';
+import 'package:pvp_projektas/screens/add_transaction_screen.dart';
 
 
 class NavigationExample extends StatefulWidget {

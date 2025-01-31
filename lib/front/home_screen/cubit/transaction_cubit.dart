@@ -2,17 +2,13 @@ import 'package:bloc/bloc.dart';
 import 'package:pvp_projektas/models/Transaction.dart';
 import 'package:pvp_projektas/ObjectBox.dart';
 
-class TransactionCubit extends Cubit<List<Transaction>> {
+class TransactionCubit extends Cubit<TransactionState> {
   final ObjectBox objectbox;
 
-  TransactionCubit(this.objectbox) : super([]) {
-    loadTransactions();
-  }
+  TransactionCubit(this.objectbox) : super(TransactionState(transactions: []));
 
-  void loadTransactions() {
-    final transactions = objectbox.store.box<Transaction>().getAll();
-
-    emit(transactions);
+  /*void loadTransactions() {
+    emit(TransactionState(transactions: objectbox.transactionBox.GetAll));
   }
 
   void addTransaction(Transaction transaction) {
@@ -28,5 +24,13 @@ class TransactionCubit extends Cubit<List<Transaction>> {
   void deleteTransaction(int id) {
     objectbox.store.box<Transaction>().remove(id);
     loadTransactions(); // Reload transactions after deleting
-  }
+  }*/
 }
+class TransactionState{
+  final List<Transaction> transactions;
+
+  TransactionState({
+    required this.transactions
+});
+}
+

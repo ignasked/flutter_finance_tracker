@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pvp_projektas/models/Transaction.dart';
-import 'package:pvp_projektas/screens/AddTransactionScreen.dart';
+import 'package:pvp_projektas/screens/add_transaction_screen.dart';
 
 class TransactionList extends StatelessWidget {
   final List<Transaction> transactions;

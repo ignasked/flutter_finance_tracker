@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 import '../bloc/transaction_cubit.dart';
-import '../models/Transaction.dart';
+import '../models/transaction.dart';
 
 class StatScreen extends StatelessWidget {
   @override
