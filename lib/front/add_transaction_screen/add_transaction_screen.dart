@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:pvp_projektas/models/Transaction.dart';
-import 'package:pvp_projektas/ObjectBox.dart';
-import '../main.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:pvp_projektas/backend/models/transaction.dart';
+import 'package:pvp_projektas/backend/objectbox_repository/objectbox.dart';
+import 'package:pvp_projektas/backend/transaction_repository/transaction_repository.dart';
+import 'package:pvp_projektas/front/home_screen/cubit/transaction_cubit.dart';
+import 'package:pvp_projektas/main.dart';
 
 enum EditorType { add_new, edit }
 
 class AddTransactionScreen extends StatefulWidget {
   final Transaction? transaction; // Nullable for adding vs editing
-  const AddTransactionScreen({Key? key, this.transaction}) : super(key: key);
+  final int? index; // shows transaction index in transactionList
+  const AddTransactionScreen({Key? key, this.transaction, this.index}) : super(key: key);
 
   @override
   State<AddTransactionScreen> createState() => _AddTransactionScreen();
@@ -294,8 +298,11 @@ class _AddTransactionScreen extends State<AddTransactionScreen> {
       );
 
       if (confirm == true) {
+
+        context.read<TransactionCubit>().deleteTransaction(widget.transaction!.id, widget.index!);
+        //context.read<TransactionRepository>().deleteTransaction(widget.transaction!.id);
         // Remove the transaction from ObjectBox
-        objectbox.store.box<Transaction>().remove(widget.transaction!.id);
+        //objectbox.store.box<Transaction>().remove(widget.transaction!.id);
 
         // Show a success message
         ScaffoldMessenger.of(context).showSnackBar(

@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:pvp_projektas/bloc/transaction_cubit.dart';
-import 'package:pvp_projektas/models/Transaction.dart';
+
 import 'package:pvp_projektas/main.dart';
-import 'package:pvp_projektas/screens/AddTransactionScreen.dart';
-import 'package:pvp_projektas/widgets/TransactionList.dart';
-import 'package:pvp_projektas/widgets/TransactionSummary.dart';
+import 'package:pvp_projektas/front/home_screen/cubit/transaction_cubit.dart';
+import 'package:pvp_projektas/front/add_transaction_screen/add_transaction_screen.dart';
+import 'package:pvp_projektas/backend/models/transaction.dart';
+
+import 'package:pvp_projektas/front/home_screen/widgets/transaction_list.dart';
+import 'package:pvp_projektas/front/home_screen/widgets/transaction_summary.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -35,24 +37,25 @@ class _HomeScreenState extends State<HomeScreen> {
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(20.0),
-          child: BlocBuilder<TransactionCubit, List<Transaction>>(
-            builder: (context, transactions) {
-              if (transactions.isEmpty) {
+          child: BlocBuilder<TransactionCubit, TransactionState>(
+            builder: (context, state) {
+              if (state.transactions.isEmpty) {
                 return const Center(child: Text('Empty.'));
               }
 
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  TransactionSummary(transactions: transactions),
+                  //TODO: Fix to use expanded
+                  TransactionSummary(transactions: state.transactions),
                   const SizedBox(height: 10),
                   Expanded(
                     child: TransactionList(
-                      transactions: transactions,
+                      //transactions: state.transactions,
                       onUpdate: (updatedTransaction, index) {
                         context
                             .read<TransactionCubit>()
-                            .updateTransaction(updatedTransaction);
+                            .updateTransaction(updatedTransaction, index);
                       },
                     ),
                   ),

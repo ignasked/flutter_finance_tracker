@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
-import '../bloc/transaction_cubit.dart';
-import '../models/transaction.dart';
+import 'package:pvp_projektas/front/home_screen/cubit/transaction_cubit.dart';
+import 'package:pvp_projektas/backend/models/transaction.dart';
 
 class StatScreen extends StatelessWidget {
   @override
@@ -11,14 +11,14 @@ class StatScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Statistics'),
       ),
-      body: BlocBuilder<TransactionCubit, List<Transaction>>(
-        builder: (context, transactions) {
-          if (transactions.isEmpty) {
+      body: BlocBuilder<TransactionCubit, TransactionState>(
+        builder: (context, state) {
+          if (state.transactions.isEmpty) {
             return const Center(child: Text('No transactions available'));
           }
 
           // Process transaction data for the chart
-          final chartData = _prepareChartData(transactions);
+          final chartData = _prepareChartData(state.transactions);
 
           return SfCircularChart(
             title: ChartTitle(text: 'Transaction Summary'),

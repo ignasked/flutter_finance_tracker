@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:pvp_projektas/Screens/HomeScreen.dart';
-import 'package:pvp_projektas/models/Transaction.dart';
-
-import 'Widgets/NavBar.dart';
-import 'ObjectBox.dart';
-import 'package:pvp_projektas/bloc/transaction_cubit.dart';
+import 'package:pvp_projektas/backend/transaction_repository/transaction_repository.dart';
+import 'backend/objectbox_repository/objectbox.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
+import 'package:pvp_projektas/front/home_screen/home_screen.dart';
+import 'package:pvp_projektas/front/home_screen/widgets/navbar.dart';
+import 'package:pvp_projektas/backend/models/transaction.dart';
+import 'package:pvp_projektas/front/home_screen/cubit/transaction_cubit.dart';
 
 /// Provides access to the ObjectBox Store throughout the app.
 late ObjectBox objectbox;
@@ -22,15 +23,24 @@ class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => TransactionCubit(objectbox),
-      child: MaterialApp(
-        title: 'Finance tracker',
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.amber),
-          useMaterial3: true,
+    return RepositoryProvider(
+      create: (context) => TransactionRepository(objectbox),
+      child: MultiBlocProvider(
+        providers: [
+          BlocProvider(
+            create: (context) =>
+                TransactionCubit(context.read<TransactionRepository>()),
+          ),
+
+        ],
+        child: MaterialApp(
+          title: 'Finance tracker',
+          theme: ThemeData(
+            colorScheme: ColorScheme.fromSeed(seedColor: Colors.amber),
+            useMaterial3: true,
+          ),
+          home: const MyHomePage(title: "Finance tracker"),
         ),
-        home: const MyHomePage(title: "Finance tracker"),
       ),
     );
   }

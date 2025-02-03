@@ -1,4 +1,4 @@
-import 'package:pvp_projektas/models/Transaction.dart';
+import 'package:pvp_projektas/backend/models/transaction.dart';
 
 double calculateBalance(List<Transaction> transactions) {
   return transactions.fold(

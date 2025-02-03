@@ -14,7 +14,7 @@ import 'package:objectbox/internal.dart'
 import 'package:objectbox/objectbox.dart' as obx;
 import 'package:objectbox_flutter_libs/objectbox_flutter_libs.dart';
 
-import 'models/Transaction.dart';
+import 'package:pvp_projektas/backend/models/transaction.dart';
 
 export 'package:objectbox/objectbox.dart'; // so that callers only have to import this file
 

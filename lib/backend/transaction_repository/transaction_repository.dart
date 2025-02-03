@@ -1,6 +1,5 @@
-import 'package:pvp_projektas/backend/objectbox_repository/ObjectBox.dart';
-import 'package:objectbox/objectbox.dart';
-import 'package:pvp_projektas/backend/models/transaction.dart'
+import 'package:pvp_projektas/backend/objectbox_repository/objectbox.dart';
+import 'package:pvp_projektas/backend/models/transaction.dart';
 
 class TransactionRepository{
    final ObjectBox objectbox;
@@ -9,6 +8,10 @@ class TransactionRepository{
 
   List<Transaction> getTransactions(){
     return objectbox.store.box<Transaction>().getAll();
+  }
+
+  Transaction? getTransaction(int id){
+    return objectbox.store.box<Transaction>().get(id);
   }
 
    void addTransaction(Transaction transaction) {

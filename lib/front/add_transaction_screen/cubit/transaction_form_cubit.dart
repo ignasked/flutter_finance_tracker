@@ -1,12 +1,23 @@
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
+import 'package:formz/formz.dart';
 
 import '../../../backend/models/transaction.dart';
 import 'package:pvp_projektas/backend/transaction_repository/transaction_repository.dart';
+import 'package:pvp_projektas/front/add_transaction_screen/formz/amount_input.dart';
+import 'package:pvp_projektas/front/add_transaction_screen/formz/title_input.dart';
 
 
 class TransactionFormState extends Equatable {
-  final Transaction? transaction;
+  final TitleInput title;
+  final AmountInput amount;
+  final FormzStatus status;
+
+  const TransactionFormState({
+    this.title = const TitleInput.pure(),
+    this.amount = const AmountInput.pure(),
+    this.status = FormzStatus.pure,
+  });
 
   const AddTransactionState({required this.transaction});
 

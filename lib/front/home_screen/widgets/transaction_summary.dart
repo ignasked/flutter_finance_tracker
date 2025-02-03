@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:pvp_projektas/models/Transaction.dart';
-import 'package:pvp_projektas/utils/transaction_utils.dart';
+import 'package:pvp_projektas/backend/models/transaction.dart';
+import 'package:pvp_projektas/backend/transaction_repository/utils/transaction_utils.dart';
 
 class TransactionSummary extends StatelessWidget {
   final List<Transaction> transactions;

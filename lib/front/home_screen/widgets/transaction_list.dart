@@ -1,37 +1,39 @@
 import 'package:flutter/material.dart';
-import 'package:pvp_projektas/models/Transaction.dart';
-import 'package:pvp_projektas/screens/add_transaction_screen.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:pvp_projektas/backend/models/transaction.dart';
+import 'package:pvp_projektas/front/add_transaction_screen/add_transaction_screen.dart';
+import 'package:pvp_projektas/front/home_screen/cubit/transaction_cubit.dart';
 
 class TransactionList extends StatelessWidget {
-  final List<Transaction> transactions;
   final Function(Transaction updatedTransaction, int index) onUpdate;
 
   const TransactionList({
     Key? key,
-    required this.transactions,
     required this.onUpdate,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    return BlocBuilder<TransactionCubit, TransactionState>(
+  builder: (context, state) {
     return ListView.builder(
-      itemCount: transactions.length,
+      itemCount: state.transactions.length,
       itemBuilder: (context, index) {
-        final transaction = transactions[index];
+
         return Card(
           child: ListTile(
             leading: Icon(
-              transaction.isIncome ? Icons.arrow_upward : Icons.arrow_downward,
-              color: transaction.isIncome ? Colors.green : Colors.red,
+              state.transactions[index].isIncome ? Icons.arrow_upward : Icons.arrow_downward,
+              color:   state.transactions[index].isIncome ? Colors.green : Colors.red,
             ),
-            title: Text(transaction.title),
+            title: Text(  state.transactions[index].title),
             subtitle: Text(
-              '${transaction.category} | ${transaction.date.toString().split(' ')[0]}',
+              '${  state.transactions[index].category} | ${  state.transactions[index].date.toString().split(' ')[0]}',
             ),
             trailing: Text(
-              '${transaction.isIncome ? '+' : '-'} \$${transaction.amount.toStringAsFixed(2)}',
+              '${  state.transactions[index].isIncome ? '+' : '-'} \$${  state.transactions[index].amount.toStringAsFixed(2)}',
               style: TextStyle(
-                color: transaction.isIncome ? Colors.green : Colors.red,
+                color:   state.transactions[index].isIncome ? Colors.green : Colors.red,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -40,7 +42,8 @@ class TransactionList extends StatelessWidget {
                 context,
                 MaterialPageRoute(
                   builder: (context) => AddTransactionScreen(
-                    transaction: transaction,
+                    transaction:   state.transactions[index],
+                    index: index,
                   ),
                 ),
               );
@@ -52,5 +55,7 @@ class TransactionList extends StatelessWidget {
         );
       },
     );
+  },
+);
   }
 }

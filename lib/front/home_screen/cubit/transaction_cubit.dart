@@ -1,36 +1,67 @@
 import 'package:bloc/bloc.dart';
-import 'package:pvp_projektas/models/Transaction.dart';
-import 'package:pvp_projektas/ObjectBox.dart';
+import 'package:equatable/equatable.dart';
+import 'package:pvp_projektas/backend/models/transaction.dart';
+import 'package:pvp_projektas/backend/transaction_repository/transaction_repository.dart';
+
+class TransactionState extends Equatable{
+  final List<Transaction> transactions;
+
+
+  const TransactionState({
+     this.transactions = const []
+  });
+
+  @override
+  List<Object> get props => [transactions];
+
+  TransactionState copyWith({
+    List<Transaction>? transactions
+  }) =>
+      TransactionState(
+        transactions: transactions ?? this.transactions,
+      );
+}
 
 class TransactionCubit extends Cubit<TransactionState> {
-  final ObjectBox objectbox;
+  final TransactionRepository transRepository;
 
-  TransactionCubit(this.objectbox) : super(TransactionState(transactions: []));
+  TransactionCubit(this.transRepository) : super(const TransactionState(transactions: [])){
+    loadTransactions();
+  }
 
-  /*void loadTransactions() {
-    emit(TransactionState(transactions: objectbox.transactionBox.GetAll));
+  void loadTransactions() {
+    final transactions = transRepository.getTransactions();
+    emit(TransactionState(transactions: transactions));
   }
 
   void addTransaction(Transaction transaction) {
-    objectbox.store.box<Transaction>().put(transaction);
-    loadTransactions(); // Reload transactions after adding
+    //create local copy of transactions
+    List<Transaction> transactionsList = List.from(state.transactions);
+    //add transaction to localArray
+    transactionsList.add(transaction);
+    transRepository.addTransaction(transaction);
+    emit(state.copyWith(transactions: transactionsList));
+    //loadTransactions(); // Reload transactions after adding
   }
 
-  void updateTransaction(Transaction transaction) {
-    objectbox.store.box<Transaction>().put(transaction);
-    loadTransactions(); // Reload transactions after updating
+  void updateTransaction(Transaction? transaction, int index) {
+    if(transaction != null){
+      //create local copy of transactions
+      List<Transaction> transactionsList = List.from(state.transactions);
+      transactionsList[index] = transaction;
+      transRepository.updateTransaction(transaction);
+      emit(state.copyWith(transactions: transactionsList));
+    }
   }
 
-  void deleteTransaction(int id) {
-    objectbox.store.box<Transaction>().remove(id);
-    loadTransactions(); // Reload transactions after deleting
-  }*/
-}
-class TransactionState{
-  final List<Transaction> transactions;
+  void deleteTransaction(int id, int index) {
+    //create local copy of transactions
+    List<Transaction> transactionsList = List.from(state.transactions);
+    transactionsList.removeAt(index);
 
-  TransactionState({
-    required this.transactions
-});
+    transRepository.deleteTransaction(id);
+    emit(state.copyWith(transactions: transactionsList));
+  }
 }
+
 
