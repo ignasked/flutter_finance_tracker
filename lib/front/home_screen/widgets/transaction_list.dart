@@ -5,11 +5,9 @@ import 'package:pvp_projektas/front/add_transaction_screen/add_transaction_scree
 import 'package:pvp_projektas/front/home_screen/cubit/transaction_cubit.dart';
 
 class TransactionList extends StatelessWidget {
-  final Function(Transaction updatedTransaction, int index) onUpdate;
 
   const TransactionList({
     Key? key,
-    required this.onUpdate,
   }) : super(key: key);
 
   @override
@@ -47,9 +45,6 @@ class TransactionList extends StatelessWidget {
                   ),
                 ),
               );
-              if (updatedTransaction != null) {
-                onUpdate(updatedTransaction, index);
-              }
             },
           ),
         );

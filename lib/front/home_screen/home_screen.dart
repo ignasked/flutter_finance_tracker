@@ -51,12 +51,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 10),
                   Expanded(
                     child: TransactionList(
-                      //transactions: state.transactions,
-                      onUpdate: (updatedTransaction, index) {
-                        context
-                            .read<TransactionCubit>()
-                            .updateTransaction(updatedTransaction, index);
-                      },
                     ),
                   ),
                 ],
@@ -74,9 +68,9 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           );
 
-          if (newTransaction != null) {
+          /*if (newTransaction != null) {
             context.read<TransactionCubit>().addTransaction(newTransaction);
-          }
+          }*/
         },
         child: const Icon(Icons.add),
       ),
