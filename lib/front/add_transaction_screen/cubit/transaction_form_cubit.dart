@@ -146,7 +146,7 @@ class TransactionFormCubit extends Cubit<TransactionFormState> {
       }
       emit(state.copyWith(status: FormzSubmissionStatus.success));
       //close this window
-      Navigator.pop(context, transaction);
+      //Navigator.pop(context, transaction);
     } on Exception {
       emit(state.copyWith(status: FormzSubmissionStatus.failure));
     } catch (_) {
@@ -167,6 +167,6 @@ class TransactionFormCubit extends Cubit<TransactionFormState> {
   void deleteTransaction(int index, BuildContext context) {
     transactionsCubit.deleteTransaction(index);
     //TODO: ask if its a good practice to use Navigator.pop(context) in cubit
-    Navigator.pop(context);
+    //Navigator.pop(context);
   }
 }
