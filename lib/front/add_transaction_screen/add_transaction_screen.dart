@@ -10,7 +10,7 @@ import 'package:pvp_projektas/main.dart';
 
 class AddTransactionScreen extends StatelessWidget {
   final Transaction? transaction; // Nullable for adding vs editing
-  final int? index; // shows transaction index in transactionList*/
+  final int? index; // transaction index in transactionList
   const AddTransactionScreen({Key? key, this.transaction, this.index}) : super(key: key);
 
   //@override
@@ -19,7 +19,7 @@ class AddTransactionScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => TransactionFormCubit(context.read<TransactionCubit>(), transaction, index),
+      create: transaction == null ? (context) => TransactionFormCubit(context.read<TransactionCubit>()) : (context) => TransactionFormCubit.edit(context.read<TransactionCubit>(), transaction!, index),
       child: _AddTransactionForm(),
     );
   }
@@ -46,8 +46,9 @@ class _AddTransactionForm extends StatelessWidget {
             return Column(
               children: [
                 TextFormField(
+                  key: const Key('transaction_form_title'),
                   onChanged: (value) => context.read<TransactionFormCubit>().titleChanged(value),
-                  decoration: InputDecoration(labelText: 'Title', border: OutlineInputBorder(), errorText: state.title.isNotValid ? 'Title cannot be empty' : null),
+                  decoration: InputDecoration(labelText: 'Title', border: OutlineInputBorder(), errorText: state.status == FormzSubmissionStatus.invalid ? 'Title cannot be empty' : null),
                   initialValue: state.title.value,
                 ),
                 const SizedBox(height: 20),
@@ -81,7 +82,7 @@ class _AddTransactionForm extends StatelessWidget {
                   child: state.formType == TransactionFormType.addNew ? const Text('Add Transaction') : const Text('Save'),
                 ),
                 state.formType == TransactionFormType.edit ? ElevatedButton(
-                  onPressed: () => context.read<TransactionCubit>().deleteTransaction(state.initialTransaction!.id, context.read<TransactionFormCubit>().index!),
+                  onPressed: () => context.read<TransactionFormCubit>().deleteTransaction(context.read<TransactionFormCubit>().index!, context),
                   style: const ButtonStyle(backgroundColor: WidgetStatePropertyAll(Colors.red)),
                   child: const Text('Delete Transaction', style: TextStyle(color: Colors.white)),
                 )

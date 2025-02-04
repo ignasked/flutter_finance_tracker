@@ -16,74 +16,85 @@ class TransactionFormState extends Equatable {
   final MoneyInput amount;
   final String transactionType; // income / expense
   final String category; // food / travel / taxes / salary
-  final DateTime date;
+  final int id;
 
   final FormzSubmissionStatus status;
   final bool isValid; // if form is valid
   final String? errorMessage;
-  final Transaction? initialTransaction; // for editing
+
+  //final Transaction? initialTransaction; // for editing
   final TransactionFormType formType;
 
+  //add transaction
   TransactionFormState({
     this.title = const TitleInput.pure(),
     this.amount = const MoneyInput.pure(),
     this.transactionType = 'Income',
     this.category = 'Food',
-    DateTime? selectedDate,
     this.status = FormzSubmissionStatus.initial,
     this.isValid = false,
     this.errorMessage,
-    this.initialTransaction,
+    this.id = 0,
+    //this.initialTransaction,
     this.formType = TransactionFormType.addNew,
-  }): date = selectedDate ?? DateTime.now();
+  });
+
+  //edit
+  TransactionFormState.edit(
+      {required Transaction transaction, this.errorMessage})
+      : title = TitleInput.dirty(transaction.title),
+        amount = MoneyInput.dirty(transaction.amount.toString()),
+        transactionType = transaction.isIncome ? 'Income' : 'Expense',
+        category = transaction.category,
+        status = FormzSubmissionStatus.initial,
+        isValid = true,
+        formType = TransactionFormType.edit,
+        id = transaction.id;
 
   TransactionFormState copyWith({
     TitleInput? title,
     MoneyInput? amount,
-    String? selectedType,
-    String? selectedCategory,
-    DateTime? selectedDate,
+    String? transactionType,
+    String? category,
+    DateTime? date,
     FormzSubmissionStatus? status,
     bool? isValid,
     String? errorMessage,
-    Transaction? initialTransaction,
+    int? id,
     TransactionFormType? formType,
-  }){
+  }) {
     return TransactionFormState(
       title: title ?? this.title,
       amount: amount ?? this.amount,
-      transactionType: selectedType ?? this.transactionType,
-      category: selectedCategory ?? this.category,
-      selectedDate: selectedDate ?? this.date,
+      transactionType: transactionType ?? this.transactionType,
+      category: category ?? this.category,
       status: status ?? this.status,
       isValid: isValid ?? this.isValid,
       errorMessage: errorMessage ?? this.errorMessage,
-      initialTransaction: initialTransaction ?? this.initialTransaction,
-      formType: initialTransaction != null ? TransactionFormType.edit : formType ?? this.formType,
+      id: id ?? this.id,
+      formType: formType ?? this.formType,
     );
   }
 
+
   @override
-  List<Object?> get props => [title, amount, status, isValid, errorMessage, initialTransaction];
-  }
+  List<Object?> get props => [title, amount, category, transactionType, status, isValid, errorMessage, id, formType];
+}
 
 class TransactionFormCubit extends Cubit<TransactionFormState> {
   //final TransactionRepository transRepository;
   final TransactionCubit transactionsCubit;
-  final int? index; // transaction index in transactionList
+  int? index; // transaction index in transactionList
 
+  // Add transaction cubit
+  TransactionFormCubit(this.transactionsCubit) : super(TransactionFormState());
 
-  // Initialize with an empty or default transaction
-  TransactionFormCubit(this.transactionsCubit, Transaction? initialTransaction, this.index)
-      : super(TransactionFormState(
-    title: initialTransaction != null ? TitleInput.dirty(initialTransaction.title) : const TitleInput.pure(),
-    amount: initialTransaction != null ? MoneyInput.dirty(initialTransaction.amount.toString()) : const MoneyInput.pure(),
-    transactionType: initialTransaction?.isIncome == true ? 'Income' : 'Expense',
-    category: initialTransaction?.category ?? 'Food',
-    selectedDate: initialTransaction?.date ?? DateTime.now(),
-    formType: initialTransaction != null ? TransactionFormType.edit : TransactionFormType.addNew,
-    initialTransaction: initialTransaction,
-    isValid: initialTransaction != null,));
+  //Edit transaction cubit
+  TransactionFormCubit.edit(
+      this.transactionsCubit, Transaction editTransaction, this.index)
+      : super(TransactionFormState.edit(
+          transaction: editTransaction,
+        ));
 
   void titleChanged(String value) {
     final title = TitleInput.dirty(value);
@@ -102,44 +113,60 @@ class TransactionFormCubit extends Cubit<TransactionFormState> {
   }
 
   void typeChanged(String value) {
-    emit(state.copyWith(selectedType: value));
+    final transactionType = value;
+    emit(state.copyWith(transactionType: transactionType));
   }
 
   void categoryChanged(String value) {
-    emit(state.copyWith(selectedCategory: value));
+    final cat = value;
+    emit(state.copyWith(category: cat));
   }
 
   void dateChanged(DateTime value) {
-    emit(state.copyWith(selectedDate: value));
+    emit(state.copyWith(date: value));
   }
 
-  void submitForm(BuildContext context){
-    if(!state.isValid) return;
+  //pressed submit button (adding new or editing existing transaction)
+  void submitForm(BuildContext context) {
+    if (!state.isValid) return;
     emit(state.copyWith(status: FormzSubmissionStatus.inProgress));
     try {
       final transaction = Transaction(
-        id: state.initialTransaction?.id ?? 0,
+        id: state.id,
         title: state.title.value,
         amount: double.parse(state.amount.value),
         isIncome: state.transactionType == 'Income',
         category: state.category,
-        date: state.date,
+        date: DateTime.now(),
       );
-      if(state.formType == TransactionFormType.addNew) {
-        transactionsCubit.addTransaction(transaction);
+      if (state.formType == TransactionFormType.addNew) {
+        addTransaction(transaction);
+      } else if (state.formType == TransactionFormType.edit) {
+        saveTransaction(transaction, context);
       }
-      else{
-        transactionsCubit.updateTransaction(transaction, index!);
-      }
-      //transRepository.addTransaction(transaction);
-
-
       emit(state.copyWith(status: FormzSubmissionStatus.success));
+      //close this window
       Navigator.pop(context, transaction);
     } on Exception {
       emit(state.copyWith(status: FormzSubmissionStatus.failure));
-    } catch (_){
+    } catch (_) {
       emit(state.copyWith(status: FormzSubmissionStatus.failure));
     }
+  }
+
+  //save edited transaction
+  void saveTransaction(Transaction transaction, BuildContext context) {
+    transactionsCubit.updateTransaction(transaction, index!);
+  }
+
+  //add new transaction
+  void addTransaction(Transaction transaction) {
+    transactionsCubit.addTransaction(transaction);
+  }
+
+  void deleteTransaction(int index, BuildContext context) {
+    transactionsCubit.deleteTransaction(index);
+    //TODO: ask if its a good practice to use Navigator.pop(context) in cubit
+    Navigator.pop(context);
   }
 }

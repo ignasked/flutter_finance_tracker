@@ -41,7 +41,6 @@ class TransactionCubit extends Cubit<TransactionState> {
     transactionsList.add(transaction);
     transRepository.addTransaction(transaction);
     emit(state.copyWith(transactions: transactionsList));
-    //loadTransactions(); // Reload transactions after adding
   }
 
   void updateTransaction(Transaction? transaction, int index) {
@@ -54,9 +53,11 @@ class TransactionCubit extends Cubit<TransactionState> {
     }
   }
 
-  void deleteTransaction(int id, int index) {
+  //delete transaction from all transactions and objectbox repository
+  void deleteTransaction(int index) {
     //create local copy of transactions
     List<Transaction> transactionsList = List.from(state.transactions);
+    int id = transactionsList[index].id;
     transactionsList.removeAt(index);
 
     transRepository.deleteTransaction(id);
