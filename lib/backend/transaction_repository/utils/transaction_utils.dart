@@ -1,5 +1,7 @@
 import 'package:pvp_projektas/backend/models/transaction.dart';
 
+final categories = ['Food', 'Travel', 'Taxes', 'Salary', 'Other'];
+
 double calculateBalance(List<Transaction> transactions) {
   return transactions.fold(
     0.0,

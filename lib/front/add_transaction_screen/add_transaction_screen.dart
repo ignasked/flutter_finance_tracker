@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:formz/formz.dart';
 import 'package:pvp_projektas/backend/models/transaction.dart';
+import 'package:pvp_projektas/backend/transaction_repository/utils/transaction_utils.dart';
 import 'package:pvp_projektas/backend/objectbox_repository/objectbox.dart';
 import 'package:pvp_projektas/backend/transaction_repository/transaction_repository.dart';
 import 'package:pvp_projektas/front/add_transaction_screen/cubit/transaction_form_cubit.dart';
@@ -30,7 +31,6 @@ class AddTransactionScreen extends StatelessWidget {
 }
 
 class _AddTransactionForm extends StatelessWidget {
-  final _categories = ['Food', 'Travel', 'Taxes', 'Salary', 'Other'];
 
   @override
   Widget build(BuildContext context) {
@@ -105,7 +105,7 @@ class _AddTransactionForm extends StatelessWidget {
                   const SizedBox(height: 20),
                   DropdownButtonFormField<String>(
                     value: state.category,
-                    items: _categories
+                    items: categories
                         .map((category) => DropdownMenuItem(
                             value: category, child: Text(category)))
                         .toList(),

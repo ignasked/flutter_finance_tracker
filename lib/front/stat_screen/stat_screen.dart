@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 import 'package:pvp_projektas/front/home_screen/cubit/transaction_cubit.dart';
 import 'package:pvp_projektas/backend/models/transaction.dart';
+import 'package:pvp_projektas/backend/transaction_repository/utils/transaction_utils.dart';
 
 class StatScreen extends StatelessWidget {
   @override
@@ -22,13 +23,13 @@ class StatScreen extends StatelessWidget {
 
           return SfCircularChart(
             title: ChartTitle(text: 'Transaction Summary'),
-            legend: Legend(isVisible: true),
+            legend: Legend(isVisible: chartData.isNotEmpty),
             series: <CircularSeries>[
               PieSeries<_ChartData, String>(
                 dataSource: chartData,
                 xValueMapper: (_ChartData data, _) => data.category,
                 yValueMapper: (_ChartData data, _) => data.amount,
-                dataLabelSettings: const DataLabelSettings(isVisible: true),
+                dataLabelSettings:  const DataLabelSettings(isVisible: true, showZeroValue: false),
               ),
             ],
           );
@@ -37,8 +38,14 @@ class StatScreen extends StatelessWidget {
     );
   }
 
+
+
   List<_ChartData> _prepareChartData(List<Transaction> transactions) {
     final Map<String, double> categoryTotals = {};
+
+    for(String category in categories) {
+      categoryTotals[category] = 0.0;
+    }
 
     for (final transaction in transactions) {
       categoryTotals.update(

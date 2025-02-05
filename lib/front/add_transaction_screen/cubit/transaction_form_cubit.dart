@@ -82,7 +82,7 @@ class TransactionFormState extends Equatable {
 }
 
 class TransactionFormCubit extends Cubit<TransactionFormState> {
-  //final TransactionRepository transRepository;
+  //TODO: remove cubit
   final TransactionCubit transactionsCubit;
   int? index; // transaction index in transactionList
 
