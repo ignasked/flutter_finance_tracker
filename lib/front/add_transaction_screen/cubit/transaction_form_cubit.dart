@@ -16,6 +16,7 @@ class TransactionFormState extends Equatable {
   final MoneyInput amount;
   final String transactionType; // income / expense
   final String category; // food / travel / taxes / salary
+  final DateTime date;
   final int id;
 
   final FormzSubmissionStatus status;
@@ -33,11 +34,12 @@ class TransactionFormState extends Equatable {
     this.category = 'Food',
     this.status = FormzSubmissionStatus.initial,
     this.isValid = false,
+    DateTime? date,
     this.errorMessage,
     this.id = 0,
     //this.initialTransaction,
     this.formType = TransactionFormType.addNew,
-  });
+  }) : date = date ?? DateTime.now();
 
   //edit
   TransactionFormState.edit(
@@ -49,7 +51,8 @@ class TransactionFormState extends Equatable {
         status = FormzSubmissionStatus.initial,
         isValid = true,
         formType = TransactionFormType.edit,
-        id = transaction.id;
+        id = transaction.id,
+        date = transaction.date;
 
   TransactionFormState copyWith({
     TitleInput? title,
@@ -68,6 +71,7 @@ class TransactionFormState extends Equatable {
       amount: amount ?? this.amount,
       transactionType: transactionType ?? this.transactionType,
       category: category ?? this.category,
+      date: date ?? this.date,
       status: status ?? this.status,
       isValid: isValid ?? this.isValid,
       errorMessage: errorMessage ?? this.errorMessage,
@@ -76,9 +80,19 @@ class TransactionFormState extends Equatable {
     );
   }
 
-
   @override
-  List<Object?> get props => [title, amount, category, transactionType, status, isValid, errorMessage, id, formType];
+  List<Object?> get props => [
+        title,
+        amount,
+        category,
+        date,
+        transactionType,
+        status,
+        isValid,
+        errorMessage,
+        id,
+        formType
+      ];
 }
 
 class TransactionFormCubit extends Cubit<TransactionFormState> {
@@ -127,9 +141,11 @@ class TransactionFormCubit extends Cubit<TransactionFormState> {
   }
 
   //pressed submit button (adding new or editing existing transaction)
-  void submitForm(BuildContext context) {
-    if (!state.isValid) return;
+  Transaction? submitForm() {
+    if (!state.isValid) return null;
+
     emit(state.copyWith(status: FormzSubmissionStatus.inProgress));
+
     try {
       final transaction = Transaction(
         id: state.id,
@@ -139,12 +155,20 @@ class TransactionFormCubit extends Cubit<TransactionFormState> {
         category: state.category,
         date: DateTime.now(),
       );
-      if (state.formType == TransactionFormType.addNew) {
-        addTransaction(transaction);
-      } else if (state.formType == TransactionFormType.edit) {
-        saveTransaction(transaction, context);
-      }
+
+      /*switch (state.formType) {
+        case TransactionFormType.addNew:
+          //addTransaction(transaction);
+          break;
+        case TransactionFormType.edit:
+          //saveTransaction(transaction);
+
+          break;
+      }*/
+
       emit(state.copyWith(status: FormzSubmissionStatus.success));
+
+      return transaction;
       //close this window
       //Navigator.pop(context, transaction);
     } on Exception {
