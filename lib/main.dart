@@ -31,7 +31,6 @@ class MyApp extends StatelessWidget {
             create: (context) =>
                 TransactionCubit(context.read<TransactionRepository>()),
           ),
-
         ],
         child: MaterialApp(
           title: 'Finance tracker',

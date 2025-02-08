@@ -37,14 +37,16 @@ class HomeScreen extends StatelessWidget {
               if (state.transactions.isEmpty) {
                 return const Center(child: Text('No transactions.'));
               }
-
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  //TODO: Fix to use expanded
-                  TransactionSummary(transactions: state.transactions),
-                  const SizedBox(height: 10),
                   Expanded(
+                    flex: 1,
+                    child: TransactionSummary(transactions: state.transactions),
+                  ),
+                  const SizedBox(height: 2),
+                  Expanded(
+                    flex: 6,
                     child: TransactionList(transactions: state.transactions),
                   ),
                 ],

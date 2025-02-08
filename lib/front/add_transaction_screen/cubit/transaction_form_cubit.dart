@@ -12,12 +12,6 @@ import 'package:pvp_projektas/front/add_transaction_screen/formz/title_input.dar
 
 enum ActionType { addNew, edit, delete }
 
-/*
-- To add new transaction - TransactionFormState()
-- To edit existing transaction - TransactionFormState(editTransaction, editIndex)
-
- */
-
 class TransactionFormState extends Equatable {
   final TitleInput title;
   final MoneyInput amount;
@@ -36,7 +30,7 @@ class TransactionFormState extends Equatable {
   final bool isValid; // if form is valid
   final String? errorMessage;
 
-  //edit/add transaction
+  //edit, add or delete transaction from original transactionList
   final ActionType actionType;
 
   //add transaction
@@ -175,16 +169,6 @@ class TransactionFormCubit extends Cubit<TransactionFormState> {
         date: DateTime.now(),
       );
 
-      /*switch (state.formType) {
-        case TransactionFormType.addNew:
-          //addTransaction(transaction);
-          break;
-        case TransactionFormType.edit:
-          //saveTransaction(transaction);
-
-          break;
-      }*/
-
       emit(state.copyWith(
           status: FormzSubmissionStatus.success,
           submittedTransaction: TransactionResult(
@@ -218,6 +202,5 @@ class TransactionFormCubit extends Cubit<TransactionFormState> {
               actionType: ActionType.delete,
               index: state.editIndex)));
     }
-    //transactionsCubit.deleteTransaction(index);
   }
 }

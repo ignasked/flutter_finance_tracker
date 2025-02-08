@@ -27,29 +27,23 @@ class TransactionCubit extends Cubit<TransactionState> {
     loadTransactions();
   }
 
+  //load all transactions from objectbox
   void loadTransactions() {
     final transactions = transRepository.getTransactions();
     emit(TransactionState(transactions: transactions));
   }
 
-  /*void saveTransaction(Transaction transaction, int? index) {
-    if(index != null){
-      updateTransaction(transaction, index);
-    }
-    else{
-      addTransaction(transaction);
-    }
-  }*/
-
+  //add transaction to all transactions and objectbox repository
   void addTransaction(Transaction transaction) {
     //create local copy of transactions
     List<Transaction> transactionsList = List.from(state.transactions);
-    //add transaction to localArray
     transactionsList.add(transaction);
+    //save to objectbox
     transRepository.addTransaction(transaction);
     emit(state.copyWith(transactions: transactionsList));
   }
 
+  //update transaction in all transactions and objectbox repository
   void updateTransaction(Transaction transaction, int index) {
     if (index >= 0 && index < state.transactions.length) {
       //create local copy of transactions
@@ -73,14 +67,16 @@ class TransactionCubit extends Cubit<TransactionState> {
     }
   }
 
+  //recieve result from transaction form screen and handle it
   void handleTransactionFormResult(TransactionResult transactionFormResult) {
     switch (transactionFormResult.actionType) {
       case ActionType.addNew:
         addTransaction(transactionFormResult.transaction);
         break;
       case ActionType.edit:
-        if(transactionFormResult.index == null) return;
-          updateTransaction(transactionFormResult.transaction, transactionFormResult.index!);
+        if (transactionFormResult.index == null) return;
+        updateTransaction(
+            transactionFormResult.transaction, transactionFormResult.index!);
         break;
       case ActionType.delete:
         deleteTransaction(transactionFormResult.index!);

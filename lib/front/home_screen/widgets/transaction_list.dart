@@ -24,9 +24,7 @@ class TransactionList extends StatelessWidget {
               transactions[index].isIncome
                   ? Icons.arrow_upward
                   : Icons.arrow_downward,
-              color: transactions[index].isIncome
-                  ? Colors.green
-                  : Colors.red,
+              color: transactions[index].isIncome ? Colors.green : Colors.red,
             ),
             title: Text(transactions[index].title),
             subtitle: Text(
@@ -35,14 +33,13 @@ class TransactionList extends StatelessWidget {
             trailing: Text(
               '${transactions[index].isIncome ? '+' : '-'} \$${transactions[index].amount.toStringAsFixed(2)}',
               style: TextStyle(
-                color: transactions[index].isIncome
-                    ? Colors.green
-                    : Colors.red,
+                color: transactions[index].isIncome ? Colors.green : Colors.red,
                 fontWeight: FontWeight.bold,
               ),
             ),
             onTap: () async {
-              final TransactionResult? transactionFormResult = await Navigator.push<TransactionResult?>(
+              final TransactionResult? transactionFormResult =
+                  await Navigator.push<TransactionResult?>(
                 context,
                 MaterialPageRoute(
                   builder: (context) => AddTransactionScreen(
@@ -52,8 +49,10 @@ class TransactionList extends StatelessWidget {
                 ),
               );
 
-              if(transactionFormResult != null) {
-                context.read<TransactionCubit>().handleTransactionFormResult(transactionFormResult);
+              if (transactionFormResult != null) {
+                context
+                    .read<TransactionCubit>()
+                    .handleTransactionFormResult(transactionFormResult);
               }
             },
           ),
