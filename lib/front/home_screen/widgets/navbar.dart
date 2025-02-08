@@ -40,7 +40,7 @@ class _NavigationExampleState extends State<NavigationExample> {
       ),
       body: <Widget>[
         /// Home page
-        const HomeScreen(),
+        HomeScreen(),
 
         StatScreen(),
 

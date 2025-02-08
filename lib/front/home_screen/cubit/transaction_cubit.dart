@@ -1,7 +1,9 @@
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:pvp_projektas/backend/models/transaction.dart';
+import 'package:pvp_projektas/backend/models/transaction_result.dart';
 import 'package:pvp_projektas/backend/transaction_repository/transaction_repository.dart';
+import 'package:pvp_projektas/front/add_transaction_screen/cubit/transaction_form_cubit.dart';
 
 class TransactionState extends Equatable {
   final List<Transaction> transactions;
@@ -30,14 +32,14 @@ class TransactionCubit extends Cubit<TransactionState> {
     emit(TransactionState(transactions: transactions));
   }
 
-  void saveTransaction(Transaction transaction, int? index) {
+  /*void saveTransaction(Transaction transaction, int? index) {
     if(index != null){
       updateTransaction(transaction, index);
     }
     else{
       addTransaction(transaction);
     }
-  }
+  }*/
 
   void addTransaction(Transaction transaction) {
     //create local copy of transactions
@@ -68,6 +70,21 @@ class TransactionCubit extends Cubit<TransactionState> {
 
       transRepository.deleteTransaction(id);
       emit(state.copyWith(transactions: transactionsList));
+    }
+  }
+
+  void handleTransactionFormResult(TransactionResult transactionFormResult) {
+    switch (transactionFormResult.actionType) {
+      case ActionType.addNew:
+        addTransaction(transactionFormResult.transaction);
+        break;
+      case ActionType.edit:
+        if(transactionFormResult.index == null) return;
+          updateTransaction(transactionFormResult.transaction, transactionFormResult.index!);
+        break;
+      case ActionType.delete:
+        deleteTransaction(transactionFormResult.index!);
+        break;
     }
   }
 }

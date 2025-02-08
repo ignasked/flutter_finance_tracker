@@ -22,23 +22,21 @@ class AddTransactionScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: transaction == null
-          ? (context) => TransactionFormCubit(context.read<TransactionCubit>())
-          : (context) => TransactionFormCubit.edit(
-              context.read<TransactionCubit>(), transaction!, index),
+          ? (context) => TransactionFormCubit()
+          : (context) => TransactionFormCubit.edit(transaction!, index!),
       child: _AddTransactionForm(),
     );
   }
 }
 
 class _AddTransactionForm extends StatelessWidget {
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: BlocBuilder<TransactionFormCubit, TransactionFormState>(
           builder: (context, state) => Text(
-            state.formType == TransactionFormType.addNew
+            state.actionType == ActionType.addNew
                 ? 'Add Transaction'
                 : 'Edit Transaction',
           ),
@@ -48,16 +46,17 @@ class _AddTransactionForm extends StatelessWidget {
         padding: const EdgeInsets.all(20.0),
         child: BlocListener<TransactionFormCubit, TransactionFormState>(
           listener: (context, state) {
-            if (state.status.isSuccess) {
-              Navigator.of(context).pop();
-            } else {
+            if (state.status.isSuccess && state.submittedTransaction != null) {
+              Navigator.of(context).pop(state.submittedTransaction);
+            } /*else if (state.status.isFailure) {
+              // TODO: Show error
               ScaffoldMessenger.of(context)
                 ..hideCurrentSnackBar()
                 ..showSnackBar(
                   SnackBar(
-                      content: Text(state.errorMessage ?? 'Sign Up Failure')),
+                      content: Text(state.errorMessage ?? 'Unable to save')),
                 );
-            }
+            }*/
           },
           child: BlocBuilder<TransactionFormCubit, TransactionFormState>(
             builder: (context, state) {
@@ -117,22 +116,15 @@ class _AddTransactionForm extends StatelessWidget {
                   ),
                   const SizedBox(height: 20),
                   ElevatedButton(
-                    onPressed: state.isValid == true
-                        ? () => context
-                            .read<TransactionFormCubit>()
-                            .submitForm(context)
-                        : null,
-                    child: state.formType == TransactionFormType.addNew
-                        ? const Text('Add Transaction')
-                        : const Text('Save'),
+                    onPressed: () =>
+                        context.read<TransactionFormCubit>().submitForm(),
+                    child: const Text('Save'),
                   ),
-                  state.formType == TransactionFormType.edit
+                  state.actionType == ActionType.edit
                       ? ElevatedButton(
                           onPressed: () => context
                               .read<TransactionFormCubit>()
-                              .deleteTransaction(
-                                  context.read<TransactionFormCubit>().index!,
-                                  context),
+                              .deleteTransaction(),
                           style: const ButtonStyle(
                               backgroundColor:
                                   WidgetStatePropertyAll(Colors.red)),

@@ -2,6 +2,7 @@ import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 import 'package:formz/formz.dart';
+import 'package:pvp_projektas/backend/models/transaction_result.dart';
 import 'package:pvp_projektas/front/home_screen/cubit/transaction_cubit.dart';
 
 import '../../../backend/models/transaction.dart';
@@ -9,7 +10,13 @@ import 'package:pvp_projektas/backend/transaction_repository/transaction_reposit
 import 'package:pvp_projektas/front/add_transaction_screen/formz/money_input.dart';
 import 'package:pvp_projektas/front/add_transaction_screen/formz/title_input.dart';
 
-enum TransactionFormType { addNew, edit }
+enum ActionType { addNew, edit, delete }
+
+/*
+- To add new transaction - TransactionFormState()
+- To edit existing transaction - TransactionFormState(editTransaction, editIndex)
+
+ */
 
 class TransactionFormState extends Equatable {
   final TitleInput title;
@@ -20,37 +27,47 @@ class TransactionFormState extends Equatable {
   final int id;
 
   final FormzSubmissionStatus status;
+
+  //index in original transactionList (for editing only)
+  final int? editIndex;
+
+  //transaction that is validated and has been submitted
+  final TransactionResult? submittedTransaction;
   final bool isValid; // if form is valid
   final String? errorMessage;
 
-  //final Transaction? initialTransaction; // for editing
-  final TransactionFormType formType;
+  //edit/add transaction
+  final ActionType actionType;
 
   //add transaction
-  TransactionFormState({
-    this.title = const TitleInput.pure(),
-    this.amount = const MoneyInput.pure(),
-    this.transactionType = 'Income',
-    this.category = 'Food',
-    this.status = FormzSubmissionStatus.initial,
-    this.isValid = false,
-    DateTime? date,
-    this.errorMessage,
-    this.id = 0,
-    //this.initialTransaction,
-    this.formType = TransactionFormType.addNew,
-  }) : date = date ?? DateTime.now();
+  TransactionFormState(
+      {this.title = const TitleInput.pure(),
+      this.amount = const MoneyInput.pure(),
+      this.transactionType = 'Income',
+      this.category = 'Food',
+      this.status = FormzSubmissionStatus.initial,
+      this.isValid = false,
+      DateTime? date,
+      this.errorMessage,
+      this.id = 0,
+      this.actionType = ActionType.addNew,
+      this.submittedTransaction,
+      this.editIndex})
+      : date = date ?? DateTime.now();
 
   //edit
   TransactionFormState.edit(
-      {required Transaction transaction, this.errorMessage})
+      {required Transaction transaction,
+      this.errorMessage,
+      this.submittedTransaction,
+      required this.editIndex})
       : title = TitleInput.dirty(transaction.title),
         amount = MoneyInput.dirty(transaction.amount.toString()),
         transactionType = transaction.isIncome ? 'Income' : 'Expense',
         category = transaction.category,
         status = FormzSubmissionStatus.initial,
         isValid = true,
-        formType = TransactionFormType.edit,
+        actionType = ActionType.edit,
         id = transaction.id,
         date = transaction.date;
 
@@ -64,7 +81,9 @@ class TransactionFormState extends Equatable {
     bool? isValid,
     String? errorMessage,
     int? id,
-    TransactionFormType? formType,
+    ActionType? actionType,
+    TransactionResult? submittedTransaction,
+    int? editIndex,
   }) {
     return TransactionFormState(
       title: title ?? this.title,
@@ -76,7 +95,9 @@ class TransactionFormState extends Equatable {
       isValid: isValid ?? this.isValid,
       errorMessage: errorMessage ?? this.errorMessage,
       id: id ?? this.id,
-      formType: formType ?? this.formType,
+      actionType: actionType ?? this.actionType,
+      submittedTransaction: submittedTransaction ?? this.submittedTransaction,
+      editIndex: editIndex ?? this.editIndex,
     );
   }
 
@@ -91,23 +112,21 @@ class TransactionFormState extends Equatable {
         isValid,
         errorMessage,
         id,
-        formType
+        actionType,
+        submittedTransaction,
+        editIndex,
       ];
 }
 
 class TransactionFormCubit extends Cubit<TransactionFormState> {
-  //TODO: remove cubit
-  final TransactionCubit transactionsCubit;
-  int? index; // transaction index in transactionList
-
   // Add transaction cubit
-  TransactionFormCubit(this.transactionsCubit) : super(TransactionFormState());
+  TransactionFormCubit() : super(TransactionFormState());
 
   //Edit transaction cubit
-  TransactionFormCubit.edit(
-      this.transactionsCubit, Transaction editTransaction, this.index)
+  TransactionFormCubit.edit(Transaction editTransaction, int editIndex)
       : super(TransactionFormState.edit(
           transaction: editTransaction,
+          editIndex: editIndex,
         ));
 
   void titleChanged(String value) {
@@ -141,8 +160,8 @@ class TransactionFormCubit extends Cubit<TransactionFormState> {
   }
 
   //pressed submit button (adding new or editing existing transaction)
-  Transaction? submitForm() {
-    if (!state.isValid) return null;
+  void submitForm() {
+    if (!state.isValid) return;
 
     emit(state.copyWith(status: FormzSubmissionStatus.inProgress));
 
@@ -166,11 +185,12 @@ class TransactionFormCubit extends Cubit<TransactionFormState> {
           break;
       }*/
 
-      emit(state.copyWith(status: FormzSubmissionStatus.success));
-
-      return transaction;
-      //close this window
-      //Navigator.pop(context, transaction);
+      emit(state.copyWith(
+          status: FormzSubmissionStatus.success,
+          submittedTransaction: TransactionResult(
+              transaction: transaction,
+              actionType: state.actionType,
+              index: state.editIndex)));
     } on Exception {
       emit(state.copyWith(status: FormzSubmissionStatus.failure));
     } catch (_) {
@@ -178,19 +198,26 @@ class TransactionFormCubit extends Cubit<TransactionFormState> {
     }
   }
 
-  //save edited transaction
-  void saveTransaction(Transaction transaction, BuildContext context) {
-    transactionsCubit.updateTransaction(transaction, index!);
-  }
+  void deleteTransaction() {
+    if (state.actionType == ActionType.edit) {
+      emit(state.copyWith(status: FormzSubmissionStatus.inProgress));
 
-  //add new transaction
-  void addTransaction(Transaction transaction) {
-    transactionsCubit.addTransaction(transaction);
-  }
+      final transaction = Transaction(
+        id: state.id,
+        title: state.title.value,
+        amount: double.parse(state.amount.value),
+        isIncome: state.transactionType == 'Income',
+        category: state.category,
+        date: DateTime.now(),
+      );
 
-  void deleteTransaction(int index, BuildContext context) {
-    transactionsCubit.deleteTransaction(index);
-    //TODO: ask if its a good practice to use Navigator.pop(context) in cubit
-    //Navigator.pop(context);
+      emit(state.copyWith(
+          status: FormzSubmissionStatus.success,
+          submittedTransaction: TransactionResult(
+              transaction: transaction,
+              actionType: ActionType.edit,
+              index: state.editIndex)));
+    }
+    //transactionsCubit.deleteTransaction(index);
   }
 }
