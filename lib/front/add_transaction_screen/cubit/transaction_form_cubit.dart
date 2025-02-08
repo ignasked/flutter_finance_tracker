@@ -215,7 +215,7 @@ class TransactionFormCubit extends Cubit<TransactionFormState> {
           status: FormzSubmissionStatus.success,
           submittedTransaction: TransactionResult(
               transaction: transaction,
-              actionType: ActionType.edit,
+              actionType: ActionType.delete,
               index: state.editIndex)));
     }
     //transactionsCubit.deleteTransaction(index);
