@@ -18,43 +18,53 @@ class TransactionList extends StatelessWidget {
     return ListView.builder(
       itemCount: transactions.length,
       itemBuilder: (context, index) {
-        return Card(
-          child: ListTile(
-            leading: Icon(
-              transactions[index].isIncome
-                  ? Icons.arrow_upward
-                  : Icons.arrow_downward,
-              color: transactions[index].isIncome ? Colors.green : Colors.red,
-            ),
-            title: Text(transactions[index].title),
-            subtitle: Text(
-              '${transactions[index].category} | ${transactions[index].date.toString().split(' ')[0]}',
-            ),
-            trailing: Text(
-              '${transactions[index].isIncome ? '+' : '-'} \$${transactions[index].amount.toStringAsFixed(2)}',
-              style: TextStyle(
-                color: transactions[index].isIncome ? Colors.green : Colors.red,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            onTap: () async {
-              final TransactionResult? transactionFormResult =
-                  await Navigator.push<TransactionResult?>(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => AddTransactionScreen(
-                    transaction: transactions[index],
-                    index: index,
-                  ),
-                ),
-              );
+        final item = transactions[index];
 
-              if (transactionFormResult != null) {
-                context
-                    .read<TransactionCubit>()
-                    .handleTransactionFormResult(transactionFormResult);
-              }
-            },
+        return Dismissible(
+          key: UniqueKey(),
+          onDismissed: (direction) {
+            if (direction == DismissDirection.horizontal)
+              context.read<TransactionCubit>().deleteTransaction(index);
+            ScaffoldMessenger.of(context)
+                .showSnackBar(SnackBar(content: Text('$item deleted.')));
+          },
+          background: const Card(color: Colors.red),
+          child: Card(
+            child: ListTile(
+              leading: Icon(
+                item.isIncome ? Icons.arrow_upward : Icons.arrow_downward,
+                color: item.isIncome ? Colors.green : Colors.red,
+              ),
+              title: Text(item.title),
+              subtitle: Text(
+                '${item.category} | ${item.date.toString().split(' ')[0]}',
+              ),
+              trailing: Text(
+                '${item.isIncome ? '+' : '-'} \$${item.amount.toStringAsFixed(2)}',
+                style: TextStyle(
+                  color: item.isIncome ? Colors.green : Colors.red,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              onTap: () async {
+                final TransactionResult? transactionFormResult =
+                    await Navigator.push<TransactionResult?>(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => AddTransactionScreen(
+                      transaction: item,
+                      index: index,
+                    ),
+                  ),
+                );
+
+                if (transactionFormResult != null) {
+                  context
+                      .read<TransactionCubit>()
+                      .handleTransactionFormResult(transactionFormResult);
+                }
+              },
+            ),
           ),
         );
       },

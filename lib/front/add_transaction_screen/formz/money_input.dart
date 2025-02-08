@@ -14,4 +14,5 @@ class MoneyInput extends FormzInput<String, AmountValidationError> {
     final number = double.tryParse(value);
     return number == null || number < 0 ? AmountValidationError.invalid : null;
   }
+
 }

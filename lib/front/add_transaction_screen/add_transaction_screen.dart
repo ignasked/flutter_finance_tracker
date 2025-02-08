@@ -73,7 +73,7 @@ class _AddTransactionForm extends StatelessWidget {
                         border: OutlineInputBorder(),
                         errorText: (state.status.isInitial == false && state.title.isNotValid)
                             ? 'Title cannot be empty'
-                            : null),c
+                            : null),
                     initialValue: state.title.value,
                   ),
                   const SizedBox(height: 20),
@@ -85,7 +85,7 @@ class _AddTransactionForm extends StatelessWidget {
                         labelText: 'Amount',
                         border: OutlineInputBorder(),
                         errorText: (state.status.isInitial == false && state.amount.isNotValid)
-                            ? 'Amount cannot be empty'
+                            ? state.amount.error.toString()
                             : null),
                     keyboardType: TextInputType.number,
                     initialValue: state.amount.value,
