@@ -8,6 +8,7 @@ import 'package:pvp_projektas/backend/transaction_repository/transaction_reposit
 import 'package:pvp_projektas/front/add_transaction_screen/cubit/transaction_form_cubit.dart';
 import 'package:pvp_projektas/front/home_screen/cubit/transaction_cubit.dart';
 import 'package:pvp_projektas/main.dart';
+import 'package:intl/intl.dart';
 
 class AddTransactionScreen extends StatelessWidget {
   final Transaction? transaction; // Nullable for adding vs editing
@@ -70,8 +71,9 @@ class _AddTransactionForm extends StatelessWidget {
                     decoration: InputDecoration(
                         labelText: 'Title',
                         border: OutlineInputBorder(),
-                        errorText:
-                            state.isValid ? 'Title cannot be empty' : null),
+                        errorText: (state.status.isInitial == false && state.title.isNotValid)
+                            ? 'Title cannot be empty'
+                            : null),c
                     initialValue: state.title.value,
                   ),
                   const SizedBox(height: 20),
@@ -82,7 +84,7 @@ class _AddTransactionForm extends StatelessWidget {
                     decoration: InputDecoration(
                         labelText: 'Amount',
                         border: OutlineInputBorder(),
-                        errorText: state.amount.isNotValid
+                        errorText: (state.status.isInitial == false && state.amount.isNotValid)
                             ? 'Amount cannot be empty'
                             : null),
                     keyboardType: TextInputType.number,
@@ -114,6 +116,23 @@ class _AddTransactionForm extends StatelessWidget {
                     decoration: const InputDecoration(
                         labelText: 'Category', border: OutlineInputBorder()),
                   ),
+                  const SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: () {
+                      showDatePicker(
+                        context: context,
+                        initialDate: DateTime.now(),
+                        firstDate: DateTime(1900),
+                        lastDate: DateTime(2100),
+                      ).then((selectedDate) {
+                        if (selectedDate != null) {
+                          context.read<TransactionFormCubit>().dateChanged(selectedDate);
+                        }
+                      });
+                    },
+                    child: Text('Select Date'),
+                  ),
+                  Text(DateFormat('yyyy-MM-dd').format(state.date)),
                   const SizedBox(height: 20),
                   ElevatedButton(
                     onPressed: () =>

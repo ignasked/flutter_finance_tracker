@@ -150,37 +150,42 @@ class TransactionFormCubit extends Cubit<TransactionFormState> {
   }
 
   void dateChanged(DateTime value) {
-    emit(state.copyWith(date: value));
+    final date = value;
+    emit(state.copyWith(date: date));
   }
 
   //pressed submit button (adding new or editing existing transaction)
   void submitForm() {
-    if (!state.isValid) return;
-
-    emit(state.copyWith(status: FormzSubmissionStatus.inProgress));
-
-    try {
-      final transaction = Transaction(
-        id: state.id,
-        title: state.title.value,
-        amount: double.parse(state.amount.value),
-        isIncome: state.transactionType == 'Income',
-        category: state.category,
-        date: DateTime.now(),
-      );
-
-      emit(state.copyWith(
-          status: FormzSubmissionStatus.success,
-          submittedTransaction: TransactionResult(
-              transaction: transaction,
-              actionType: state.actionType,
-              index: state.editIndex)));
-    } on Exception {
+    if (!state.isValid) {
       emit(state.copyWith(status: FormzSubmissionStatus.failure));
-    } catch (_) {
-      emit(state.copyWith(status: FormzSubmissionStatus.failure));
+      return;
     }
-  }
+
+      emit(state.copyWith(status: FormzSubmissionStatus.inProgress));
+
+      try {
+        final transaction = Transaction(
+          id: state.id,
+          title: state.title.value,
+          amount: double.parse(state.amount.value),
+          isIncome: state.transactionType == 'Income',
+          category: state.category,
+          date: state.date,
+        );
+
+        emit(state.copyWith(
+            status: FormzSubmissionStatus.success,
+            submittedTransaction: TransactionResult(
+                transaction: transaction,
+                actionType: state.actionType,
+                index: state.editIndex)));
+      } on Exception {
+        emit(state.copyWith(status: FormzSubmissionStatus.failure));
+      } catch (_) {
+        emit(state.copyWith(status: FormzSubmissionStatus.failure));
+      }
+    }
+
 
   void deleteTransaction() {
     if (state.actionType == ActionType.edit) {
