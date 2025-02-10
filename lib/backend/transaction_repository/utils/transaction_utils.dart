@@ -1,6 +1,6 @@
 import 'package:pvp_projektas/backend/models/transaction.dart';
 
-final categories = ['Food', 'Travel', 'Taxes', 'Salary', 'Other'];
+final categories = ['Food', 'Travel', 'Taxes', 'Salary', 'Other']; // Kodel string?
 
 double calculateBalance(List<Transaction> transactions) {
   return transactions.fold(
