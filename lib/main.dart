@@ -9,7 +9,7 @@ import 'package:pvp_projektas/backend/models/transaction.dart';
 import 'package:pvp_projektas/front/home_screen/cubit/transaction_cubit.dart';
 
 /// Provides access to the ObjectBox Store throughout the app.
-late ObjectBox objectbox;
+late ObjectBox objectbox;  //Repository provider
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -45,7 +45,7 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class MyHomePage extends StatefulWidget {
+class MyHomePage extends StatefulWidget {  // Delete
   const MyHomePage({super.key, required this.title});
 
   final String title;
