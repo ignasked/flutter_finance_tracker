@@ -20,7 +20,7 @@ class StatScreen extends StatelessWidget {
             return const Center(child: Text('No transactions available'));
           }
 
-          final chartData = _prepareChartData(state.transactions);
+          final chartData = _prepareChartData(state.transactions); // Tiek chartData tiek lineChart data gal butu logiska saugot kubite jei ateityje planuoji duot galimybe kazka filtruot ar tai pasirinkt.
           final lineChartData = _prepareLineChartData(state.transactions);
 
           return SingleChildScrollView(
@@ -28,7 +28,7 @@ class StatScreen extends StatelessWidget {
               children: [
                 const SizedBox(height: 20),
                 SizedBox(
-                  height: 400,
+                  height: 400, // Naudok MediaQuery.of(context).size.height * 0.4 tarkim. Gausi 40% ekrano dydzio.
                   child: SfCircularChart(
                     title: ChartTitle(text: 'Transaction Summary'),
                     legend: Legend(isVisible: true, position: LegendPosition.bottom),
@@ -72,7 +72,7 @@ class StatScreen extends StatelessWidget {
 
 
 
-  List<_ChartData> _prepareChartData(List<Transaction> transactions) {
+  List<_ChartData> _prepareChartData(List<Transaction> transactions) {   // <---- to cubit
     final Map<String, double> categoryTotals = {};
 
     for(String category in categories) {
@@ -92,7 +92,7 @@ class StatScreen extends StatelessWidget {
         .toList();
   }
 
-  List<_LinaChartData> _prepareLineChartData(List<Transaction> transactions){
+  List<_LinaChartData> _prepareLineChartData(List<Transaction> transactions){ // <---- to cubit
     final Map<DateTime, double> dateTotals = {};
     double balance = 0;
 
@@ -112,14 +112,14 @@ class StatScreen extends StatelessWidget {
   }
 }
 
-class _ChartData {
+class _ChartData {// <---- to state
   final String category;
   final double amount;
 
   _ChartData(this.category, this.amount);
 }
 
-class _LinaChartData{
+class _LinaChartData{// <---- to state
   final DateTime date;
   final double balance;
 
