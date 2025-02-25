@@ -4,10 +4,11 @@ import 'package:syncfusion_flutter_charts/charts.dart';
 import 'package:pvp_projektas/front/home_screen/cubit/transaction_cubit.dart';
 import 'package:pvp_projektas/backend/models/transaction.dart';
 import 'package:pvp_projektas/backend/transaction_repository/utils/transaction_utils.dart';
-import 'package:syncfusion_flutter_charts/sparkcharts.dart';
 import 'package:intl/intl.dart';
 
 class StatScreen extends StatelessWidget {
+  const StatScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(

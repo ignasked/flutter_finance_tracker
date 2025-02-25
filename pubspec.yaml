@@ -46,6 +46,8 @@ dependencies:
   formz: ^0.8.0
 
 
+  intl: any
+  bloc: any
 dev_dependencies:
   flutter_test:
     sdk: flutter

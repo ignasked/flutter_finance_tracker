@@ -21,3 +21,55 @@ double calculateExpenses(List<Transaction> transactions) {
       .where((transaction) => !transaction.isIncome)
       .fold(0.0, (sum, transaction) => sum + transaction.amount);
 }
+
+abstract class TransactionFilter {
+  List<Transaction> filter(List<Transaction> transactions);
+}
+class BaseTransactionFilter implements TransactionFilter {
+  @override
+  List<Transaction> filter(List<Transaction> transactions) {
+    return transactions; // No filtering applied
+  }
+}
+
+class TypeFilterDecorator implements TransactionFilter {
+  final bool isIncome;
+
+  TypeFilterDecorator({required this.isIncome});
+
+  @override
+  List<Transaction> filter(List<Transaction> transactions) {
+    if (isIncome) {
+      return transactions.where((transaction) => transaction.amount > 0).toList();
+    } else {
+      return transactions.where((transaction) => transaction.amount < 0).toList();
+    }
+  }
+}
+
+
+class DateFilterDecorator implements TransactionFilter {
+  final DateTime startDate;
+  final DateTime endDate;
+
+  DateFilterDecorator({required this.startDate, required this.endDate});
+
+  @override
+  List<Transaction> filter(List<Transaction> transactions) {
+    return transactions.where((transaction) =>
+    transaction.date.isAfter(startDate) &&
+        transaction.date.isBefore(endDate)).toList();
+  }
+}
+
+
+class AmountFilterDecorator implements TransactionFilter {
+  final double minAmount;
+
+  AmountFilterDecorator({required this.minAmount});
+
+  @override
+  List<Transaction> filter(List<Transaction> transactions) {
+    return transactions.where((transaction) => transaction.amount.abs() >= minAmount).toList();
+  }
+}

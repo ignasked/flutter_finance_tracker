@@ -3,9 +3,7 @@ import 'package:pvp_projektas/backend/transaction_repository/transaction_reposit
 import 'backend/objectbox_repository/objectbox.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'package:pvp_projektas/front/home_screen/home_screen.dart';
 import 'package:pvp_projektas/front/home_screen/widgets/navbar.dart';
-import 'package:pvp_projektas/backend/models/transaction.dart';
 import 'package:pvp_projektas/front/home_screen/cubit/transaction_cubit.dart';
 
 /// Provides access to the ObjectBox Store throughout the app.

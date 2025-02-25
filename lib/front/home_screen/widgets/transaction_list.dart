@@ -22,13 +22,47 @@ class TransactionList extends StatelessWidget {
 
         return Dismissible(
           key: UniqueKey(),
-          onDismissed: (direction) {
-            if (direction == DismissDirection.horizontal)
-              context.read<TransactionCubit>().deleteTransaction(index);
-            ScaffoldMessenger.of(context)
-                .showSnackBar(SnackBar(content: Text('$item deleted.')));
+          confirmDismiss: (direction) async {
+            bool result;
+            {
+              result
+              = await showDialog(
+                context: context,
+                builder: (BuildContext context) {
+                  return AlertDialog(
+                    title: const Text('Confirm'),
+                    content: const Text('Are you sure you want to delete?'),
+                    actions: <Widget>[
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(false),
+                        child: const Text('No'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(true),
+                        child: const Text('Yes'),
+                      ),
+                    ],
+                  );
+                },
+              );
+              if(result) {
+                context.read<TransactionCubit>().deleteTransaction(index);
+                ScaffoldMessenger.of(context)
+                    .showSnackBar(SnackBar(content: Text('$item deleted.')));
+              }
+            }
+            
+            return null;
           },
-          background: const Card(color: Colors.red),
+          background: Container(
+            color: Colors.red,
+            padding: const EdgeInsets.only(right: 20),
+            alignment: Alignment.centerRight,
+            child: const Icon(
+              Icons.delete,
+              color: Colors.white,
+            ),
+          ),
           child: Card(
             child: ListTile(
               leading: Icon(
@@ -40,7 +74,8 @@ class TransactionList extends StatelessWidget {
                 '${item.category} | ${item.date.toString().split(' ')[0]}',
               ),
               trailing: Text(
-                '${item.isIncome ? '+' : '-'} \$${item.amount.toStringAsFixed(2)}',
+                '${item.isIncome ? '+' : '-'} \$${item.amount.toStringAsFixed(
+                    2)}',
                 style: TextStyle(
                   color: item.isIncome ? Colors.green : Colors.red,
                   fontWeight: FontWeight.bold,
@@ -48,13 +83,14 @@ class TransactionList extends StatelessWidget {
               ),
               onTap: () async {
                 final TransactionResult? transactionFormResult =
-                    await Navigator.push<TransactionResult?>(
+                await Navigator.push<TransactionResult?>(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => AddTransactionScreen(
-                      transaction: item,
-                      index: index,
-                    ),
+                    builder: (context) =>
+                        AddTransactionScreen(
+                          transaction: item,
+                          index: index,
+                        ),
                   ),
                 );
 

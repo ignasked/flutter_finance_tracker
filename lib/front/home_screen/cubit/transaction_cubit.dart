@@ -3,6 +3,7 @@ import 'package:equatable/equatable.dart';
 import 'package:pvp_projektas/backend/models/transaction.dart';
 import 'package:pvp_projektas/backend/models/transaction_result.dart';
 import 'package:pvp_projektas/backend/transaction_repository/transaction_repository.dart';
+import 'package:pvp_projektas/backend/transaction_repository/utils/transaction_utils.dart';
 import 'package:pvp_projektas/front/add_transaction_screen/cubit/transaction_form_cubit.dart';
 
 class TransactionState extends Equatable {
@@ -83,4 +84,27 @@ class TransactionCubit extends Cubit<TransactionState> {
         break;
     }
   }
+
+  void filterTransactions({bool? isIncome, DateTime? startDate, DateTime? endDate, double? minAmount}) {
+    List<Transaction> filteredTransactions = List.from(state.transactions);
+
+    if (isIncome != null) {
+      filteredTransactions = TypeFilterDecorator(isIncome: isIncome).filter(filteredTransactions);
+    }
+
+    if (startDate != null && endDate != null) {
+      filteredTransactions = DateFilterDecorator(startDate: startDate, endDate: endDate).filter(filteredTransactions);
+    }
+
+    if (minAmount != null) {
+      filteredTransactions = AmountFilterDecorator(minAmount: minAmount).filter(filteredTransactions);
+    }
+    filteredTransactions = List.from(filteredTransactions.reversed);
+
+    emit(state.copyWith(transactions: filteredTransactions));
+  }
 }
+
+
+
+

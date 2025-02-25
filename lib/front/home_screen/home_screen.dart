@@ -1,14 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:formz/formz.dart';
 import 'package:pvp_projektas/backend/models/transaction_result.dart';
-import 'package:pvp_projektas/backend/transaction_repository/transaction_repository.dart';
-import 'package:pvp_projektas/front/add_transaction_screen/cubit/transaction_form_cubit.dart';
 
-import 'package:pvp_projektas/main.dart';
 import 'package:pvp_projektas/front/home_screen/cubit/transaction_cubit.dart';
 import 'package:pvp_projektas/front/add_transaction_screen/add_transaction_screen.dart';
-import 'package:pvp_projektas/backend/models/transaction.dart';
 
 import 'package:pvp_projektas/front/home_screen/widgets/transaction_list.dart';
 import 'package:pvp_projektas/front/home_screen/widgets/transaction_summary.dart';
@@ -27,7 +22,7 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Transactions'),
+        title: const Text('Transactions', style: TextStyle(fontSize: 24)),
       ),
       body: SafeArea(
         child: Padding(
@@ -42,7 +37,7 @@ class HomeScreen extends StatelessWidget {
                 children: [
                   Expanded(
                     flex: 1,
-                    child: TransactionSummary(transactions: state.transactions),
+                    child: TransactionSummary(transactions: state.transactions, onCalendarPressed: () => context.read<TransactionCubit>().loadTransactions()),
                   ),
                   const SizedBox(height: 2),
                   Expanded(

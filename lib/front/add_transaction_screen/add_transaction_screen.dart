@@ -3,11 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:formz/formz.dart';
 import 'package:pvp_projektas/backend/models/transaction.dart';
 import 'package:pvp_projektas/backend/transaction_repository/utils/transaction_utils.dart';
-import 'package:pvp_projektas/backend/objectbox_repository/objectbox.dart';
-import 'package:pvp_projektas/backend/transaction_repository/transaction_repository.dart';
 import 'package:pvp_projektas/front/add_transaction_screen/cubit/transaction_form_cubit.dart';
-import 'package:pvp_projektas/front/home_screen/cubit/transaction_cubit.dart';
-import 'package:pvp_projektas/main.dart';
 import 'package:intl/intl.dart';
 
 class AddTransactionScreen extends StatelessWidget {
@@ -70,7 +66,7 @@ class _AddTransactionForm extends StatelessWidget {
                         .titleChanged(value),
                     decoration: InputDecoration(
                         labelText: 'Title',
-                        border: OutlineInputBorder(),
+                        border: const OutlineInputBorder(),
                         errorText: (state.status.isInitial == false && state.title.isNotValid)
                             ? 'Title cannot be empty'
                             : null),
@@ -83,7 +79,7 @@ class _AddTransactionForm extends StatelessWidget {
                         .amountChanged(value),
                     decoration: InputDecoration(
                         labelText: 'Amount',
-                        border: OutlineInputBorder(),
+                        border: const OutlineInputBorder(),
                         errorText: (state.status.isInitial == false && state.amount.isNotValid)
                             ? state.amount.error.toString()
                             : null),
@@ -130,7 +126,7 @@ class _AddTransactionForm extends StatelessWidget {
                         }
                       });
                     },
-                    child: Text('Select Date'),
+                    child: const Text('Select Date'),
                   ),
                   Text(DateFormat('yyyy-MM-dd').format(state.date)),
                   const SizedBox(height: 20),

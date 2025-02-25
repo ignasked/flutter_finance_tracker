@@ -6,9 +6,7 @@ class ObjectBox {
   /// The Store of this app.
   late final Store store;
 
-  ObjectBox._create(this.store) {
-
-  }
+  ObjectBox._create(this.store);
 
   /// Create an instance of ObjectBox to use throughout the app.
   static Future<ObjectBox> create() async {

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pvp_projektas/front/home_screen/home_screen.dart';
 import 'package:pvp_projektas/front/stat_screen/stat_screen.dart';
-import 'package:pvp_projektas/front/add_transaction_screen/add_transaction_screen.dart';
 
 
 class NavigationExample extends StatefulWidget {
@@ -42,7 +41,7 @@ class _NavigationExampleState extends State<NavigationExample> {
         /// Home page
         const HomeScreen(),
 
-        StatScreen(),
+        const StatScreen(),
 
       ][currentPageIndex],
     );
