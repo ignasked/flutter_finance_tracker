@@ -39,7 +39,7 @@ class TransactionSummary extends StatelessWidget {
             )),
             IconButton(
               icon: const Icon(Icons.filter_alt, color: Colors.blue),
-              onPressed: (){context.read<TransactionCubit>().filterTransactions(minAmount: 50);}
+              onPressed: (){context.read<TransactionCubit>().filterTransactions(isIncome: true);}
             ),
           ],
         ));

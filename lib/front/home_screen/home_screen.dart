@@ -30,7 +30,22 @@ class HomeScreen extends StatelessWidget {
           child: BlocBuilder<TransactionCubit, TransactionState>(
             builder: (context, state) {
               if (state.transactions.isEmpty) {
-                return const Center(child: Text('No transactions.'));
+                //return const Center(child: Text('No transactions.'));
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 1,
+                      child: TransactionSummary(transactions: state.transactions, onCalendarPressed: () => context.read<TransactionCubit>().loadTransactions()),
+                    ),
+                    const SizedBox(height: 2),
+                    Expanded(
+                      flex: 6,
+                      child: const Center(child: Text('No transactions.')),
+                    ),
+                  ],
+                );
               }
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

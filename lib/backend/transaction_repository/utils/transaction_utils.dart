@@ -39,11 +39,7 @@ class TypeFilterDecorator implements TransactionFilter {
 
   @override
   List<Transaction> filter(List<Transaction> transactions) {
-    if (isIncome) {
-      return transactions.where((transaction) => transaction.amount > 0).toList();
-    } else {
-      return transactions.where((transaction) => transaction.amount < 0).toList();
-    }
+    return transactions.where((transaction) => transaction.isIncome == isIncome).toList();
   }
 }
 
