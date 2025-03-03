@@ -2,7 +2,7 @@ import 'package:pvp_projektas/backend/objectbox_repository/objectbox.dart';
 import 'package:pvp_projektas/backend/models/transaction.dart';
 
 class TransactionRepository{
-   final ObjectBox objectbox;
+   final ObjectBox objectbox; // Labai nelogiska implementacija turet atskirai realiai objectbox tik pati konstruktoriu, o stores saugot kitoj klasej. Tiesiog sujunk sita klase su objectbox. 
 
    TransactionRepository(this.objectbox);
 
