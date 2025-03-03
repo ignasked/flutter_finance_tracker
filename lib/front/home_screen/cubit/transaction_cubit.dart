@@ -85,10 +85,8 @@ class TransactionCubit extends Cubit<TransactionState> {
     }
   }
 
-  void filterTransactions({bool? isIncome, DateTime? startDate, DateTime? endDate, double? minAmount}) {
+  void filterTransactions({bool? isIncome, DateTime? startDate, DateTime? endDate, double? minAmount, List<String>? categories}) {
     List<Transaction> filteredTransactions = List.from(state.transactions);
-
-
 
     if (startDate != null && endDate != null) {
       filteredTransactions = DateFilterDecorator(startDate: startDate, endDate: endDate).filter(filteredTransactions);
@@ -100,6 +98,10 @@ class TransactionCubit extends Cubit<TransactionState> {
 
     if (isIncome != null) {
       filteredTransactions = TypeFilterDecorator(isIncome: isIncome).filter(filteredTransactions);
+    }
+
+    if (categories != null) {
+      filteredTransactions = CategoryFilterDecorator(categories: categories).filter(filteredTransactions);
     }
 
     filteredTransactions = List.from(filteredTransactions.reversed);

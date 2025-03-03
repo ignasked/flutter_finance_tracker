@@ -5,11 +5,13 @@ import 'package:pvp_projektas/backend/transaction_repository/utils/transaction_u
 import 'package:pvp_projektas/front/home_screen/cubit/transaction_cubit.dart';
 
 class TransactionSummary extends StatelessWidget {
+  //TODO: remove this and use transaction cubit
   final List<Transaction> transactions;
   final VoidCallback onCalendarPressed;
+  final VoidCallback onFilterPressed;
 
   const TransactionSummary(
-      {Key? key, required this.transactions, required this.onCalendarPressed})
+      {Key? key, required this.transactions, required this.onCalendarPressed, required this.onFilterPressed})
       : super(key: key);
 
   @override
@@ -38,8 +40,8 @@ class TransactionSummary extends StatelessWidget {
               textAlign: TextAlign.center,
             )),
             IconButton(
-              icon: const Icon(Icons.filter_alt, color: Colors.blue),
-              onPressed: (){context.read<TransactionCubit>().filterTransactions(isIncome: true);}
+              icon: const Icon(Icons.filter_list, color: Colors.blue),
+              onPressed: onFilterPressed
             ),
           ],
         ));

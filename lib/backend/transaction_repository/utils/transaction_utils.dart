@@ -22,6 +22,9 @@ double calculateExpenses(List<Transaction> transactions) {
       .fold(0.0, (sum, transaction) => sum + transaction.amount);
 }
 
+//TODO: move filters to separate script
+//TODO: refactor filters for proper decorator pattern
+
 abstract class TransactionFilter {
   List<Transaction> filter(List<Transaction> transactions);
 }
@@ -67,5 +70,19 @@ class AmountFilterDecorator implements TransactionFilter {
   @override
   List<Transaction> filter(List<Transaction> transactions) {
     return transactions.where((transaction) => transaction.amount.abs() >= minAmount).toList();
+  }
+}
+
+class CategoryFilterDecorator implements TransactionFilter {
+  final List<String> categories;
+
+  CategoryFilterDecorator({required this.categories});
+
+  @override
+  List<Transaction> filter(List<Transaction> transactions) {
+    // Keep transactions whose category is in the list
+    return transactions
+        .where((tx) => categories.contains(tx.category))
+        .toList();
   }
 }
