@@ -1,28 +1,37 @@
-import 'package:pvp_projektas/backend/objectbox_repository/objectbox.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
+import '../../objectbox.g.dart'; // ObjectBox generated file
 import 'package:pvp_projektas/backend/models/transaction.dart';
 
 class TransactionRepository{
-   final ObjectBox objectbox; // Labai nelogiska implementacija turet atskirai realiai objectbox tik pati konstruktoriu, o stores saugot kitoj klasej. Tiesiog sujunk sita klase su objectbox. 
+  late final Store _store;
 
-   TransactionRepository(this.objectbox);
+  TransactionRepository._(this._store);
+
+  /// Initializes ObjectBox store
+  static Future<TransactionRepository> create() async {
+    final docsDir = await getApplicationDocumentsDirectory();
+    final store = await openStore(directory: p.join(docsDir.path, "transactions_db"));
+    return TransactionRepository._(store);
+  }
 
   List<Transaction> getTransactions(){
-    return objectbox.store.box<Transaction>().getAll();
+    return _store.box<Transaction>().getAll();
   }
 
   Transaction? getTransaction(int id){
-    return objectbox.store.box<Transaction>().get(id);
+    return _store.box<Transaction>().get(id);
   }
 
    void addTransaction(Transaction transaction) {
-     objectbox.store.box<Transaction>().put(transaction);
+     _store.box<Transaction>().put(transaction);
    }
 
    void updateTransaction(Transaction transaction) {
-     objectbox.store.box<Transaction>().put(transaction);
+     _store.box<Transaction>().put(transaction);
    }
 
    void deleteTransaction(int id) {
-     objectbox.store.box<Transaction>().remove(id);
+     _store.box<Transaction>().remove(id);
    }
 }

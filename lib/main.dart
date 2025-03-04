@@ -1,17 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:pvp_projektas/backend/transaction_repository/transaction_repository.dart';
-import 'backend/objectbox_repository/objectbox.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:pvp_projektas/front/home_screen/widgets/navbar.dart';
 import 'package:pvp_projektas/front/home_screen/cubit/transaction_cubit.dart';
 
-/// Provides access to the ObjectBox Store throughout the app.
-late ObjectBox objectbox;  //Repository provider
+
+late TransactionRepository transactionRepository;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  objectbox = await ObjectBox.create();
+  transactionRepository = await TransactionRepository.create();
   runApp(const MyApp());
 }
 
@@ -22,7 +21,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return RepositoryProvider(
-      create: (context) => TransactionRepository(objectbox),
+      create: (context) => transactionRepository,
       child: MultiBlocProvider(
         providers: [
           BlocProvider(
