@@ -3,14 +3,14 @@ import 'package:pvp_projektas/front/home_screen/home_screen.dart';
 import 'package:pvp_projektas/front/stat_screen/stat_screen.dart';
 
 
-class NavigationExample extends StatefulWidget {
-  const NavigationExample({super.key});
+class Navigation extends StatefulWidget {
+  const Navigation({super.key});
 
   @override
-  State<NavigationExample> createState() => _NavigationExampleState();
+  State<Navigation> createState() => _NavigationState();
 }
 
-class _NavigationExampleState extends State<NavigationExample> {
+class _NavigationState extends State<Navigation> {
   int currentPageIndex = 0;
 
   @override
