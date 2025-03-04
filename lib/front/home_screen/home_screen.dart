@@ -8,13 +8,6 @@ import 'package:pvp_projektas/front/add_transaction_screen/add_transaction_scree
 import 'package:pvp_projektas/front/home_screen/widgets/transaction_list.dart';
 import 'package:pvp_projektas/front/home_screen/widgets/transaction_summary.dart';
 
-/*class HomeScreen extends StatefulWidget {
-  const HomeScreen({Key? key}) : super(key: key);
-
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}*/
-
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
@@ -36,23 +29,21 @@ class HomeScreen extends StatelessWidget {
           child: BlocBuilder<TransactionCubit, TransactionState>(
             builder: (context, state) {
               if (state.transactions.isEmpty) {
-                //return const Center(child: Text('No transactions.'));
-
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
                       flex: 1,
                       child: TransactionSummary(
-                          transactions: state.transactions,
-                          onCalendarPressed: () => _showDateFilter(context),
-                          onFilterPressed: () => _showFilterOptions(context),
+                        transactions: state.transactions,
+                        onCalendarPressed: () => _showDateFilter(context),
+                        onFilterPressed: () => _showFilterOptions(context),
                       ),
                     ),
                     const SizedBox(height: 20),
-                    Expanded(
+                    const Expanded(
                       flex: 6,
-                      child: const Center(child: Text('No transactions.')),
+                      child: Center(child: Text('No transactions.')),
                     ),
                   ],
                 );
@@ -80,8 +71,9 @@ class HomeScreen extends StatelessWidget {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () async { final TransactionResult? transactionFormResult =
-         await Navigator.push<TransactionResult>(
+        onPressed: () async {
+          final TransactionResult? transactionFormResult =
+              await Navigator.push<TransactionResult>(
             context,
             MaterialPageRoute(
               builder: (context) => const AddTransactionScreen(),
@@ -89,8 +81,9 @@ class HomeScreen extends StatelessWidget {
           );
 
           if (transactionFormResult != null) {
-
-            context.read<TransactionCubit>().handleTransactionFormResult(transactionFormResult);
+            context
+                .read<TransactionCubit>()
+                .handleTransactionFormResult(transactionFormResult);
           }
         },
         child: const Icon(Icons.add),
@@ -115,17 +108,20 @@ void _showFilterOptions(BuildContext context) {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('Filter Transactions', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const Text('Filter Transactions',
+                    style:
+                        TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: () {
-                    setModalState(() { // Updates state inside modal
+                    setModalState(() {
+                      // Updates state inside modal
                       categories.contains('Food')
                           ? categories.remove('Food')
                           : categories.add('Food');
                     });
                   },
-                  child: Text(categories.contains('Food') ? '✅ Food' : 'Food'),
+                  child: Text(categories.contains('Food') ? '+ Food' : 'Food'),
                 ),
                 ElevatedButton(
                   onPressed: () {
@@ -135,7 +131,8 @@ void _showFilterOptions(BuildContext context) {
                           : categories.add('Travel');
                     });
                   },
-                  child: Text(categories.contains('Travel') ? '✅ Travel' : 'Travel'),
+                  child: Text(
+                      categories.contains('Travel') ? '+ Travel' : 'Travel'),
                 ),
                 ElevatedButton(
                   onPressed: () {
@@ -145,14 +142,17 @@ void _showFilterOptions(BuildContext context) {
                           : categories.add('Salary');
                     });
                   },
-                  child: Text(categories.contains('Salary') ? '✅ Salary' : 'Salary'),
+                  child: Text(
+                      categories.contains('Salary') ? '+ Salary' : 'Salary'),
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: () {
                     context.read<TransactionCubit>().loadTransactions();
-                    if(categories.isNotEmpty) {
-                      context.read<TransactionCubit>().filterTransactions(categories: categories);
+                    if (categories.isNotEmpty) {
+                      context
+                          .read<TransactionCubit>()
+                          .filterTransactions(categories: categories);
                     }
                     Navigator.pop(context);
                   },
@@ -173,15 +173,16 @@ void _showDateFilter(BuildContext context) async {
     firstDate: DateTime(2000),
     lastDate: DateTime(2101),
     initialDateRange: DateTimeRange(
-      start: DateTime.now().subtract(const Duration(days: 7)), // Default to last week
+      start: DateTime.now().subtract(const Duration(days: 7)),
+      // Default to last week
       end: DateTime.now(),
     ),
   );
 
   if (selectedRange != null) {
     context.read<TransactionCubit>().filterTransactions(
-      startDate: selectedRange.start,
-      endDate: selectedRange.end,
-    );
+          startDate: selectedRange.start,
+          endDate: selectedRange.end,
+        );
   }
 }

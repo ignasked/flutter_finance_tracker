@@ -15,95 +15,109 @@ class TransactionList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView.builder(
-      itemCount: transactions.length,
-      itemBuilder: (context, index) {
-        final item = transactions[index];
+    // Group transactions by month
+    Map<String, List<Transaction>> groupedTransactions = _groupTransactionsByMonth(transactions);
 
-        return Dismissible(
-          key: UniqueKey(),
-          confirmDismiss: (direction) async {
-            bool result;
-            {
-              result
-              = await showDialog(
-                context: context,
-                builder: (BuildContext context) {
-                  return AlertDialog(
-                    title: const Text('Confirm'),
-                    content: const Text('Are you sure you want to delete?'),
-                    actions: <Widget>[
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(false),
-                        child: const Text('No'),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(true),
-                        child: const Text('Yes'),
-                      ),
-                    ],
+    return ListView(
+      children: groupedTransactions.entries.map((entry) {
+        final entriesDate = entry.key;
+        final monthTransactions = entry.value;
+
+        return ExpansionTile(
+          title: Text(entriesDate),
+          children: monthTransactions.map((item) {
+            return Dismissible(
+              key: UniqueKey(),
+              confirmDismiss: (direction) async {
+                bool result;
+                {
+                  result = await showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return AlertDialog(
+                        title: const Text('Confirm'),
+                        content: const Text('Are you sure you want to delete?'),
+                        actions: <Widget>[
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(false),
+                            child: const Text('No'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(true),
+                            child: const Text('Yes'),
+                          ),
+                        ],
+                      );
+                    },
                   );
-                },
-              );
-              if(result) {
-                context.read<TransactionCubit>().deleteTransaction(index);
-                ScaffoldMessenger.of(context)
-                    .showSnackBar(SnackBar(content: Text('$item deleted.')));
-              }
-            }
-            
-            return null;
-          },
-          background: Container(
-            color: Colors.red,
-            padding: const EdgeInsets.only(right: 20),
-            alignment: Alignment.centerRight,
-            child: const Icon(
-              Icons.delete,
-              color: Colors.white,
-            ),
-          ),
-          child: Card(
-            child: ListTile(
-              leading: Icon(
-                item.isIncome ? Icons.arrow_upward : Icons.arrow_downward,
-                color: item.isIncome ? Colors.green : Colors.red,
-              ),
-              title: Text(item.title),
-              subtitle: Text(
-                '${item.category} | ${item.date.toString().split(' ')[0]}',
-              ),
-              trailing: Text(
-                '${item.isIncome ? '+' : '-'} \$${item.amount.toStringAsFixed(
-                    2)}',
-                style: TextStyle(
-                  color: item.isIncome ? Colors.green : Colors.red,
-                  fontWeight: FontWeight.bold,
+                  if (result) {
+                    context.read<TransactionCubit>().deleteTransaction(transactions.indexOf(item));
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$item deleted.')));
+                  }
+                }
+                return null;
+              },
+              background: Container(
+                color: Colors.red,
+                padding: const EdgeInsets.only(right: 20),
+                alignment: Alignment.centerRight,
+                child: const Icon(
+                  Icons.delete,
+                  color: Colors.white,
                 ),
               ),
-              onTap: () async {
-                final TransactionResult? transactionFormResult =
-                await Navigator.push<TransactionResult?>(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        AddTransactionScreen(
-                          transaction: item,
-                          index: index,
-                        ),
+              child: Card(
+                child: ListTile(
+                  leading: Icon(
+                    item.isIncome ? Icons.arrow_upward : Icons.arrow_downward,
+                    color: item.isIncome ? Colors.green : Colors.red,
                   ),
-                );
+                  title: Text(item.title),
+                  subtitle: Text(
+                    '${item.category} | ${item.date.toString().split(' ')[0]}',
+                  ),
+                  trailing: Text(
+                    '${item.isIncome ? '+' : '-'} \$${item.amount.toStringAsFixed(2)}',
+                    style: TextStyle(
+                      color: item.isIncome ? Colors.green : Colors.red,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  onTap: () async {
+                    final TransactionResult? transactionFormResult =
+                    await Navigator.push<TransactionResult?>(context, MaterialPageRoute(
+                      builder: (context) => AddTransactionScreen(
+                        transaction: item,
+                        index: transactions.indexOf(item),
+                      ),
+                    ));
 
-                if (transactionFormResult != null) {
-                  context
-                      .read<TransactionCubit>()
-                      .handleTransactionFormResult(transactionFormResult);
-                }
-              },
-            ),
-          ),
+                    if (transactionFormResult != null) {
+                      context.read<TransactionCubit>().handleTransactionFormResult(transactionFormResult);
+                    }
+                  },
+                ),
+              ),
+            );
+          }).toList(),
         );
-      },
+      }).toList(),
     );
+  }
+
+  // Group transactions by month
+  Map<String, List<Transaction>> _groupTransactionsByMonth(List<Transaction> transactions) {
+    Map<String, List<Transaction>> grouped = {};
+
+    for (var transaction in transactions) {
+      final monthYear = '${transaction.date.year}-${transaction.date.month.toString().padLeft(2, '0')}';
+      if (grouped.containsKey(monthYear)) {
+        grouped[monthYear]!.add(transaction);
+      } else {
+        grouped[monthYear] = [transaction];
+      }
+    }
+
+    return grouped;
   }
 }
