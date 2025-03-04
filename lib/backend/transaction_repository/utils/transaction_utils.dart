@@ -1,6 +1,7 @@
 import 'package:pvp_projektas/backend/models/transaction.dart';
 
-final categories = ['Food', 'Travel', 'Taxes', 'Salary', 'Other']; // Kodel string?
+final categories = ['Food', 'Travel', 'Taxes', 'Salary', 'Other']; // Kodel string? Galimybe redaguot kategorijas useriui, bet kai treniruosiu kategorizavimo modeli tai nesigaus su redaguotom kategorijom
+
 
 double calculateBalance(List<Transaction> transactions) {
   return transactions.fold(

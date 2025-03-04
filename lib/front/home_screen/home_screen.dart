@@ -14,15 +14,6 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Transactions', style: TextStyle(fontSize: 24)),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.filter_list),
-            onPressed: () => _showFilterOptions(context),
-          ),
-        ],
-      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(20.0),
@@ -91,7 +82,7 @@ class HomeScreen extends StatelessWidget {
     );
   }
 }
-
+// TODO: move out show filtering options
 void _showFilterOptions(BuildContext context) {
   showModalBottomSheet(
     context: context,
@@ -166,6 +157,7 @@ void _showFilterOptions(BuildContext context) {
     },
   );
 }
+
 
 void _showDateFilter(BuildContext context) async {
   DateTimeRange? selectedRange = await showDateRangePicker(
