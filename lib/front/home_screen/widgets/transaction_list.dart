@@ -4,6 +4,7 @@ import 'package:pvp_projektas/backend/models/transaction.dart';
 import 'package:pvp_projektas/backend/models/transaction_result.dart';
 import 'package:pvp_projektas/front/add_transaction_screen/add_transaction_screen.dart';
 import 'package:pvp_projektas/front/home_screen/cubit/transaction_cubit.dart';
+import 'package:pvp_projektas/utils/AppColors.dart';
 
 class TransactionList extends StatelessWidget {
   final List<Transaction> transactions;
@@ -25,6 +26,7 @@ class TransactionList extends StatelessWidget {
 
         return ExpansionTile(
           title: Text(entriesDate),
+
           children: monthTransactions.map((item) {
             return Dismissible(
               key: UniqueKey(),
@@ -70,7 +72,7 @@ class TransactionList extends StatelessWidget {
                 child: ListTile(
                   leading: Icon(
                     item.isIncome ? Icons.arrow_upward : Icons.arrow_downward,
-                    color: item.isIncome ? Colors.green : Colors.red,
+                    color: item.isIncome ? ColorPalette.income : ColorPalette.expense,
                   ),
                   title: Text(item.title),
                   subtitle: Text(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pvp_projektas/front/home_screen/home_screen.dart';
+import 'package:pvp_projektas/front/settings_screen/settings_screen.dart';
 import 'package:pvp_projektas/front/stat_screen/stat_screen.dart';
 
 
@@ -27,21 +28,28 @@ class _NavigationState extends State<Navigation> {
         selectedIndex: currentPageIndex,
         destinations: const <Widget>[
           NavigationDestination(
-            selectedIcon: Icon(Icons.home),
-            icon: Icon(Icons.home_outlined),
-            label: 'Home',
+            selectedIcon: Icon(Icons.receipt),
+            icon: Icon(Icons.receipt_outlined),
+            label: 'Transactions',
           ),
           NavigationDestination(
-            icon: Icon(Icons.bar_chart_outlined),
+            selectedIcon: Icon(Icons.show_chart),
+            icon: Icon(Icons.show_chart_outlined),
             label: 'Statistics',
+          ),
+          NavigationDestination(
+            selectedIcon: Icon(Icons.settings),
+            icon: Icon(Icons.settings_outlined),
+            label: 'Settings',
           ),
         ],
       ),
       body: <Widget>[
-        /// Home page
         const HomeScreen(),
 
         const StatScreen(),
+
+        const SettingsScreen(),
 
       ][currentPageIndex],
     );

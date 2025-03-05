@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pvp_projektas/backend/models/transaction.dart';
 import 'package:pvp_projektas/backend/transaction_repository/utils/transaction_utils.dart';
 import 'package:pvp_projektas/front/home_screen/cubit/transaction_cubit.dart';
+import 'package:pvp_projektas/utils/AppColors.dart';
 
 class TransactionSummary extends StatelessWidget {
   //TODO: remove this and use transaction cubit
@@ -22,8 +23,8 @@ class TransactionSummary extends StatelessWidget {
           boxShadow: [
             BoxShadow(
                 color: Colors.black.withOpacity(0.1),
-                blurRadius: 5,
-                offset: const Offset(0, 5))
+                blurRadius: 3,
+                offset: const Offset(0, 3))
           ],
         ),
         child: Row(
