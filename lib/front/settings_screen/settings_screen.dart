@@ -1,110 +1,185 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:pvp_projektas/backend/models/transaction.dart';
-import 'package:pvp_projektas/backend/export_to_csv.dart';
 import 'package:pvp_projektas/front/home_screen/cubit/transaction_cubit.dart';
-// import 'package:to_csv/to_csv.dart' as exportCSV;
+import 'package:pvp_projektas/front/settings_screen/cubit/csv_cubit.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings'),
-      ),
-      body: Center(
-        child: Column(
-          children: [
-            const Text('Settings Screen'),
-            ElevatedButton(
-              onPressed: () {
-                writeToCSV(generateCSVData(
-                    context.read<TransactionCubit>().state.transactions));
-              },
-              child: const Text("Export CSV"),
+    return BlocProvider(
+      create: (_) => CsvCubit(),
+      child: BlocListener<CsvCubit, CsvState>(
+        listener: (context, state) {
+          if (state.error != null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(state.error!)),
+            );
+          }
+        },
+        child: Scaffold(
+          appBar: AppBar(
+            title: const Text('Settings'),
+          ),
+          body: Center(
+            child: Column(
+              children: [
+                const Text('Settings Screen'),
+                _buildExportButton(),
+                _buildDeleteAllButton(context),
+                _buildImportButton(),
+              ],
             ),
-            ElevatedButton(
-              onPressed: () {
-                context.read<TransactionCubit>().deleteAllTransactions();
-              },
-              child: const Text("Delete All Transactions",
-                  style: TextStyle(
-                    color: Colors.white,
-                  )),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                textStyle: const TextStyle(
-                  color: Colors.white,
-                ),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                String data = await readCSV();
-                List<Transaction> newTransactions =
-                    fromStringToTransactions(data);
-                List<Transaction> existingTransactions =
-                    context.read<TransactionCubit>().state.transactions;
-
-                // Find duplicates
-                List<Transaction> duplicates = newTransactions
-                    .where((newTx) => existingTransactions.any((existingTx) =>
-                        existingTx.amount == newTx.amount &&
-                        existingTx.date == newTx.date &&
-                        existingTx.title == newTx.title))
-                    .toList();
-
-                if (duplicates.isNotEmpty) {
-                  // Show confirmation dialog
-                  bool? shouldAdd = await showDialog<bool>(
-                    context: context,
-                    builder: (BuildContext dialogContext) {
-                      return AlertDialog(
-                        title: const Text('Duplicate Transactions Found'),
-                        content: Text(
-                            'Found ${duplicates.length} duplicate transactions. Do you want to add them anyway?'),
-                        actions: [
-                          TextButton(
-                            onPressed: () =>
-                                Navigator.of(dialogContext).pop(false),
-                            child: const Text('Cancel'),
-                          ),
-                          TextButton(
-                            onPressed: () =>
-                                Navigator.of(dialogContext).pop(true),
-                            child: const Text('Add All'),
-                          ),
-                        ],
-                      );
-                    },
-                  );
-
-                  if (shouldAdd == true) {
-                    context
-                        .read<TransactionCubit>()
-                        .addTransactions(newTransactions);
-                  }
-                } else {
-                  // No duplicates found, add all transactions
-                  context
-                      .read<TransactionCubit>()
-                      .addTransactions(newTransactions);
-                }
-              },
-              child: const Text("Import CSV"),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  // void readCSV() async {
-  //   String data = await readCSV();
-  //   List<Transaction> transactions = fromStringToTransactions(data);
-  //   context.read<TransactionCubit>().deleteTransactions();
-  //   context.read<TransactionCubit>().addTransactions(transactions);
-  // }
+  Widget _buildExportButton() {
+    return BlocBuilder<CsvCubit, CsvState>(
+      builder: (context, state) {
+        return ElevatedButton(
+          onPressed: state.isLoading
+              ? null
+              : () {
+                  final transactions =
+                      context.read<TransactionCubit>().state.transactions;
+                  context.read<CsvCubit>().exportTransactions(transactions);
+                },
+          child: state.isLoading
+              ? const CircularProgressIndicator()
+              : const Text("Export CSV"),
+        );
+      },
+    );
+  }
+
+  Widget _buildDeleteAllButton(BuildContext context) {
+    return ElevatedButton(
+      onPressed: () => _showDeleteConfirmation(context),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.red,
+        foregroundColor: Colors.white,
+      ),
+      child: const Text("Delete All Transactions"),
+    );
+  }
+
+  Widget _buildImportButton() {
+    return BlocBuilder<CsvCubit, CsvState>(
+      builder: (context, state) {
+        return ElevatedButton(
+          onPressed: state.isLoading ? null : () => _handleImport(context),
+          child: state.isLoading
+              ? const CircularProgressIndicator()
+              : const Text("Import CSV"),
+        );
+      },
+    );
+  }
+
+  Future<void> _handleImport(BuildContext context) async {
+    final transactionCubit = context.read<TransactionCubit>();
+    final csvCubit = context.read<CsvCubit>();
+
+    final existingTransactions = transactionCubit.state.transactions;
+    final newTransactions =
+        await csvCubit.importTransactions(existingTransactions, false);
+
+    if (!context.mounted) return;
+
+    if (newTransactions == null && csvCubit.state.duplicates.isNotEmpty) {
+      await _showDuplicatesDialog(context);
+    } else if (newTransactions != null) {
+      transactionCubit.addTransactions(newTransactions);
+    }
+  }
+
+  Future<void> _showDuplicatesDialog(BuildContext context) async {
+    final transactionCubit = context.read<TransactionCubit>();
+    final csvCubit = context.read<CsvCubit>();
+    final duplicatesCount = csvCubit.state.duplicates.length;
+
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Duplicate Transactions Found'),
+        content: Text(
+            'Found $duplicatesCount duplicate transactions. What would you like to do?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'cancel'),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'all'),
+            child: const Text('Add All'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'non-duplicates'),
+            child: const Text('Add Non-Duplicates'),
+          ),
+        ],
+      ),
+    );
+
+    if (!context.mounted) return;
+
+    if (result == 'all') {
+      // Import all transactions including duplicates
+      final transactions = await csvCubit.importTransactions(
+          transactionCubit.state.transactions, true);
+
+      if (!context.mounted) return;
+
+      if (transactions != null) {
+        transactionCubit.addTransactions(transactions);
+      }
+    } else if (result == 'non-duplicates') {
+      final allImportedTransactions = await csvCubit.importTransactions(
+          transactionCubit.state.transactions, true);
+
+      if (!context.mounted) return;
+
+      if (allImportedTransactions != null) {
+        // Filter out duplicates using the existing state
+        final nonDuplicates = allImportedTransactions
+            .where((tx) => !transactionCubit.state.transactions.contains(tx))
+            .toList();
+
+        transactionCubit.addTransactions(nonDuplicates);
+      }
+    }
+  }
+
+  Future<void> _showDeleteConfirmation(BuildContext context) async {
+    final transactionCubit = context.read<TransactionCubit>();
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete All Transactions'),
+        content: const Text(
+            'Are you sure you want to delete all transactions? This cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (!context.mounted) return;
+
+    if (confirm == true) {
+      transactionCubit.deleteAllTransactions();
+    }
+  }
 }

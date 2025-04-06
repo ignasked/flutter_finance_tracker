@@ -2,8 +2,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:pvp_projektas/backend/models/transaction.dart';
 import 'dart:io';
 
-import 'package:pvp_projektas/main.dart';
-
 // void exportToCSV1(List<Transaction> transactions) {
 //   List<String> header = ['ID','Title','Amount','IsIncome','Category','Date'];
 //   List<String> data = [transactions[0].id.toString(), transactions[0].title, transactions[0].amount.toString(), transactions[0].isIncome.toString(), transactions[0].category, transactions[0].date.toString()];
