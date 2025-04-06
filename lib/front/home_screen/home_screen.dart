@@ -26,7 +26,6 @@ class HomeScreen extends StatelessWidget {
                     Expanded(
                       flex: 1,
                       child: TransactionSummary(
-                        transactions: state.transactions,
                         onCalendarPressed: () => _showDateFilter(context),
                         onFilterPressed: () => _showFilterOptions(context),
                       ),
@@ -45,7 +44,6 @@ class HomeScreen extends StatelessWidget {
                   Expanded(
                     flex: 1,
                     child: TransactionSummary(
-                      transactions: state.transactions,
                       onCalendarPressed: () => _showDateFilter(context),
                       onFilterPressed: () => _showFilterOptions(context),
                     ),
@@ -82,6 +80,7 @@ class HomeScreen extends StatelessWidget {
     );
   }
 }
+
 // TODO: move out show filtering options
 void _showFilterOptions(BuildContext context) {
   showModalBottomSheet(
@@ -157,7 +156,6 @@ void _showFilterOptions(BuildContext context) {
     },
   );
 }
-
 
 void _showDateFilter(BuildContext context) async {
   DateTimeRange? selectedRange = await showDateRangePicker(

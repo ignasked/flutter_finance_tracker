@@ -2,6 +2,9 @@ import 'package:equatable/equatable.dart';
 import 'package:objectbox/objectbox.dart';
 
 @Entity()
+
+/// Represents a financial transaction with details such as title, amount, type (income/expense), category, and date.
+// ignore: must_be_immutable
 class Transaction extends Equatable {
   @Id()
   int id;

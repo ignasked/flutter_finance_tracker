@@ -31,7 +31,6 @@ class StatScreen extends StatelessWidget {
                   Expanded(
                     flex: 1,
                     child: TransactionSummary(
-                      transactions: state.transactions,
                       onCalendarPressed: () => _showDateFilter(context),
                       onFilterPressed: () => _showFilterOptions(context),
                     ),
@@ -57,10 +56,13 @@ class StatScreen extends StatelessWidget {
                               series: <CircularSeries>[
                                 PieSeries<_ChartData, String>(
                                   dataSource: chartData,
-                                  xValueMapper: (_ChartData data, _) => data.category,
-                                  yValueMapper: (_ChartData data, _) => data.amount,
+                                  xValueMapper: (_ChartData data, _) =>
+                                      data.category,
+                                  yValueMapper: (_ChartData data, _) =>
+                                      data.amount,
                                   dataLabelSettings: const DataLabelSettings(
-                                    isVisible: true, showZeroValue: false,
+                                    isVisible: true,
+                                    showZeroValue: false,
                                   ),
                                 ),
                               ],
@@ -86,15 +88,20 @@ class StatScreen extends StatelessWidget {
                               primaryYAxis: NumericAxis(
                                 title: AxisTitle(text: 'Total Balance'),
                               ),
-                              series: <CartesianSeries<_LinaChartData, DateTime>>[
+                              series: <CartesianSeries<_LinaChartData,
+                                  DateTime>>[
                                 LineSeries<_LinaChartData, DateTime>(
                                   name: 'Balance',
                                   dataSource: lineChartData,
-                                  xValueMapper: (_LinaChartData data, _) => data.date,
-                                  yValueMapper: (_LinaChartData data, _) => data.balance,
-                                  markerSettings: const MarkerSettings(isVisible: true),
+                                  xValueMapper: (_LinaChartData data, _) =>
+                                      data.date,
+                                  yValueMapper: (_LinaChartData data, _) =>
+                                      data.balance,
+                                  markerSettings:
+                                      const MarkerSettings(isVisible: true),
                                   dataLabelSettings: const DataLabelSettings(
-                                    isVisible: true, showZeroValue: false,
+                                    isVisible: true,
+                                    showZeroValue: false,
                                   ),
                                 ),
                               ],
@@ -112,7 +119,6 @@ class StatScreen extends StatelessWidget {
       ),
     );
   }
-
 
   List<_ChartData> _prepareChartData(List<Transaction> transactions) {
     // <---- to cubit

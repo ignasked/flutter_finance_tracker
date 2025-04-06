@@ -5,6 +5,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pvp_projektas/front/home_screen/widgets/navbar.dart';
 import 'package:pvp_projektas/front/home_screen/cubit/transaction_cubit.dart';
 
+import 'front/home_screen/cubit/transaction_summary_cubit.dart';
+
 /// Transaction repository provider
 late TransactionRepository transactionRepository;
 
@@ -26,6 +28,9 @@ class MyApp extends StatelessWidget {
           BlocProvider(
             create: (context) =>
                 TransactionCubit(context.read<TransactionRepository>()),
+          ),
+          BlocProvider<TransactionSummaryCubit>(
+            create: (context) => TransactionSummaryCubit(),
           ),
         ],
         child: MaterialApp(
