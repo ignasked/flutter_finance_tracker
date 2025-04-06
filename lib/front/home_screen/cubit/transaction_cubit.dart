@@ -44,6 +44,15 @@ class TransactionCubit extends Cubit<TransactionState> {
     emit(state.copyWith(transactions: transactionsList));
   }
 
+  void addTransactions(List<Transaction> transactions) {
+    //create local copy of transactions
+    List<Transaction> transactionsList = List.from(state.transactions);
+    transactionsList.addAll(transactions);
+    //save to objectbox
+    transRepository.addTransactions(transactions);
+    emit(state.copyWith(transactions: transactionsList));
+  }
+
   //update transaction in all transactions and objectbox repository
   void updateTransaction(Transaction transaction, int index) {
     if (index >= 0 && index < state.transactions.length) {
@@ -68,6 +77,11 @@ class TransactionCubit extends Cubit<TransactionState> {
     }
   }
 
+  void deleteAllTransactions() {
+    transRepository.deleteAllTransactions();
+    emit(state.copyWith(transactions: []));
+  }
+
   //recieve result from transaction form screen and handle it
   void handleTransactionFormResult(TransactionResult transactionFormResult) {
     switch (transactionFormResult.actionType) {
@@ -85,23 +99,33 @@ class TransactionCubit extends Cubit<TransactionState> {
     }
   }
 
-  void filterTransactions({bool? isIncome, DateTime? startDate, DateTime? endDate, double? minAmount, List<String>? categories}) {
+  void filterTransactions(
+      {bool? isIncome,
+      DateTime? startDate,
+      DateTime? endDate,
+      double? minAmount,
+      List<String>? categories}) {
     List<Transaction> filteredTransactions = List.from(state.transactions);
 
     if (startDate != null && endDate != null) {
-      filteredTransactions = DateFilterDecorator(startDate: startDate, endDate: endDate).filter(filteredTransactions);
+      filteredTransactions =
+          DateFilterDecorator(startDate: startDate, endDate: endDate)
+              .filter(filteredTransactions);
     }
 
     if (minAmount != null) {
-      filteredTransactions = AmountFilterDecorator(minAmount: minAmount).filter(filteredTransactions);
+      filteredTransactions = AmountFilterDecorator(minAmount: minAmount)
+          .filter(filteredTransactions);
     }
 
     if (isIncome != null) {
-      filteredTransactions = TypeFilterDecorator(isIncome: isIncome).filter(filteredTransactions);
+      filteredTransactions =
+          TypeFilterDecorator(isIncome: isIncome).filter(filteredTransactions);
     }
 
     if (categories != null) {
-      filteredTransactions = CategoryFilterDecorator(categories: categories).filter(filteredTransactions);
+      filteredTransactions = CategoryFilterDecorator(categories: categories)
+          .filter(filteredTransactions);
     }
 
     filteredTransactions = List.from(filteredTransactions.reversed);
@@ -109,7 +133,3 @@ class TransactionCubit extends Cubit<TransactionState> {
     emit(state.copyWith(transactions: filteredTransactions));
   }
 }
-
-
-
-

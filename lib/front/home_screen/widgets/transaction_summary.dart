@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pvp_projektas/backend/models/transaction.dart';
 import 'package:pvp_projektas/backend/transaction_repository/utils/transaction_utils.dart';
-import 'package:pvp_projektas/front/home_screen/cubit/transaction_cubit.dart';
-import 'package:pvp_projektas/utils/AppColors.dart';
 
 class TransactionSummary extends StatelessWidget {
   //TODO: remove this and use transaction cubit

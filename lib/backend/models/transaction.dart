@@ -40,4 +40,28 @@ class Transaction extends Equatable {
       date: date ?? this.date,
     );
   }
+
+  static String toCSVHeader() {
+    return 'id,title,amount,isIncome,category,date';
+  }
+
+  String toCSV() {
+    return '$id,$title,$amount,$isIncome,$category,$date';
+  }
+
+  static Transaction fromCSV(String csv) {
+    List<String> fields = csv.split(',');
+    if (fields.length != 6) {
+      throw Exception('Invalid CSV format');
+    }
+    // Parse the fields and create a Transaction object
+    return Transaction(
+      id: int.parse(fields[0]),
+      title: fields[1],
+      amount: double.parse(fields[2]),
+      isIncome: fields[3].toLowerCase() == 'true',
+      category: fields[4],
+      date: DateTime.parse(fields[5]),
+    );
+  }
 }
