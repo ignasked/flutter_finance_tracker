@@ -16,39 +16,54 @@ class TransactionSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocListener<TransactionCubit, TransactionState>(
-      listener: (context, state) {
-        context
-            .read<TransactionSummaryCubit>()
-            .calculateSummary(state.transactions);
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.grey[200],
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 3,
-              offset: const Offset(0, 3),
-            ),
-          ],
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<TransactionCubit, TransactionState>(
+          listener: (context, state) {
+            print(
+                'TransactionState changed: ${state.transactions.length} transactions');
+            context
+                .read<TransactionSummaryCubit>()
+                .calculateSummary(state.transactions);
+          },
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            IconButton(
-              icon: const Icon(Icons.today, color: Colors.blue),
-              onPressed: onCalendarPressed,
+      ],
+      child: BlocBuilder<TransactionCubit, TransactionState>(
+        builder: (context, state) {
+          // Calculate summary on initial build and updates
+          context
+              .read<TransactionSummaryCubit>()
+              .calculateSummary(state.transactions);
+
+          return Container(
+            decoration: BoxDecoration(
+              color: Colors.grey[200],
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withAlpha(40),
+                  blurRadius: 3,
+                  offset: const Offset(0, 3),
+                ),
+              ],
             ),
-            const Expanded(
-              child: TransactionSummaryDisplay(),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.today, color: Colors.blue),
+                  onPressed: onCalendarPressed,
+                ),
+                const Expanded(
+                  child: TransactionSummaryDisplay(),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.filter_list, color: Colors.blue),
+                  onPressed: onFilterPressed,
+                ),
+              ],
             ),
-            IconButton(
-              icon: const Icon(Icons.filter_list, color: Colors.blue),
-              onPressed: onFilterPressed,
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }

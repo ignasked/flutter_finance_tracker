@@ -11,8 +11,7 @@ class TransactionRepository {
   /// Initializes ObjectBox store
   static Future<TransactionRepository> create() async {
     final docsDir = await getApplicationDocumentsDirectory();
-    final store =
-        await openStore(directory: p.join(docsDir.path, "transactions_db"));
+    final store = openStore(directory: p.join(docsDir.path, "transactions_db"));
     return TransactionRepository._(store);
   }
 

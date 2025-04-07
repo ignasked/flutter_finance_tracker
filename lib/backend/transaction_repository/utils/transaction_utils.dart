@@ -1,12 +1,18 @@
 import 'package:pvp_projektas/backend/models/transaction.dart';
 
-final categories = ['Food', 'Travel', 'Taxes', 'Salary', 'Other']; // Kodel string? Galimybe redaguot kategorijas useriui, bet kai treniruosiu kategorizavimo modeli tai nesigaus su redaguotom kategorijom
-
+final categories = [
+  'Food',
+  'Travel',
+  'Taxes',
+  'Salary',
+  'Other'
+]; // Kodel string? Galimybe redaguot kategorijas useriui, bet kai treniruosiu kategorizavimo modeli tai nesigaus su redaguotom kategorijom
 
 double calculateBalance(List<Transaction> transactions) {
   return transactions.fold(
     0.0,
-        (balance, transaction) => balance +
+    (balance, transaction) =>
+        balance +
         (transaction.isIncome ? transaction.amount : -transaction.amount),
   );
 }
@@ -29,6 +35,7 @@ double calculateExpenses(List<Transaction> transactions) {
 abstract class TransactionFilter {
   List<Transaction> filter(List<Transaction> transactions);
 }
+
 class BaseTransactionFilter implements TransactionFilter {
   @override
   List<Transaction> filter(List<Transaction> transactions) {
@@ -43,10 +50,11 @@ class TypeFilterDecorator implements TransactionFilter {
 
   @override
   List<Transaction> filter(List<Transaction> transactions) {
-    return transactions.where((transaction) => transaction.isIncome == isIncome).toList();
+    return transactions
+        .where((transaction) => transaction.isIncome == isIncome)
+        .toList();
   }
 }
-
 
 class DateFilterDecorator implements TransactionFilter {
   final DateTime startDate;
@@ -56,12 +64,13 @@ class DateFilterDecorator implements TransactionFilter {
 
   @override
   List<Transaction> filter(List<Transaction> transactions) {
-    return transactions.where((transaction) =>
-    transaction.date.isAfter(startDate) &&
-        transaction.date.isBefore(endDate)).toList();
+    return transactions
+        .where((transaction) =>
+            transaction.date.isAfter(startDate) &&
+            transaction.date.isBefore(endDate))
+        .toList();
   }
 }
-
 
 class AmountFilterDecorator implements TransactionFilter {
   final double minAmount;
@@ -70,7 +79,9 @@ class AmountFilterDecorator implements TransactionFilter {
 
   @override
   List<Transaction> filter(List<Transaction> transactions) {
-    return transactions.where((transaction) => transaction.amount.abs() >= minAmount).toList();
+    return transactions
+        .where((transaction) => transaction.amount.abs() >= minAmount)
+        .toList();
   }
 }
 

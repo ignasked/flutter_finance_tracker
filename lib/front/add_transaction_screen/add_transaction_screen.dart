@@ -12,9 +12,6 @@ class AddTransactionScreen extends StatelessWidget {
   const AddTransactionScreen({Key? key, this.transaction, this.index})
       : super(key: key);
 
-  //@override
-  //State<AddTransactionScreen> createState() => _AddTransactionScreen();
-
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
@@ -67,7 +64,8 @@ class _AddTransactionForm extends StatelessWidget {
                     decoration: InputDecoration(
                         labelText: 'Title',
                         border: const OutlineInputBorder(),
-                        errorText: (state.status.isInitial == false && state.title.isNotValid)
+                        errorText: (state.status.isInitial == false &&
+                                state.title.isNotValid)
                             ? 'Title cannot be empty'
                             : null),
                     initialValue: state.title.value,
@@ -80,7 +78,8 @@ class _AddTransactionForm extends StatelessWidget {
                     decoration: InputDecoration(
                         labelText: 'Amount',
                         border: const OutlineInputBorder(),
-                        errorText: (state.status.isInitial == false && state.amount.isNotValid)
+                        errorText: (state.status.isInitial == false &&
+                                state.amount.isNotValid)
                             ? state.amount.error.toString()
                             : null),
                     keyboardType: TextInputType.number,
@@ -114,17 +113,21 @@ class _AddTransactionForm extends StatelessWidget {
                   ),
                   const SizedBox(height: 20),
                   ElevatedButton(
-                    onPressed: () {
-                      showDatePicker(
+                    onPressed: () async {
+                      final selectedDate = await showDatePicker(
                         context: context,
                         initialDate: DateTime.now(),
                         firstDate: DateTime(1900),
                         lastDate: DateTime(2100),
-                      ).then((selectedDate) {
-                        if (selectedDate != null) {
-                          context.read<TransactionFormCubit>().dateChanged(selectedDate);
-                        }
-                      });
+                      );
+
+                      if (!context.mounted) return;
+
+                      if (selectedDate != null) {
+                        context
+                            .read<TransactionFormCubit>()
+                            .dateChanged(selectedDate);
+                      }
                     },
                     child: const Text('Select Date'),
                   ),

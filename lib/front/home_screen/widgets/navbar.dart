@@ -3,7 +3,6 @@ import 'package:pvp_projektas/front/home_screen/home_screen.dart';
 import 'package:pvp_projektas/front/settings_screen/settings_screen.dart';
 import 'package:pvp_projektas/front/stat_screen/stat_screen.dart';
 
-
 class Navigation extends StatefulWidget {
   const Navigation({super.key});
 
@@ -16,7 +15,7 @@ class _NavigationState extends State<Navigation> {
 
   @override
   Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
+    // final ThemeData theme = Theme.of(context);
     return Scaffold(
       bottomNavigationBar: NavigationBar(
         onDestinationSelected: (int index) {
@@ -46,11 +45,8 @@ class _NavigationState extends State<Navigation> {
       ),
       body: <Widget>[
         const HomeScreen(),
-
         const StatScreen(),
-
         const SettingsScreen(),
-
       ][currentPageIndex],
     );
   }

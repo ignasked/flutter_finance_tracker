@@ -2,11 +2,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:pvp_projektas/backend/models/transaction.dart';
 import 'dart:io';
 
-// void exportToCSV1(List<Transaction> transactions) {
-//   List<String> header = ['ID','Title','Amount','IsIncome','Category','Date'];
-//   List<String> data = [transactions[0].id.toString(), transactions[0].title, transactions[0].amount.toString(), transactions[0].isIncome.toString(), transactions[0].category, transactions[0].date.toString()];
-// }
-
 String generateCSVData(List<Transaction> transactions) {
   String csvData = "";
   csvData += "${Transaction.toCSVHeader()}\n";
@@ -34,6 +29,7 @@ Future<String> readCSV() async {
   return File('$path/transactions.csv').readAsString();
 }
 
+// Converts a string representation of transactions (CSV) into a list of transaction objects.
 List<Transaction> fromStringToTransactions(String data) {
   List<String> lines = data.split('\n');
   List<Transaction> transactions = [];

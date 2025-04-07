@@ -17,7 +17,8 @@ class TransactionList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Group transactions by month
-    Map<String, List<Transaction>> groupedTransactions = _groupTransactionsByMonth(transactions);
+    Map<String, List<Transaction>> groupedTransactions =
+        _groupTransactionsByMonth(transactions);
 
     return ListView(
       children: groupedTransactions.entries.map((entry) {
@@ -26,38 +27,42 @@ class TransactionList extends StatelessWidget {
 
         return ExpansionTile(
           title: Text(entriesDate),
-
           children: monthTransactions.map((item) {
             return Dismissible(
               key: UniqueKey(),
               confirmDismiss: (direction) async {
-                bool result;
-                {
-                  result = await showDialog(
-                    context: context,
-                    builder: (BuildContext context) {
-                      return AlertDialog(
-                        title: const Text('Confirm'),
-                        content: const Text('Are you sure you want to delete?'),
-                        actions: <Widget>[
-                          TextButton(
-                            onPressed: () => Navigator.of(context).pop(false),
-                            child: const Text('No'),
-                          ),
-                          TextButton(
-                            onPressed: () => Navigator.of(context).pop(true),
-                            child: const Text('Yes'),
-                          ),
-                        ],
-                      );
-                    },
+                final transactionCubit = context.read<TransactionCubit>();
+                final itemIndex = transactions.indexOf(item);
+
+                final result = await showDialog<bool>(
+                  context: context,
+                  builder: (BuildContext context) {
+                    return AlertDialog(
+                      title: const Text('Confirm'),
+                      content: const Text('Are you sure you want to delete?'),
+                      actions: <Widget>[
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(false),
+                          child: const Text('No'),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(true),
+                          child: const Text('Yes'),
+                        ),
+                      ],
+                    );
+                  },
+                );
+
+                if (!context.mounted) return false;
+
+                if (result == true) {
+                  transactionCubit.deleteTransaction(itemIndex);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('$item deleted.')),
                   );
-                  if (result) {
-                    context.read<TransactionCubit>().deleteTransaction(transactions.indexOf(item));
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$item deleted.')));
-                  }
                 }
-                return null;
+                return false;
               },
               background: Container(
                 color: Colors.red,
@@ -72,7 +77,9 @@ class TransactionList extends StatelessWidget {
                 child: ListTile(
                   leading: Icon(
                     item.isIncome ? Icons.arrow_upward : Icons.arrow_downward,
-                    color: item.isIncome ? ColorPalette.income : ColorPalette.expense,
+                    color: item.isIncome
+                        ? ColorPalette.income
+                        : ColorPalette.expense,
                   ),
                   title: Text(item.title),
                   subtitle: Text(
@@ -86,16 +93,25 @@ class TransactionList extends StatelessWidget {
                     ),
                   ),
                   onTap: () async {
+                    final transactionCubit = context.read<TransactionCubit>();
+                    final itemIndex = transactions.indexOf(item);
+
                     final TransactionResult? transactionFormResult =
-                    await Navigator.push<TransactionResult?>(context, MaterialPageRoute(
-                      builder: (context) => AddTransactionScreen(
-                        transaction: item,
-                        index: transactions.indexOf(item),
+                        await Navigator.push<TransactionResult>(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AddTransactionScreen(
+                          transaction: item,
+                          index: itemIndex,
+                        ),
                       ),
-                    ));
+                    );
+
+                    if (!context.mounted) return;
 
                     if (transactionFormResult != null) {
-                      context.read<TransactionCubit>().handleTransactionFormResult(transactionFormResult);
+                      transactionCubit
+                          .handleTransactionFormResult(transactionFormResult);
                     }
                   },
                 ),
@@ -108,11 +124,13 @@ class TransactionList extends StatelessWidget {
   }
 
   // Group transactions by month
-  Map<String, List<Transaction>> _groupTransactionsByMonth(List<Transaction> transactions) {
+  Map<String, List<Transaction>> _groupTransactionsByMonth(
+      List<Transaction> transactions) {
     Map<String, List<Transaction>> grouped = {};
 
     for (var transaction in transactions) {
-      final monthYear = '${transaction.date.year}-${transaction.date.month.toString().padLeft(2, '0')}';
+      final monthYear =
+          '${transaction.date.year}-${transaction.date.month.toString().padLeft(2, '0')}';
       if (grouped.containsKey(monthYear)) {
         grouped[monthYear]!.add(transaction);
       } else {

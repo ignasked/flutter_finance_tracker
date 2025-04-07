@@ -25,9 +25,8 @@ class MyApp extends StatelessWidget {
       create: (context) => transactionRepository,
       child: MultiBlocProvider(
         providers: [
-          BlocProvider(
-            create: (context) =>
-                TransactionCubit(context.read<TransactionRepository>()),
+          BlocProvider<TransactionCubit>(
+            create: (context) => TransactionCubit(transactionRepository),
           ),
           BlocProvider<TransactionSummaryCubit>(
             create: (context) => TransactionSummaryCubit(),

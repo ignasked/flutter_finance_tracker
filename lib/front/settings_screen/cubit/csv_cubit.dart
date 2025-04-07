@@ -1,7 +1,7 @@
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:pvp_projektas/backend/models/transaction.dart';
-import 'package:pvp_projektas/backend/export_to_csv.dart';
+import 'package:pvp_projektas/backend/csv_operations.dart';
 
 class CsvState extends Equatable {
   final List<Transaction> duplicates;

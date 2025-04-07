@@ -28,10 +28,11 @@ class TransactionCubit extends Cubit<TransactionState> {
     loadTransactions();
   }
 
-  //load all transactions from objectbox
+//load all transactions from objectbox
   void loadTransactions() {
     final transactions = transRepository.getTransactions();
-    emit(TransactionState(transactions: transactions));
+    // Force emit even if transactions are empty to trigger listeners
+    emit(TransactionState(transactions: List.from(transactions)));
   }
 
   //add transaction to all transactions and objectbox repository
@@ -53,7 +54,7 @@ class TransactionCubit extends Cubit<TransactionState> {
     emit(state.copyWith(transactions: transactionsList));
   }
 
-  //update transaction in all transactions and objectbox repository
+//update transaction in all transactions and objectbox repository
   void updateTransaction(Transaction transaction, int index) {
     if (index >= 0 && index < state.transactions.length) {
       //create local copy of transactions
@@ -64,7 +65,7 @@ class TransactionCubit extends Cubit<TransactionState> {
     }
   }
 
-  //delete transaction from all transactions and objectbox repository
+//delete transaction from all transactions and objectbox repository
   void deleteTransaction(int index) {
     if (index >= 0 && index < state.transactions.length) {
       //create local copy of transactions
@@ -82,7 +83,7 @@ class TransactionCubit extends Cubit<TransactionState> {
     emit(state.copyWith(transactions: []));
   }
 
-  //recieve result from transaction form screen and handle it
+//recieve result from transaction form screen and handle it
   void handleTransactionFormResult(TransactionResult transactionFormResult) {
     switch (transactionFormResult.actionType) {
       case ActionType.addNew:
@@ -99,36 +100,40 @@ class TransactionCubit extends Cubit<TransactionState> {
     }
   }
 
-  void filterTransactions(
-      {bool? isIncome,
-      DateTime? startDate,
-      DateTime? endDate,
-      double? minAmount,
-      List<String>? categories}) {
+  void filterTransactions({
+    bool? isIncome,
+    DateTime? startDate,
+    DateTime? endDate,
+    double? minAmount,
+    List<String>? categories,
+  }) {
+    // Start with original unfiltered transactions
     List<Transaction> filteredTransactions = List.from(state.transactions);
 
     if (startDate != null && endDate != null) {
-      filteredTransactions =
-          DateFilterDecorator(startDate: startDate, endDate: endDate)
-              .filter(filteredTransactions);
+      filteredTransactions = DateFilterDecorator(
+        startDate: startDate,
+        endDate: endDate,
+      ).filter(filteredTransactions);
     }
 
     if (minAmount != null) {
-      filteredTransactions = AmountFilterDecorator(minAmount: minAmount)
-          .filter(filteredTransactions);
+      filteredTransactions = AmountFilterDecorator(
+        minAmount: minAmount,
+      ).filter(filteredTransactions);
     }
 
     if (isIncome != null) {
-      filteredTransactions =
-          TypeFilterDecorator(isIncome: isIncome).filter(filteredTransactions);
+      filteredTransactions = TypeFilterDecorator(
+        isIncome: isIncome,
+      ).filter(filteredTransactions);
     }
 
-    if (categories != null) {
-      filteredTransactions = CategoryFilterDecorator(categories: categories)
-          .filter(filteredTransactions);
+    if (categories != null && categories.isNotEmpty) {
+      filteredTransactions = CategoryFilterDecorator(
+        categories: categories,
+      ).filter(filteredTransactions);
     }
-
-    filteredTransactions = List.from(filteredTransactions.reversed);
 
     emit(state.copyWith(transactions: filteredTransactions));
   }
