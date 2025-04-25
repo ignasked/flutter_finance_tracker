@@ -1,3 +1,12 @@
 {
-    "java.configuration.updateBuildConfiguration": "interactive"
+    "java.configuration.updateBuildConfiguration": "interactive",
+    "dart.debugExternalPackageLibraries": false,
+    "dart.debugSdkLibraries": false,
+    "dart.debugFilterExceptions": false,
+    "dart.lineLength": 80,
+    "debug.console.logLevel": "warning",
+    "logFilter": {
+        "pattern": ".*gralloc4.*",
+        "exclude": true
+    }
 }

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pvp_projektas/front/home_screen/cubit/transaction_cubit.dart';
 import 'package:pvp_projektas/front/settings_screen/cubit/csv_cubit.dart';
+import 'package:pvp_projektas/front/settings_screen/widgets/receipt_analyzer_widget.dart';
+import 'widgets/ai_advisor_widget.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -22,13 +24,31 @@ class SettingsScreen extends StatelessWidget {
           appBar: AppBar(
             title: const Text('Settings'),
           ),
-          body: Center(
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text('Settings Screen'),
                 _buildExportButton(),
                 _buildDeleteAllButton(context),
                 _buildImportButton(),
+                const Divider(height: 32),
+                const Text(
+                  'Receipt Scanner',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const ReceiptAnalyzerWidget(),
+                const Divider(),
+                const Text(
+                  'AI Financial Advisor',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const AIAdvisorWidget(),
               ],
             ),
           ),
