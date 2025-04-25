@@ -2,7 +2,9 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:pvp_projektas/backend/services/mistral_service.dart';
+import 'package:pvp_projektas/backend/services/file_picker_service.dart';
 import 'package:pvp_projektas/front/bulk_add_transactions_screen.dart';
+import 'package:pvp_projektas/utils/receipt_format.dart';
 
 class ReceiptAnalyzerWidget extends StatefulWidget {
   const ReceiptAnalyzerWidget({super.key});
@@ -12,40 +14,36 @@ class ReceiptAnalyzerWidget extends StatefulWidget {
 }
 
 class _ReceiptAnalyzerWidgetState extends State<ReceiptAnalyzerWidget> {
-  final _mistralService = MistralService();
+  final _mistralService = MistralService.instance;
+  final _filePickerService = FilePickerService.instance;
   String _analysisResult = '';
   bool _isLoading = false;
   File? _imageFile;
 
-  Future<void> _captureAndAnalyze(bool fromGallery) async {
+  Future<void> _analyzeFile(File file, ReceiptFormat format) async {
     setState(() {
       _isLoading = true;
       _analysisResult = '';
+      _imageFile = null; // Clear any previous image
     });
 
     try {
-      final imageFile = fromGallery
-          ? await _mistralService.pickImage(fromGallery: true)
-          : await _mistralService.pickImage();
-      if (imageFile == null) {
-        setState(() {
-          _isLoading = false;
-          _analysisResult = 'No image selected';
-        });
-        return;
-      }
-
+      final transactionData =
+          await _mistralService.analyzeAndFormat(file, format);
       setState(() {
-        _imageFile = imageFile;
+        _analysisResult =
+            const JsonEncoder.withIndent('  ').convert(transactionData);
       });
-
-      final result = await _mistralService.analyzeImage(imageFile);
-      setState(() {
-        _analysisResult = result;
-      });
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) =>
+              BulkAddTransactionsScreen(transactionData: transactionData),
+        ),
+      );
     } catch (e) {
       setState(() {
-        _analysisResult = 'Error analyzing receipt: $e';
+        _analysisResult = 'Error analyzing file: $e';
       });
     } finally {
       setState(() {
@@ -55,90 +53,50 @@ class _ReceiptAnalyzerWidgetState extends State<ReceiptAnalyzerWidget> {
   }
 
   Future<void> _pickAndAnalyzeImage(bool fromGallery) async {
-    setState(() {
-      _isLoading = true;
-      _analysisResult = '';
-      _imageFile = null; // Clear any previous image
-    });
-
     try {
       final imageFile =
-          await _mistralService.pickImage(fromGallery: fromGallery);
+          await _filePickerService.pickImage(fromGallery: fromGallery);
       if (imageFile == null) {
         setState(() {
           _isLoading = false;
           _analysisResult = 'No image selected';
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('No image selected')),
+          const SnackBar(content: Text('No image selected')),
         );
         return;
       }
 
-      final transactionData = await _mistralService
-          .analyzeAndFormatImage(imageFile, useSavedData: false);
       setState(() {
-        _analysisResult =
-            const JsonEncoder.withIndent('  ').convert(transactionData);
+        _imageFile = imageFile;
       });
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) =>
-              BulkAddTransactionsScreen(transactionData: transactionData),
-        ),
-      );
+
+      await _analyzeFile(imageFile, ReceiptFormat.image);
     } catch (e) {
       setState(() {
-        _analysisResult = 'Error analyzing image: $e';
-      });
-    } finally {
-      setState(() {
-        _isLoading = false;
+        _analysisResult = 'Error picking or analyzing image: $e';
       });
     }
   }
 
   Future<void> _pickAndAnalyzePDF() async {
-    setState(() {
-      _isLoading = true;
-      _analysisResult = '';
-      _imageFile = null; // Clear any previous image
-    });
-
     try {
-      final pdfFile = await _mistralService.pickPDF();
+      final pdfFile = await _filePickerService.pickPDF();
       if (pdfFile == null) {
         setState(() {
           _isLoading = false;
           _analysisResult = 'No PDF selected';
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('No PDF selected')),
+          const SnackBar(content: Text('No PDF selected')),
         );
         return;
       }
 
-      final transactionData = await _mistralService.analyzeAndFormatPDF(pdfFile,
-          useSavedData: false);
-      setState(() {
-        _analysisResult =
-            const JsonEncoder.withIndent('  ').convert(transactionData);
-      });
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) =>
-              BulkAddTransactionsScreen(transactionData: transactionData),
-        ),
-      );
+      await _analyzeFile(pdfFile, ReceiptFormat.pdf);
     } catch (e) {
       setState(() {
-        _analysisResult = 'Error analyzing PDF: $e';
-      });
-    } finally {
-      setState(() {
-        _isLoading = false;
+        _analysisResult = 'Error picking or analyzing PDF: $e';
       });
     }
   }
@@ -152,6 +110,17 @@ class _ReceiptAnalyzerWidgetState extends State<ReceiptAnalyzerWidget> {
 
     try {
       final savedData = await _mistralService.loadSavedApiOutput();
+      if (savedData == null) {
+        setState(() {
+          _isLoading = false;
+          _analysisResult = 'No saved data found';
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No saved data found')),
+        );
+        return;
+      }
+
       setState(() {
         _analysisResult = const JsonEncoder.withIndent('  ').convert(savedData);
       });
@@ -159,7 +128,7 @@ class _ReceiptAnalyzerWidgetState extends State<ReceiptAnalyzerWidget> {
         context,
         MaterialPageRoute(
           builder: (context) =>
-              BulkAddTransactionsScreen(transactionData: savedData!),
+              BulkAddTransactionsScreen(transactionData: savedData),
         ),
       );
     } catch (e) {

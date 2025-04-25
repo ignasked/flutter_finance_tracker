@@ -48,7 +48,7 @@ class SettingsScreen extends StatelessWidget {
                   'AI Financial Advisor',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-                const AIAdvisorWidget(),
+                //const AIAdvisorWidget(),
               ],
             ),
           ),
