@@ -4,7 +4,7 @@ import 'package:money_owl/backend/models/transaction.dart';
 import 'package:money_owl/backend/models/transaction_result.dart';
 import 'package:money_owl/backend/transaction_repository/transaction_repository.dart';
 import 'package:money_owl/backend/transaction_repository/utils/transaction_utils.dart';
-import 'package:money_owl/front/add_transaction_screen/cubit/transaction_form_cubit.dart';
+import 'package:money_owl/front/transaction_form_screen/cubit/transaction_form_cubit.dart';
 
 class TransactionState extends Equatable {
   final List<Transaction> transactions;

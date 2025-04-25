@@ -67,4 +67,29 @@ class Transaction extends Equatable {
       date: DateTime.parse(fields[5]),
     );
   }
+
+  // Factory method to create a Transaction from JSON
+  factory Transaction.fromJson(Map<String, dynamic> json) {
+    return Transaction(
+      title: json['title'] ?? 'Unknown Item',
+      category: json['category'] ?? 'other',
+      amount: (json['amount'] ?? 0.0).toDouble(),
+      isIncome:
+          json['isIncome'] ?? true, // Assuming all transactions are expenses
+      date: json['date'] != null
+          ? DateTime.tryParse(json['date']) ?? DateTime.now()
+          : DateTime.now(),
+    );
+  }
+
+  // Convert a Transaction object to a JSON-compatible map
+  Map<String, dynamic> toJson() {
+    return {
+      'title': title,
+      'category': category,
+      'amount': amount,
+      'isIncome': isIncome,
+      'date': date.toIso8601String(),
+    };
+  }
 }

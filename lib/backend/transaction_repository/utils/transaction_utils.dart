@@ -1,11 +1,13 @@
 import 'package:money_owl/backend/models/transaction.dart';
 
 final categories = [
-  'Food',
-  'Travel',
-  'Taxes',
-  'Salary',
-  'Other'
+  "food",
+  "transportation",
+  "entertainment",
+  "utilities",
+  "healthcare",
+  "clothing",
+  "other",
 ]; // Kodel string? Galimybe redaguot kategorijas useriui, bet kai treniruosiu kategorizavimo modeli tai nesigaus su redaguotom kategorijom
 
 double calculateBalance(List<Transaction> transactions) {

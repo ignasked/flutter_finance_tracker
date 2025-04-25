@@ -4,8 +4,8 @@ import 'package:formz/formz.dart';
 import 'package:money_owl/backend/models/transaction_result.dart';
 
 import '../../../backend/models/transaction.dart';
-import 'package:money_owl/front/add_transaction_screen/formz/money_input.dart';
-import 'package:money_owl/front/add_transaction_screen/formz/title_input.dart';
+import 'package:money_owl/front/transaction_form_screen/formz/money_input.dart';
+import 'package:money_owl/front/transaction_form_screen/formz/title_input.dart';
 
 enum ActionType { addNew, edit, delete }
 

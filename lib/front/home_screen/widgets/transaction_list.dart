@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:money_owl/backend/models/transaction.dart';
 import 'package:money_owl/backend/models/transaction_result.dart';
-import 'package:money_owl/front/add_transaction_screen/add_transaction_screen.dart';
+import 'package:money_owl/front/transaction_form_screen/transaction_form_screen.dart';
 import 'package:money_owl/front/home_screen/cubit/transaction_cubit.dart';
 import 'package:money_owl/utils/AppColors.dart';
 
@@ -100,7 +100,7 @@ class TransactionList extends StatelessWidget {
                         await Navigator.push<TransactionResult>(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => AddTransactionScreen(
+                        builder: (context) => TransactionFromScreen(
                           transaction: item,
                           index: itemIndex,
                         ),

@@ -1,10 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:money_owl/backend/models/transaction.dart';
+import 'package:money_owl/backend/models/transaction_result.dart';
+import 'package:money_owl/front/transaction_form_screen/transaction_form_screen.dart';
 
 class BulkAddTransactionsScreen extends StatefulWidget {
-  final Map<String, dynamic> transactionData;
+  final String transactionName;
+  final List<Transaction> transactions;
 
-  const BulkAddTransactionsScreen({Key? key, required this.transactionData})
-      : super(key: key);
+  const BulkAddTransactionsScreen({
+    Key? key,
+    required this.transactionName,
+    required this.transactions,
+  }) : super(key: key);
 
   @override
   _BulkAddTransactionsScreenState createState() =>
@@ -12,46 +19,86 @@ class BulkAddTransactionsScreen extends StatefulWidget {
 }
 
 class _BulkAddTransactionsScreenState extends State<BulkAddTransactionsScreen> {
-  late List<dynamic> transactions;
   late double totalExpenses;
 
   @override
   void initState() {
     super.initState();
-    // Initialize transactions and calculate total expenses
-    transactions = widget.transactionData['transactions'] as List<dynamic>;
+    print('Transaction Name: ${widget.transactionName}');
+    print('Transactions: ${widget.transactions}');
     totalExpenses = _calculateTotalExpenses();
   }
 
   double _calculateTotalExpenses() {
-    return transactions.fold<double>(
+    return widget.transactions.fold<double>(
       0.0,
-      (sum, transaction) => sum + (transaction['price'] ?? 0.0),
+      (sum, transaction) => sum + transaction.amount,
     );
   }
 
   void _removeTransaction(int index) {
     setState(() {
-      transactions.removeAt(index);
+      widget.transactions.removeAt(index);
       totalExpenses = _calculateTotalExpenses(); // Recalculate total expenses
     });
+  }
+
+  void _mergeTransactionsByCategory() {
+    // Group transactions by category
+    final Map<String, double> categoryTotals = {};
+    for (var transaction in widget.transactions) {
+      if (categoryTotals.containsKey(transaction.category)) {
+        categoryTotals[transaction.category] =
+            categoryTotals[transaction.category]! + transaction.amount;
+      } else {
+        categoryTotals[transaction.category] = transaction.amount;
+      }
+    }
+
+    // Create a new list of merged transactions
+    final mergedTransactions = categoryTotals.entries.map((entry) {
+      return Transaction(
+        title:
+            '${entry.key} at ${widget.transactionName}', // Optional: Add a prefix to indicate merging
+        category: entry.key,
+        amount: entry.value,
+        isIncome: false, // Assuming all transactions are expenses
+        date: DateTime.now(), // Use the current date or a default date
+      );
+    }).toList();
+
+    // Update the state with the merged transactions
+    setState(() {
+      widget.transactions
+        ..clear()
+        ..addAll(mergedTransactions);
+      totalExpenses = _calculateTotalExpenses(); // Recalculate total expenses
+    });
+
+    print('Transactions merged by category: $mergedTransactions');
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title:
-            Text(widget.transactionData['transactionName'] ?? 'Transactions'),
+        title: Text(widget.transactionName),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.merge_type),
+            tooltip: 'Merge by Categories',
+            onPressed: _mergeTransactionsByCategory,
+          ),
+        ],
       ),
       body: Column(
         children: [
           // Scrollable list of transactions
           Flexible(
             child: ListView.builder(
-              itemCount: transactions.length,
+              itemCount: widget.transactions.length,
               itemBuilder: (context, index) {
-                final transaction = transactions[index];
+                final transaction = widget.transactions[index];
 
                 return Dismissible(
                   key: UniqueKey(),
@@ -84,7 +131,7 @@ class _BulkAddTransactionsScreenState extends State<BulkAddTransactionsScreen> {
                         index); // Remove transaction and recalculate total
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('${transaction['name']} deleted.'),
+                        content: Text('${transaction.title} deleted.'),
                       ),
                     );
                   },
@@ -99,18 +146,36 @@ class _BulkAddTransactionsScreenState extends State<BulkAddTransactionsScreen> {
                   ),
                   child: Card(
                     child: ListTile(
-                      leading: Icon(
+                      leading: const Icon(
                         Icons.receipt_long,
                         color: Colors.blue,
                       ),
-                      title: Text(
-                          transaction['description'] ?? 'Unnamed Transaction'),
+                      title: Text(transaction.title),
                       subtitle: Text(
-                          'Price: ${transaction['price'] ?? 'N/A'}. ${transaction['category'] ?? 'N/A'}'),
-                      trailing: Icon(Icons.edit),
-                      onTap: () {
-                        // Handle editing later
-                        print('Tapped on transaction: ${transaction['name']}');
+                          'Price: ${transaction.amount.toStringAsFixed(2)}. ${transaction.category}'),
+                      trailing: const Icon(Icons.edit),
+                      onTap: () async {
+                        // Navigate to TransactionFormScreen to edit the transaction
+                        final transactionResult =
+                            await Navigator.push<TransactionResult?>(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => TransactionFromScreen(
+                              transaction: transaction,
+                              index: index,
+                            ),
+                          ),
+                        );
+
+                        // If a TransactionResult is returned, update the list
+                        if (transactionResult != null) {
+                          setState(() {
+                            widget.transactions[transactionResult.index!] =
+                                transactionResult.transaction;
+                            totalExpenses =
+                                _calculateTotalExpenses(); // Recalculate total
+                          });
+                        }
                       },
                     ),
                   ),
@@ -144,25 +209,37 @@ class _BulkAddTransactionsScreenState extends State<BulkAddTransactionsScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // Confirm and Cancel buttons
+                // Confirm, Cancel, and Merge buttons
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    ElevatedButton(
+                    // Confirm button with icon
+                    ElevatedButton.icon(
                       onPressed: () {
                         // Handle confirm action
                         print('Confirmed transactions');
-                        Navigator.of(context).pop(); // Close the screen
+                        Navigator.of(context).pop(widget.transactions);
                       },
-                      child: const Text('Confirm'),
+                      icon: const Icon(Icons.check),
+                      label: const Text(''),
                     ),
-                    OutlinedButton(
+
+                    // Cancel button with icon
+                    OutlinedButton.icon(
                       onPressed: () {
                         // Handle cancel action
                         print('Cancelled transactions');
-                        Navigator.of(context).pop(); // Close the screen
+                        Navigator.of(context).pop();
                       },
-                      child: const Text('Cancel'),
+                      icon: const Icon(Icons.close),
+                      label: const Text(''),
+                    ),
+
+                    // Merge by Categories button
+                    ElevatedButton.icon(
+                      onPressed: _mergeTransactionsByCategory,
+                      icon: const Icon(Icons.merge_type),
+                      label: const Text(''),
                     ),
                   ],
                 ),

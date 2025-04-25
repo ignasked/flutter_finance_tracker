@@ -1,9 +1,12 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:money_owl/backend/models/transaction.dart';
 import 'package:money_owl/backend/services/mistral_service.dart';
 import 'package:money_owl/backend/services/file_picker_service.dart';
 import 'package:money_owl/front/bulk_add_transactions_screen.dart';
+import 'package:money_owl/front/home_screen/cubit/transaction_cubit.dart';
 import 'package:money_owl/utils/receipt_format.dart';
 
 class ReceiptAnalyzerWidget extends StatefulWidget {
@@ -30,18 +33,37 @@ class _ReceiptAnalyzerWidgetState extends State<ReceiptAnalyzerWidget> {
     try {
       final transactionData =
           await _mistralService.analyzeAndFormat(file, format);
+
+      if (!mounted) return; // Check if the widget is still mounted
+
       setState(() {
-        _analysisResult =
-            const JsonEncoder.withIndent('  ').convert(transactionData);
+        _analysisResult = const JsonEncoder.withIndent('  ').convert({
+          'transactionName': transactionData['transactionName'],
+          'transactions': (transactionData['transactions'] as List<Transaction>)
+              .map((t) => t.toJson())
+              .toList(),
+        });
       });
-      Navigator.push(
+
+      final newTransactions = await Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) =>
-              BulkAddTransactionsScreen(transactionData: transactionData),
+          builder: (context) => BulkAddTransactionsScreen(
+            transactionName: transactionData['transactionName'],
+            transactions: transactionData['transactions'] as List<Transaction>,
+          ),
         ),
       );
+
+      if (!mounted) return; // Check if the widget is still mounted
+
+      if (newTransactions != null) {
+        print('New transactions: $newTransactions');
+        final transactionCubit = context.read<TransactionCubit>();
+        transactionCubit.addTransactions(newTransactions);
+      }
     } catch (e) {
+      if (!mounted) return; // Check if the widget is still mounted
       setState(() {
         _analysisResult = 'Error analyzing file: $e';
       });
@@ -56,11 +78,14 @@ class _ReceiptAnalyzerWidgetState extends State<ReceiptAnalyzerWidget> {
     try {
       final imageFile =
           await _filePickerService.pickImage(fromGallery: fromGallery);
+      if (!mounted) return; // Check if the widget is still mounted
+
       if (imageFile == null) {
         setState(() {
           _isLoading = false;
           _analysisResult = 'No image selected';
         });
+        if (!mounted) return; // Check if the widget is still mounted
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('No image selected')),
         );
@@ -73,6 +98,7 @@ class _ReceiptAnalyzerWidgetState extends State<ReceiptAnalyzerWidget> {
 
       await _analyzeFile(imageFile, ReceiptFormat.image);
     } catch (e) {
+      if (!mounted) return; // Check if the widget is still mounted
       setState(() {
         _analysisResult = 'Error picking or analyzing image: $e';
       });
@@ -82,11 +108,14 @@ class _ReceiptAnalyzerWidgetState extends State<ReceiptAnalyzerWidget> {
   Future<void> _pickAndAnalyzePDF() async {
     try {
       final pdfFile = await _filePickerService.pickPDF();
+      if (!mounted) return; // Check if the widget is still mounted
+
       if (pdfFile == null) {
         setState(() {
           _isLoading = false;
           _analysisResult = 'No PDF selected';
         });
+        if (!mounted) return; // Check if the widget is still mounted
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('No PDF selected')),
         );
@@ -95,6 +124,7 @@ class _ReceiptAnalyzerWidgetState extends State<ReceiptAnalyzerWidget> {
 
       await _analyzeFile(pdfFile, ReceiptFormat.pdf);
     } catch (e) {
+      if (!mounted) return; // Check if the widget is still mounted
       setState(() {
         _analysisResult = 'Error picking or analyzing PDF: $e';
       });
@@ -110,32 +140,62 @@ class _ReceiptAnalyzerWidgetState extends State<ReceiptAnalyzerWidget> {
 
     try {
       final savedData = await _mistralService.loadSavedApiOutput();
+      if (!mounted) return; // Check if the widget is still mounted
+
+      print('Saved data: $savedData');
       if (savedData == null) {
         setState(() {
           _isLoading = false;
           _analysisResult = 'No saved data found';
         });
+        if (!mounted) return; // Check if the widget is still mounted
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('No saved data found')),
         );
         return;
       }
 
-      setState(() {
-        _analysisResult = const JsonEncoder.withIndent('  ').convert(savedData);
-      });
-      Navigator.push(
+      // Extract transactionName
+      final transactionName =
+          savedData['transactionName'] ?? 'Unnamed Transaction';
+
+      // Convert transactions using Transaction.fromJson
+      if (savedData['transactions'] is! List) {
+        throw Exception('Invalid transactions data: Expected a list');
+      }
+
+      final transactions = (savedData['transactions'] as List<dynamic>)
+          .map((transaction) =>
+              Transaction.fromJson(transaction as Map<String, dynamic>))
+          .toList();
+
+      if (!mounted) return; // Check if the widget is still mounted
+
+      // Navigate to BulkAddTransactionsScreen
+      final newTransactions = await Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) =>
-              BulkAddTransactionsScreen(transactionData: savedData),
+          builder: (context) => BulkAddTransactionsScreen(
+            transactionName: transactionName,
+            transactions: transactions,
+          ),
         ),
       );
+
+      if (!mounted) return; // Check if the widget is still mounted
+
+      if (newTransactions != null) {
+        print('New transactions: $newTransactions');
+        final transactionCubit = context.read<TransactionCubit>();
+        transactionCubit.addTransactions(newTransactions);
+      }
     } catch (e) {
+      if (!mounted) return; // Check if the widget is still mounted
       setState(() {
         _analysisResult = 'Error loading saved data: $e';
       });
     } finally {
+      if (!mounted) return; // Check if the widget is still mounted
       setState(() {
         _isLoading = false;
       });

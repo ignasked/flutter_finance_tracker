@@ -3,13 +3,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:formz/formz.dart';
 import 'package:money_owl/backend/models/transaction.dart';
 import 'package:money_owl/backend/transaction_repository/utils/transaction_utils.dart';
-import 'package:money_owl/front/add_transaction_screen/cubit/transaction_form_cubit.dart';
+import 'package:money_owl/front/transaction_form_screen/cubit/transaction_form_cubit.dart';
 import 'package:intl/intl.dart';
 
-class AddTransactionScreen extends StatelessWidget {
+class TransactionFromScreen extends StatelessWidget {
   final Transaction? transaction; // Nullable for adding vs editing
   final int? index; // transaction index in transactionList
-  const AddTransactionScreen({Key? key, this.transaction, this.index})
+  const TransactionFromScreen({Key? key, this.transaction, this.index})
       : super(key: key);
 
   @override
@@ -18,12 +18,12 @@ class AddTransactionScreen extends StatelessWidget {
       create: transaction == null
           ? (context) => TransactionFormCubit()
           : (context) => TransactionFormCubit.edit(transaction!, index!),
-      child: _AddTransactionForm(),
+      child: _TransactionForm(),
     );
   }
 }
 
-class _AddTransactionForm extends StatelessWidget {
+class _TransactionForm extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -100,10 +100,14 @@ class _AddTransactionForm extends StatelessWidget {
                   ),
                   const SizedBox(height: 20),
                   DropdownButtonFormField<String>(
-                    value: state.category,
+                    value: categories.contains(state.category)
+                        ? state.category
+                        : categories.first,
                     items: categories
                         .map((category) => DropdownMenuItem(
-                            value: category, child: Text(category)))
+                              value: category,
+                              child: Text(category),
+                            ))
                         .toList(),
                     onChanged: (value) => context
                         .read<TransactionFormCubit>()
