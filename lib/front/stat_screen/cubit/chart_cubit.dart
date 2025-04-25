@@ -1,6 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:pvp_projektas/backend/models/transaction.dart';
-import 'package:pvp_projektas/backend/transaction_repository/utils/transaction_utils.dart';
+import 'package:money_owl/backend/models/transaction.dart';
+import 'package:money_owl/backend/transaction_repository/utils/transaction_utils.dart';
 import 'chart_state.dart';
 
 class ChartCubit extends Cubit<ChartState> {

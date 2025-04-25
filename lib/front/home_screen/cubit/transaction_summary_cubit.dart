@@ -1,6 +1,6 @@
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
-import 'package:pvp_projektas/backend/models/transaction.dart';
+import 'package:money_owl/backend/models/transaction.dart';
 
 class TransactionSummaryState extends Equatable {
   final double balance;

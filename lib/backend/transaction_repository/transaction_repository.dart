@@ -1,7 +1,7 @@
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import '../../objectbox.g.dart'; // ObjectBox generated file
-import 'package:pvp_projektas/backend/models/transaction.dart';
+import 'package:money_owl/backend/models/transaction.dart';
 
 class TransactionRepository {
   late final Store _store;

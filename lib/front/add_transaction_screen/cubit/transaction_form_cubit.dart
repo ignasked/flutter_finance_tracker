@@ -1,11 +1,11 @@
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:formz/formz.dart';
-import 'package:pvp_projektas/backend/models/transaction_result.dart';
+import 'package:money_owl/backend/models/transaction_result.dart';
 
 import '../../../backend/models/transaction.dart';
-import 'package:pvp_projektas/front/add_transaction_screen/formz/money_input.dart';
-import 'package:pvp_projektas/front/add_transaction_screen/formz/title_input.dart';
+import 'package:money_owl/front/add_transaction_screen/formz/money_input.dart';
+import 'package:money_owl/front/add_transaction_screen/formz/title_input.dart';
 
 enum ActionType { addNew, edit, delete }
 
@@ -158,31 +158,30 @@ class TransactionFormCubit extends Cubit<TransactionFormState> {
       return;
     }
 
-      emit(state.copyWith(status: FormzSubmissionStatus.inProgress));
+    emit(state.copyWith(status: FormzSubmissionStatus.inProgress));
 
-      try {
-        final transaction = Transaction(
-          id: state.id,
-          title: state.title.value,
-          amount: double.parse(state.amount.value),
-          isIncome: state.transactionType == 'Income',
-          category: state.category,
-          date: state.date,
-        );
+    try {
+      final transaction = Transaction(
+        id: state.id,
+        title: state.title.value,
+        amount: double.parse(state.amount.value),
+        isIncome: state.transactionType == 'Income',
+        category: state.category,
+        date: state.date,
+      );
 
-        emit(state.copyWith(
-            status: FormzSubmissionStatus.success,
-            submittedTransaction: TransactionResult(
-                transaction: transaction,
-                actionType: state.actionType,
-                index: state.editIndex)));
-      } on Exception {
-        emit(state.copyWith(status: FormzSubmissionStatus.failure));
-      } catch (_) {
-        emit(state.copyWith(status: FormzSubmissionStatus.failure));
-      }
+      emit(state.copyWith(
+          status: FormzSubmissionStatus.success,
+          submittedTransaction: TransactionResult(
+              transaction: transaction,
+              actionType: state.actionType,
+              index: state.editIndex)));
+    } on Exception {
+      emit(state.copyWith(status: FormzSubmissionStatus.failure));
+    } catch (_) {
+      emit(state.copyWith(status: FormzSubmissionStatus.failure));
     }
-
+  }
 
   void deleteTransaction() {
     if (state.actionType == ActionType.edit) {

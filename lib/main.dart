@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:pvp_projektas/backend/transaction_repository/transaction_repository.dart';
+import 'package:money_owl/backend/transaction_repository/transaction_repository.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'package:pvp_projektas/front/home_screen/widgets/navbar.dart';
-import 'package:pvp_projektas/front/home_screen/cubit/transaction_cubit.dart';
+import 'package:money_owl/front/home_screen/widgets/navbar.dart';
+import 'package:money_owl/front/home_screen/cubit/transaction_cubit.dart';
 
 import 'front/home_screen/cubit/transaction_summary_cubit.dart';
 

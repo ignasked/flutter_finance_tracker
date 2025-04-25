@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:formz/formz.dart';
-import 'package:pvp_projektas/backend/models/transaction.dart';
-import 'package:pvp_projektas/backend/transaction_repository/utils/transaction_utils.dart';
-import 'package:pvp_projektas/front/add_transaction_screen/cubit/transaction_form_cubit.dart';
+import 'package:money_owl/backend/models/transaction.dart';
+import 'package:money_owl/backend/transaction_repository/utils/transaction_utils.dart';
+import 'package:money_owl/front/add_transaction_screen/cubit/transaction_form_cubit.dart';
 import 'package:intl/intl.dart';
 
 class AddTransactionScreen extends StatelessWidget {

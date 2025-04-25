@@ -1,9 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
-import 'package:pvp_projektas/config/env.dart';
+import 'package:money_owl/config/env.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:pvp_projektas/utils/receipt_format.dart';
+import 'package:money_owl/utils/receipt_format.dart';
 
 class MistralService {
   static const String _baseUrl = 'https://api.mistral.ai/v1';

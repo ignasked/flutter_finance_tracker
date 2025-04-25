@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:pvp_projektas/backend/models/transaction_result.dart';
+import 'package:money_owl/backend/models/transaction_result.dart';
 
-import 'package:pvp_projektas/front/home_screen/cubit/transaction_cubit.dart';
-import 'package:pvp_projektas/front/add_transaction_screen/add_transaction_screen.dart';
+import 'package:money_owl/front/home_screen/cubit/transaction_cubit.dart';
+import 'package:money_owl/front/add_transaction_screen/add_transaction_screen.dart';
 
-import 'package:pvp_projektas/front/home_screen/widgets/transaction_list.dart';
-import 'package:pvp_projektas/front/home_screen/widgets/transaction_summary.dart';
-import 'package:pvp_projektas/front/home_screen/widgets/transaction_filter.dart';
+import 'package:money_owl/front/home_screen/widgets/transaction_list.dart';
+import 'package:money_owl/front/home_screen/widgets/transaction_summary.dart';
+import 'package:money_owl/front/home_screen/widgets/transaction_filter.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});

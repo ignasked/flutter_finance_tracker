@@ -8,8 +8,7 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     
     <application
-        android:label="pvp_projektas"
-        android:name="${applicationName}"
+        android:label="Money Owl"
         android:icon="@mipmap/ic_launcher"
         android:hardwareAccelerated="true"
         tools:targetApi="31">

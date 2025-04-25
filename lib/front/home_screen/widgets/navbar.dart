@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:pvp_projektas/front/home_screen/home_screen.dart';
-import 'package:pvp_projektas/front/settings_screen/settings_screen.dart';
-import 'package:pvp_projektas/front/stat_screen/stat_screen.dart';
+import 'package:money_owl/front/home_screen/home_screen.dart';
+import 'package:money_owl/front/settings_screen/settings_screen.dart';
+import 'package:money_owl/front/stat_screen/stat_screen.dart';
 
 class Navigation extends StatefulWidget {
   const Navigation({super.key});

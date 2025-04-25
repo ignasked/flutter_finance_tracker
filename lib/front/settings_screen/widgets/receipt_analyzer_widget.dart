@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:pvp_projektas/backend/services/mistral_service.dart';
-import 'package:pvp_projektas/backend/services/file_picker_service.dart';
-import 'package:pvp_projektas/front/bulk_add_transactions_screen.dart';
-import 'package:pvp_projektas/utils/receipt_format.dart';
+import 'package:money_owl/backend/services/mistral_service.dart';
+import 'package:money_owl/backend/services/file_picker_service.dart';
+import 'package:money_owl/front/bulk_add_transactions_screen.dart';
+import 'package:money_owl/utils/receipt_format.dart';
 
 class ReceiptAnalyzerWidget extends StatefulWidget {
   const ReceiptAnalyzerWidget({super.key});

@@ -1,4 +1,4 @@
-import 'package:pvp_projektas/backend/models/transaction.dart';
+import 'package:money_owl/backend/models/transaction.dart';
 
 final categories = [
   'Food',

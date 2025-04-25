@@ -1,5 +1,5 @@
 import 'package:path_provider/path_provider.dart';
-import 'package:pvp_projektas/backend/models/transaction.dart';
+import 'package:money_owl/backend/models/transaction.dart';
 import 'dart:io';
 
 String generateCSVData(List<Transaction> transactions) {
