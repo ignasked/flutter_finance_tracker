@@ -66,7 +66,7 @@ class MistralService {
 
   // Analyze and format data
   Future<Map<String, dynamic>> analyzeAndFormat(
-      File file, ReceiptFormat format) async {
+      File file, ReceiptFormat format, String enabledCategoryTitles) async {
     final base64File = await _encodeFileToBase64(file);
     final ocrResponse = await _postRequest('ocr', {
       'model': 'mistral-ocr-latest',
@@ -111,8 +111,8 @@ convert into a structured JSON response.
     }
   ]
 }
-- category should be one of the following: "food", "transportation", "entertainment", "utilities", "healthcare", "clothing", "other"
-- transactionName shoud be the name of the shop or service where the transaction took place.
+- category should be one of the following enabled categories: $enabledCategoryTitles
+- transactionName should be the name of the shop or service where the transaction took place.
 ''',
         }
       ],

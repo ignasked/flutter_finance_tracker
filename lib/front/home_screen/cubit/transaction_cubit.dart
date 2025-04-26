@@ -28,19 +28,17 @@ class TransactionCubit extends Cubit<TransactionState> {
     loadTransactions();
   }
 
-//load all transactions from objectbox
+  // Load all transactions from ObjectBox
   void loadTransactions() {
     final transactions = transRepository.getTransactions();
-    // Force emit even if transactions are empty to trigger listeners
+// Force emit even if transactions are empty to trigger listeners
     emit(TransactionState(transactions: List.from(transactions)));
   }
 
-  //add transaction to all transactions and objectbox repository
+  // Add a transaction
   void addTransaction(Transaction transaction) {
-    //create local copy of transactions
     List<Transaction> transactionsList = List.from(state.transactions);
     transactionsList.add(transaction);
-    //save to objectbox
     transRepository.addTransaction(transaction);
     emit(state.copyWith(transactions: transactionsList));
   }
@@ -57,7 +55,6 @@ class TransactionCubit extends Cubit<TransactionState> {
 //update transaction in all transactions and objectbox repository
   void updateTransaction(Transaction transaction, int index) {
     if (index >= 0 && index < state.transactions.length) {
-      //create local copy of transactions
       List<Transaction> transactionsList = List.from(state.transactions);
       transactionsList[index] = transaction;
       transRepository.updateTransaction(transaction);
@@ -65,10 +62,9 @@ class TransactionCubit extends Cubit<TransactionState> {
     }
   }
 
-//delete transaction from all transactions and objectbox repository
+  // Delete a transaction
   void deleteTransaction(int index) {
     if (index >= 0 && index < state.transactions.length) {
-      //create local copy of transactions
       List<Transaction> transactionsList = List.from(state.transactions);
       int id = transactionsList[index].id;
       transactionsList.removeAt(index);
@@ -83,7 +79,7 @@ class TransactionCubit extends Cubit<TransactionState> {
     emit(state.copyWith(transactions: []));
   }
 
-//recieve result from transaction form screen and handle it
+  // Receive result from transaction form screen and handle it
   void handleTransactionFormResult(TransactionResult transactionFormResult) {
     switch (transactionFormResult.actionType) {
       case ActionType.addNew:
@@ -100,41 +96,46 @@ class TransactionCubit extends Cubit<TransactionState> {
     }
   }
 
+  // Filter transactions
   void filterTransactions({
     bool? isIncome,
     DateTime? startDate,
     DateTime? endDate,
     double? minAmount,
-    List<String>? categories,
+    List<int>? categoryIds,
   }) {
-    // Start with original unfiltered transactions
-    List<Transaction> filteredTransactions = List.from(state.transactions);
+    TransactionFilter filter = BaseTransactionFilter();
 
     if (startDate != null && endDate != null) {
-      filteredTransactions = DateFilterDecorator(
+      filter = DateFilterDecorator(
         startDate: startDate,
         endDate: endDate,
-      ).filter(filteredTransactions);
+        nextFilter: filter,
+      );
     }
 
     if (minAmount != null) {
-      filteredTransactions = AmountFilterDecorator(
+      filter = AmountFilterDecorator(
         minAmount: minAmount,
-      ).filter(filteredTransactions);
+        nextFilter: filter,
+      );
     }
 
     if (isIncome != null) {
-      filteredTransactions = TypeFilterDecorator(
+      filter = TypeFilterDecorator(
         isIncome: isIncome,
-      ).filter(filteredTransactions);
+        nextFilter: filter,
+      );
     }
 
-    if (categories != null && categories.isNotEmpty) {
-      filteredTransactions = CategoryFilterDecorator(
-        categories: categories,
-      ).filter(filteredTransactions);
+    if (categoryIds != null && categoryIds.isNotEmpty) {
+      filter = CategoryFilterDecorator(
+        categoryIds: categoryIds,
+        nextFilter: filter,
+      );
     }
 
+    final filteredTransactions = filter.filter(state.transactions);
     emit(state.copyWith(transactions: filteredTransactions));
   }
 }

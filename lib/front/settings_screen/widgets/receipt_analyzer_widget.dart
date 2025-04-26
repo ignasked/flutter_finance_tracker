@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:money_owl/backend/models/transaction.dart';
+import 'package:money_owl/backend/repositories/category_repository.dart';
 import 'package:money_owl/backend/services/mistral_service.dart';
 import 'package:money_owl/backend/services/file_picker_service.dart';
 import 'package:money_owl/front/bulk_add_transactions_screen.dart';
@@ -31,15 +32,19 @@ class _ReceiptAnalyzerWidgetState extends State<ReceiptAnalyzerWidget> {
     });
 
     try {
-      final transactionData =
-          await _mistralService.analyzeAndFormat(file, format);
+      String categoryTitles = context
+          .read<CategoryRepository>()
+          .getEnabledCategoryTitles(); // Load categories
+
+      final receiptJson =
+          await _mistralService.analyzeAndFormat(file, format, categoryTitles);
 
       if (!mounted) return; // Check if the widget is still mounted
 
       setState(() {
         _analysisResult = const JsonEncoder.withIndent('  ').convert({
-          'transactionName': transactionData['transactionName'],
-          'transactions': (transactionData['transactions'] as List<Transaction>)
+          'transactionName': receiptJson['transactionName'],
+          'transactions': (receiptJson['transactions'] as List<Transaction>)
               .map((t) => t.toJson())
               .toList(),
         });
@@ -49,8 +54,8 @@ class _ReceiptAnalyzerWidgetState extends State<ReceiptAnalyzerWidget> {
         context,
         MaterialPageRoute(
           builder: (context) => BulkAddTransactionsScreen(
-            transactionName: transactionData['transactionName'],
-            transactions: transactionData['transactions'] as List<Transaction>,
+            transactionName: receiptJson['transactionName'],
+            transactions: receiptJson['transactions'] as List<Transaction>,
           ),
         ),
       );

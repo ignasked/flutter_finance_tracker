@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:money_owl/backend/models/category.dart';
 import 'package:money_owl/backend/repositories/category_repository.dart';
 import 'package:money_owl/front/settings_screen/widgets/add_category_widget.dart';
@@ -20,7 +21,7 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
   }
 
   Future<void> _initializeRepository() async {
-    _categoryRepository = await CategoryRepository.create();
+    _categoryRepository = context.read<CategoryRepository>();
     _loadCategories();
   }
 

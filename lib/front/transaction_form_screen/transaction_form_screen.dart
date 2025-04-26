@@ -87,29 +87,11 @@ class _TransactionForm extends StatelessWidget {
                   ),
                   const SizedBox(height: 20),
 
-                  // // Transaction Type Dropdown
-                  // DropdownButtonFormField<TransactionType>(
-                  //   value: state.transactionType,
-                  //   items: [TransactionType.income, TransactionType.expense]
-                  //       .map((type) => DropdownMenuItem(
-                  //             value: type,
-                  //             child: Text(type == TransactionType.income
-                  //                 ? 'Income'
-                  //                 : 'Expense'),
-                  //           ))
-                  //       .toList(),
-                  //   onChanged: (value) => context
-                  //       .read<TransactionFormCubit>()
-                  //       .typeChanged(value!),
-                  //   decoration: const InputDecoration(
-                  //       labelText: 'Type', border: OutlineInputBorder()),
-                  // ),
-                  // const SizedBox(height: 20),
-
                   // Category Dropdown
                   FutureBuilder<List<Category>>(
-                    future: CategoryRepository.create()
-                        .then((repo) => repo.getCategories()),
+                    future: Future.value(context
+                        .read<CategoryRepository>()
+                        .getEnabledCategories()),
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
                         return const CircularProgressIndicator();
@@ -130,7 +112,21 @@ class _TransactionForm extends StatelessWidget {
                               children: [
                                 Icon(category.icon, color: category.color),
                                 const SizedBox(width: 8),
-                                Text(category.title),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(category.title), // Category title
+                                    Text(
+                                      category.type == TransactionType.income
+                                          ? 'Income'
+                                          : 'Expense', // Transaction type
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ],
                             ),
                           );

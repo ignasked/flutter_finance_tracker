@@ -1,15 +1,5 @@
 import 'package:money_owl/backend/models/transaction.dart';
 
-final categories = [
-  "food",
-  "transportation",
-  "entertainment",
-  "utilities",
-  "healthcare",
-  "clothing",
-  "other",
-]; // Kodel string? Galimybe redaguot kategorijas useriui, bet kai treniruosiu kategorizavimo modeli tai nesigaus su redaguotom kategorijom
-
 double calculateBalance(List<Transaction> transactions) {
   return transactions.fold(
     0.0,
@@ -35,68 +25,89 @@ double calculateExpenses(List<Transaction> transactions) {
 //TODO: refactor filters for proper decorator pattern
 
 abstract class TransactionFilter {
-  List<Transaction> filter(List<Transaction> transactions);
+  final TransactionFilter? nextFilter;
+
+  TransactionFilter({this.nextFilter});
+
+  List<Transaction> filter(List<Transaction> transactions) {
+    return nextFilter?.filter(transactions) ?? transactions;
+  }
 }
 
-class BaseTransactionFilter implements TransactionFilter {
+class BaseTransactionFilter extends TransactionFilter {
+  BaseTransactionFilter() : super(nextFilter: null);
+
   @override
   List<Transaction> filter(List<Transaction> transactions) {
     return transactions; // No filtering applied
   }
 }
 
-class TypeFilterDecorator implements TransactionFilter {
+class TypeFilterDecorator extends TransactionFilter {
   final bool isIncome;
 
-  TypeFilterDecorator({required this.isIncome});
+  TypeFilterDecorator({required this.isIncome, TransactionFilter? nextFilter})
+      : super(nextFilter: nextFilter);
 
   @override
   List<Transaction> filter(List<Transaction> transactions) {
-    return transactions
+    final filtered = transactions
         .where((transaction) => transaction.isIncome == isIncome)
         .toList();
+    return super.filter(filtered);
   }
 }
 
-class DateFilterDecorator implements TransactionFilter {
+class DateFilterDecorator extends TransactionFilter {
   final DateTime startDate;
   final DateTime endDate;
 
-  DateFilterDecorator({required this.startDate, required this.endDate});
+  DateFilterDecorator({
+    required this.startDate,
+    required this.endDate,
+    TransactionFilter? nextFilter,
+  }) : super(nextFilter: nextFilter);
 
   @override
   List<Transaction> filter(List<Transaction> transactions) {
-    return transactions
+    final filtered = transactions
         .where((transaction) =>
             transaction.date.isAfter(startDate) &&
             transaction.date.isBefore(endDate))
         .toList();
+    return super.filter(filtered); // Delegate to the next filter
   }
 }
 
-class AmountFilterDecorator implements TransactionFilter {
+class AmountFilterDecorator extends TransactionFilter {
   final double minAmount;
 
-  AmountFilterDecorator({required this.minAmount});
+  AmountFilterDecorator(
+      {required this.minAmount, TransactionFilter? nextFilter})
+      : super(nextFilter: nextFilter);
 
   @override
   List<Transaction> filter(List<Transaction> transactions) {
-    return transactions
+    final filtered = transactions
         .where((transaction) => transaction.amount.abs() >= minAmount)
         .toList();
+    return super.filter(filtered); // Delegate to the next filter
   }
 }
 
-class CategoryFilterDecorator implements TransactionFilter {
-  final List<String> categories;
+class CategoryFilterDecorator extends TransactionFilter {
+  final List<int> categoryIds;
 
-  CategoryFilterDecorator({required this.categories});
+  CategoryFilterDecorator(
+      {required this.categoryIds, TransactionFilter? nextFilter})
+      : super(nextFilter: nextFilter);
 
   @override
   List<Transaction> filter(List<Transaction> transactions) {
-    // Keep transactions whose category is in the list
-    return transactions
-        .where((tx) => categories.contains(tx.category))
-        .toList();
+    final filtered = transactions.where((transaction) {
+      final categoryId = transaction.category.target?.id;
+      return categoryId != null && categoryIds.contains(categoryId);
+    }).toList();
+    return super.filter(filtered); // Delegate to the next filter
   }
 }

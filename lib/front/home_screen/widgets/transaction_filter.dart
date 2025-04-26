@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:money_owl/backend/models/category.dart';
+import 'package:money_owl/backend/repositories/category_repository.dart';
 import 'package:money_owl/front/home_screen/cubit/transaction_cubit.dart';
 
 class TransactionFilter {
@@ -46,7 +48,15 @@ class TransactionFilterSheet extends StatefulWidget {
 }
 
 class _TransactionFilterSheetState extends State<TransactionFilterSheet> {
-  final List<String> categories = [];
+  final List<Category> selectedCategories = [];
+  late List<Category> _categories;
+
+  @override
+  void initState() {
+    super.initState();
+    // Fetch enabled categories from the repository
+    _categories = context.read<CategoryRepository>().getEnabledCategories();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -60,9 +70,32 @@ class _TransactionFilterSheetState extends State<TransactionFilterSheet> {
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
-          _buildFilterButton('Food'),
-          _buildFilterButton('Travel'),
-          _buildFilterButton('Salary'),
+          FutureBuilder<List<Category>>(
+            future: Future.value(_categories),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const CircularProgressIndicator();
+              }
+
+              if (snapshot.hasError) {
+                return const Text('Error loading categories');
+              }
+
+              final categories = snapshot.data ?? [];
+
+              if (categories.isEmpty) {
+                return const Text('No categories available');
+              }
+
+              return Wrap(
+                spacing: 8.0,
+                runSpacing: 8.0,
+                children: categories.map((category) {
+                  return _buildFilterButton(category);
+                }).toList(),
+              );
+            },
+          ),
           const SizedBox(height: 16),
           ElevatedButton(
             onPressed: () => _applyFilters(context),
@@ -73,27 +106,40 @@ class _TransactionFilterSheetState extends State<TransactionFilterSheet> {
     );
   }
 
-  Widget _buildFilterButton(String category) {
+  Widget _buildFilterButton(Category category) {
+    final isSelected = selectedCategories.contains(category);
+
     return ElevatedButton(
       onPressed: () => _toggleCategory(category),
-      child: Text(categories.contains(category) ? '+ $category' : category),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: isSelected ? Colors.blue : Colors.grey[300],
+        foregroundColor: isSelected ? Colors.white : Colors.black,
+      ),
+      child: Text(category.title),
     );
   }
 
-  void _toggleCategory(String category) {
+  void _toggleCategory(Category category) {
     setState(() {
-      categories.contains(category)
-          ? categories.remove(category)
-          : categories.add(category);
+      if (selectedCategories.contains(category)) {
+        selectedCategories.remove(category);
+      } else {
+        selectedCategories.add(category);
+      }
     });
   }
 
   void _applyFilters(BuildContext context) {
     final cubit = context.read<TransactionCubit>();
     cubit.loadTransactions();
-    if (categories.isNotEmpty) {
-      cubit.filterTransactions(categories: categories);
+
+    if (selectedCategories.isNotEmpty) {
+      // Pass category IDs to the filter
+      final categoryIds =
+          selectedCategories.map((category) => category.id).toList();
+      cubit.filterTransactions(categoryIds: categoryIds);
     }
+
     Navigator.pop(context);
   }
 }

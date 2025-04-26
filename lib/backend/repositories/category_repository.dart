@@ -36,6 +36,12 @@ class CategoryRepository {
     return _store!;
   }
 
+  /// Dispose the ObjectBox store
+  void dispose() {
+    _store?.close();
+    _store = null;
+  }
+
   /// Get all categories
   List<Category> getCategories() {
     try {
@@ -104,6 +110,29 @@ class CategoryRepository {
       print('Error checking if title is unique: $e');
       return false;
     }
+  }
+
+  /// Fetch only enabled categories
+  List<Category> getEnabledCategories() {
+    try {
+      final query =
+          store.box<Category>().query(Category_.isEnabled.equals(true)).build();
+      final enabledCategories = query.find();
+      query.close();
+      return enabledCategories;
+    } catch (e) {
+      print('Error fetching enabled categories: $e');
+      return [];
+    }
+  }
+
+  /// Fetch enabled category titles as a comma-separated string
+  String getEnabledCategoryTitles() {
+    final enabledCategories = getEnabledCategories();
+    if (enabledCategories.isEmpty) {
+      return 'No enabled categories';
+    }
+    return enabledCategories.map((category) => category.title).join(', ');
   }
 
   /// Initialize default categories
