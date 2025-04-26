@@ -71,6 +71,7 @@ class _ReceiptAnalyzerWidgetState extends State<ReceiptAnalyzerWidget> {
       setState(() {
         _isLoading = false;
       });
+      Navigator.pop(context); // Close the bottom sheet
     }
   }
 
@@ -199,6 +200,7 @@ class _ReceiptAnalyzerWidgetState extends State<ReceiptAnalyzerWidget> {
       setState(() {
         _isLoading = false;
       });
+      Navigator.pop(context); // Close the bottom sheet
     }
   }
 
@@ -235,7 +237,7 @@ class _ReceiptAnalyzerWidgetState extends State<ReceiptAnalyzerWidget> {
             ),
             ElevatedButton.icon(
               onPressed: _isLoading ? null : _loadSavedData,
-              icon: const Icon(Icons.storage),
+              icon: const Icon(Icons.barcode_reader),
               label: const Text('Load Saved Data'),
             ),
           ],

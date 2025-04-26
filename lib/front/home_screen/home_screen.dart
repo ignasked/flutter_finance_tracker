@@ -119,8 +119,6 @@ class HomeScreen extends StatelessWidget {
                                   leading: const Icon(Icons.add),
                                   title: const Text('Add Transaction'),
                                   onTap: () async {
-                                    Navigator.pop(
-                                        context); // Close the bottom sheet
                                     final transactionCubit =
                                         context.read<TransactionCubit>();
 
@@ -133,6 +131,8 @@ class HomeScreen extends StatelessWidget {
                                             const TransactionFromScreen(),
                                       ),
                                     );
+                                    print(
+                                        'Transaction Form Result: $transactionFormResult');
 
                                     if (!context.mounted) return;
 
@@ -141,6 +141,9 @@ class HomeScreen extends StatelessWidget {
                                           .handleTransactionFormResult(
                                               transactionFormResult);
                                     }
+
+                                    Navigator.pop(
+                                        context); // Close the bottom sheet
                                   },
                                 ),
                                 ListTile(

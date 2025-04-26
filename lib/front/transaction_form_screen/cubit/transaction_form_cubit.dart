@@ -1,6 +1,7 @@
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:formz/formz.dart';
+import 'package:money_owl/backend/models/category.dart';
 import 'package:money_owl/backend/models/transaction_result.dart';
 
 import '../../../backend/models/transaction.dart';
@@ -12,50 +13,47 @@ enum ActionType { addNew, edit, delete }
 class TransactionFormState extends Equatable {
   final TitleInput title;
   final MoneyInput amount;
-  final String transactionType; // income / expense
-  final String category; // food / travel / taxes / salary
+  final Category? category; // Updated to use Category object
   final DateTime date;
   final int id;
 
   final FormzSubmissionStatus status;
 
-  //index in original transactionList (for editing only)
+  // Index in original transactionList (for editing only)
   final int? editIndex;
 
-  //transaction that is validated and has been submitted
+  // Transaction that is validated and has been submitted
   final TransactionResult? submittedTransaction;
-  final bool isValid; // if form is valid
+  final bool isValid; // If form is valid
   final String? errorMessage;
 
-  //edit, add or delete transaction from original transactionList
+  // Edit, add, or delete transaction from original transactionList
   final ActionType actionType;
 
-  //add transaction
-  TransactionFormState(
-      {this.title = const TitleInput.pure(),
-      this.amount = const MoneyInput.pure(),
-      this.transactionType = 'Income',
-      this.category = 'Food',
-      this.status = FormzSubmissionStatus.initial,
-      this.isValid = false,
-      DateTime? date,
-      this.errorMessage,
-      this.id = 0,
-      this.actionType = ActionType.addNew,
-      this.submittedTransaction,
-      this.editIndex})
-      : date = date ?? DateTime.now();
+  // Add transaction
+  TransactionFormState({
+    this.title = const TitleInput.pure(),
+    this.amount = const MoneyInput.pure(),
+    this.category,
+    this.status = FormzSubmissionStatus.initial,
+    this.isValid = false,
+    DateTime? date,
+    this.errorMessage,
+    this.id = 0,
+    this.actionType = ActionType.addNew,
+    this.submittedTransaction,
+    this.editIndex,
+  }) : date = date ?? DateTime.now();
 
-  //edit
-  TransactionFormState.edit(
-      {required Transaction transaction,
-      this.errorMessage,
-      this.submittedTransaction,
-      required this.editIndex})
-      : title = TitleInput.dirty(transaction.title),
+  // Edit transaction
+  TransactionFormState.edit({
+    required Transaction transaction,
+    this.errorMessage,
+    this.submittedTransaction,
+    required this.editIndex,
+  })  : title = TitleInput.dirty(transaction.title),
         amount = MoneyInput.dirty(transaction.amount.toString()),
-        transactionType = transaction.isIncome ? 'Income' : 'Expense',
-        category = transaction.category,
+        category = transaction.category.target, // Use the target Category
         status = FormzSubmissionStatus.initial,
         isValid = true,
         actionType = ActionType.edit,
@@ -66,7 +64,7 @@ class TransactionFormState extends Equatable {
     TitleInput? title,
     MoneyInput? amount,
     String? transactionType,
-    String? category,
+    Category? category,
     DateTime? date,
     FormzSubmissionStatus? status,
     bool? isValid,
@@ -79,7 +77,6 @@ class TransactionFormState extends Equatable {
     return TransactionFormState(
       title: title ?? this.title,
       amount: amount ?? this.amount,
-      transactionType: transactionType ?? this.transactionType,
       category: category ?? this.category,
       date: date ?? this.date,
       status: status ?? this.status,
@@ -98,7 +95,6 @@ class TransactionFormState extends Equatable {
         amount,
         category,
         date,
-        transactionType,
         status,
         isValid,
         errorMessage,
@@ -113,7 +109,7 @@ class TransactionFormCubit extends Cubit<TransactionFormState> {
   // Add transaction cubit
   TransactionFormCubit() : super(TransactionFormState());
 
-  //Edit transaction cubit
+  // Edit transaction cubit
   TransactionFormCubit.edit(Transaction editTransaction, int editIndex)
       : super(TransactionFormState.edit(
           transaction: editTransaction,
@@ -141,9 +137,8 @@ class TransactionFormCubit extends Cubit<TransactionFormState> {
     emit(state.copyWith(transactionType: transactionType));
   }
 
-  void categoryChanged(String value) {
-    final cat = value;
-    emit(state.copyWith(category: cat));
+  void categoryChanged(Category category) {
+    emit(state.copyWith(category: category));
   }
 
   void dateChanged(DateTime value) {
@@ -151,7 +146,7 @@ class TransactionFormCubit extends Cubit<TransactionFormState> {
     emit(state.copyWith(date: date));
   }
 
-  //pressed submit button (adding new or editing existing transaction)
+  // Pressed submit button (adding new or editing existing transaction)
   void submitForm() {
     if (!state.isValid) {
       emit(state.copyWith(status: FormzSubmissionStatus.failure));
@@ -165,8 +160,7 @@ class TransactionFormCubit extends Cubit<TransactionFormState> {
         id: state.id,
         title: state.title.value,
         amount: double.parse(state.amount.value),
-        isIncome: state.transactionType == 'Income',
-        category: state.category,
+        category: state.category, // Use the selected Category
         date: state.date,
       );
 
@@ -191,8 +185,7 @@ class TransactionFormCubit extends Cubit<TransactionFormState> {
         id: state.id,
         title: state.title.value,
         amount: double.parse(state.amount.value),
-        isIncome: state.transactionType == 'Income',
-        category: state.category,
+        category: state.category, // Use the selected Category
         date: DateTime.now(),
       );
 

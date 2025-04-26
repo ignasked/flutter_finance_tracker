@@ -11,12 +11,18 @@ class TransactionRepository {
   /// Initializes ObjectBox store
   static Future<TransactionRepository> create() async {
     final docsDir = await getApplicationDocumentsDirectory();
-    final store = openStore(directory: p.join(docsDir.path, "transactions_db"));
+    final store =
+        await openStore(directory: p.join(docsDir.path, "transactions_db"));
     return TransactionRepository._(store);
   }
 
   List<Transaction> getTransactions() {
-    return _store.box<Transaction>().getAll();
+    try {
+      return _store.box<Transaction>().getAll();
+    } catch (e) {
+      print('Error fetching transactions: $e');
+      return [];
+    }
   }
 
   Transaction? getTransaction(int id) {
@@ -24,7 +30,11 @@ class TransactionRepository {
   }
 
   void addTransaction(Transaction transaction) {
-    _store.box<Transaction>().put(transaction);
+    try {
+      _store.box<Transaction>().put(transaction);
+    } catch (e) {
+      print('Error adding/updating transaction: $e');
+    }
   }
 
   void updateTransaction(Transaction transaction) {

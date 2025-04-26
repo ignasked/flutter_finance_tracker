@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:money_owl/backend/transaction_repository/transaction_repository.dart';
+import 'package:money_owl/backend/repositories/category_repository.dart';
+import 'package:money_owl/backend/repositories/transaction_repository.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:money_owl/front/home_screen/widgets/navbar.dart';
@@ -7,12 +8,15 @@ import 'package:money_owl/front/home_screen/cubit/transaction_cubit.dart';
 
 import 'front/home_screen/cubit/transaction_summary_cubit.dart';
 
-/// Transaction repository provider
+/// Repository providers
 late TransactionRepository transactionRepository;
+late CategoryRepository categoryRepository;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   transactionRepository = await TransactionRepository.create();
+  categoryRepository = await CategoryRepository.create();
+
   runApp(const MyApp());
 }
 
@@ -21,8 +25,15 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return RepositoryProvider(
-      create: (context) => transactionRepository,
+    return MultiRepositoryProvider(
+      providers: [
+        RepositoryProvider<TransactionRepository>(
+          create: (context) => transactionRepository,
+        ),
+        RepositoryProvider<CategoryRepository>(
+          create: (context) => categoryRepository,
+        ),
+      ],
       child: MultiBlocProvider(
         providers: [
           BlocProvider<TransactionCubit>(

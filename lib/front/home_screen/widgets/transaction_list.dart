@@ -76,14 +76,12 @@ class TransactionList extends StatelessWidget {
               child: Card(
                 child: ListTile(
                   leading: Icon(
-                    item.isIncome ? Icons.arrow_upward : Icons.arrow_downward,
-                    color: item.isIncome
-                        ? ColorPalette.income
-                        : ColorPalette.expense,
+                    item.category.target?.icon,
+                    color: item.category.target?.color ?? ColorPalette.primary,
                   ),
                   title: Text(item.title),
                   subtitle: Text(
-                    '${item.category} | ${item.date.toString().split(' ')[0]}',
+                    '${item.category.target?.title} | ${item.date.toString().split(' ')[0]}',
                   ),
                   trailing: Text(
                     '${item.isIncome ? '+' : '-'} \$${item.amount.toStringAsFixed(2)}',

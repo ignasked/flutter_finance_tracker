@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:formz/formz.dart';
+import 'package:money_owl/backend/models/category.dart';
 import 'package:money_owl/backend/models/transaction.dart';
-import 'package:money_owl/backend/transaction_repository/utils/transaction_utils.dart';
+import 'package:money_owl/backend/repositories/category_repository.dart';
 import 'package:money_owl/front/transaction_form_screen/cubit/transaction_form_cubit.dart';
 import 'package:intl/intl.dart';
+import 'package:money_owl/utils/enums.dart';
 
 class TransactionFromScreen extends StatelessWidget {
   final Transaction? transaction; // Nullable for adding vs editing
-  final int? index; // transaction index in transactionList
+  final int? index; // Transaction index in transactionList
+
   const TransactionFromScreen({Key? key, this.transaction, this.index})
       : super(key: key);
 
@@ -42,85 +45,114 @@ class _TransactionForm extends StatelessWidget {
           listener: (context, state) {
             if (state.status.isSuccess && state.submittedTransaction != null) {
               Navigator.of(context).pop(state.submittedTransaction);
-            } /*else if (state.status.isFailure) {
-              // TODO: Show error
-              ScaffoldMessenger.of(context)
-                ..hideCurrentSnackBar()
-                ..showSnackBar(
-                  SnackBar(
-                      content: Text(state.errorMessage ?? 'Unable to save')),
-                );
-            }*/
+            }
           },
           child: BlocBuilder<TransactionFormCubit, TransactionFormState>(
             builder: (context, state) {
               return Column(
                 children: [
+                  // Title Input
                   TextFormField(
                     key: const Key('transaction_form_title'),
                     onChanged: (value) => context
                         .read<TransactionFormCubit>()
                         .titleChanged(value),
                     decoration: InputDecoration(
-                        labelText: 'Title',
-                        border: const OutlineInputBorder(),
-                        errorText: (state.status.isInitial == false &&
-                                state.title.isNotValid)
-                            ? 'Title cannot be empty'
-                            : null),
+                      labelText: 'Title',
+                      border: const OutlineInputBorder(),
+                      errorText: (state.status.isInitial == false &&
+                              state.title.isNotValid)
+                          ? 'Title cannot be empty'
+                          : null,
+                    ),
                     initialValue: state.title.value,
                   ),
                   const SizedBox(height: 20),
+
+                  // Amount Input
                   TextFormField(
                     onChanged: (value) => context
                         .read<TransactionFormCubit>()
                         .amountChanged(value),
                     decoration: InputDecoration(
-                        labelText: 'Amount',
-                        border: const OutlineInputBorder(),
-                        errorText: (state.status.isInitial == false &&
-                                state.amount.isNotValid)
-                            ? state.amount.error.toString()
-                            : null),
+                      labelText: 'Amount',
+                      border: const OutlineInputBorder(),
+                      errorText: (state.status.isInitial == false &&
+                              state.amount.isNotValid)
+                          ? state.amount.error.toString()
+                          : null,
+                    ),
                     keyboardType: TextInputType.number,
                     initialValue: state.amount.value,
                   ),
                   const SizedBox(height: 20),
-                  DropdownButtonFormField<String>(
-                    value: state.transactionType,
-                    items: ['Income', 'Expense']
-                        .map((type) =>
-                            DropdownMenuItem(value: type, child: Text(type)))
-                        .toList(),
-                    onChanged: (value) => context
-                        .read<TransactionFormCubit>()
-                        .typeChanged(value!),
-                    decoration: const InputDecoration(
-                        labelText: 'Type', border: OutlineInputBorder()),
+
+                  // // Transaction Type Dropdown
+                  // DropdownButtonFormField<TransactionType>(
+                  //   value: state.transactionType,
+                  //   items: [TransactionType.income, TransactionType.expense]
+                  //       .map((type) => DropdownMenuItem(
+                  //             value: type,
+                  //             child: Text(type == TransactionType.income
+                  //                 ? 'Income'
+                  //                 : 'Expense'),
+                  //           ))
+                  //       .toList(),
+                  //   onChanged: (value) => context
+                  //       .read<TransactionFormCubit>()
+                  //       .typeChanged(value!),
+                  //   decoration: const InputDecoration(
+                  //       labelText: 'Type', border: OutlineInputBorder()),
+                  // ),
+                  // const SizedBox(height: 20),
+
+                  // Category Dropdown
+                  FutureBuilder<List<Category>>(
+                    future: CategoryRepository.create()
+                        .then((repo) => repo.getCategories()),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const CircularProgressIndicator();
+                      }
+
+                      if (snapshot.hasError) {
+                        return const Text('Error loading categories');
+                      }
+
+                      final categories = snapshot.data ?? [];
+
+                      return DropdownButtonFormField<Category>(
+                        value: state.category,
+                        items: categories.map((category) {
+                          return DropdownMenuItem(
+                            value: category,
+                            child: Row(
+                              children: [
+                                Icon(category.icon, color: category.color),
+                                const SizedBox(width: 8),
+                                Text(category.title),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (value) => context
+                            .read<TransactionFormCubit>()
+                            .categoryChanged(value!),
+                        decoration: const InputDecoration(
+                          labelText: 'Category',
+                          border: OutlineInputBorder(),
+                        ),
+                      );
+                    },
                   ),
                   const SizedBox(height: 20),
-                  DropdownButtonFormField<String>(
-                    value: categories.contains(state.category)
-                        ? state.category
-                        : categories.first,
-                    items: categories
-                        .map((category) => DropdownMenuItem(
-                              value: category,
-                              child: Text(category),
-                            ))
-                        .toList(),
-                    onChanged: (value) => context
-                        .read<TransactionFormCubit>()
-                        .categoryChanged(value!),
-                    decoration: const InputDecoration(
-                        labelText: 'Category', border: OutlineInputBorder()),
-                  ),
-                  const SizedBox(height: 20),
+
+                  // Date Picker
                   ElevatedButton(
                     onPressed: () async {
                       final selectedDate = await showDatePicker(
                         context: context,
-                        initialDate: DateTime.now(),
+                        initialDate: state.date,
                         firstDate: DateTime(1900),
                         lastDate: DateTime(2100),
                       );
@@ -137,23 +169,28 @@ class _TransactionForm extends StatelessWidget {
                   ),
                   Text(DateFormat('yyyy-MM-dd').format(state.date)),
                   const SizedBox(height: 20),
+
+                  // Save Button
                   ElevatedButton(
                     onPressed: () =>
                         context.read<TransactionFormCubit>().submitForm(),
                     child: const Text('Save'),
                   ),
-                  state.actionType == ActionType.edit
-                      ? ElevatedButton(
-                          onPressed: () => context
-                              .read<TransactionFormCubit>()
-                              .deleteTransaction(),
-                          style: const ButtonStyle(
-                              backgroundColor:
-                                  WidgetStatePropertyAll(Colors.red)),
-                          child: const Text('Delete Transaction',
-                              style: TextStyle(color: Colors.white)),
-                        )
-                      : Container(),
+
+                  // Delete Button (only for editing)
+                  if (state.actionType == ActionType.edit)
+                    ElevatedButton(
+                      onPressed: () => context
+                          .read<TransactionFormCubit>()
+                          .deleteTransaction(),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                      ),
+                      child: const Text(
+                        'Delete Transaction',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
                 ],
               );
             },

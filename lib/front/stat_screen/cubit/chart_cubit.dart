@@ -1,6 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:money_owl/backend/models/transaction.dart';
-import 'package:money_owl/backend/transaction_repository/utils/transaction_utils.dart';
 import 'chart_state.dart';
 
 class ChartCubit extends Cubit<ChartState> {
@@ -16,17 +15,17 @@ class ChartCubit extends Cubit<ChartState> {
   List<ChartData> _prepareCategoryData(List<Transaction> transactions) {
     final Map<String, double> categoryTotals = {};
 
-    for (String category in categories) {
-      categoryTotals[category] = 0.0;
-    }
-
     for (final transaction in transactions) {
-      categoryTotals.update(
-        transaction.category,
-        (value) =>
-            value + (transaction.amount * (transaction.isIncome ? 1 : -1)),
-        ifAbsent: () => transaction.amount * (transaction.isIncome ? 1 : -1),
-      );
+      final category =
+          transaction.category.target; // Access the related Category
+      if (category != null) {
+        categoryTotals.update(
+          category.title,
+          (value) =>
+              value + (transaction.amount * (transaction.isIncome ? 1 : -1)),
+          ifAbsent: () => transaction.amount * (transaction.isIncome ? 1 : -1),
+        );
+      }
     }
 
     return categoryTotals.entries

@@ -45,24 +45,32 @@ class _BulkAddTransactionsScreenState extends State<BulkAddTransactionsScreen> {
 
   void _mergeTransactionsByCategory() {
     // Group transactions by category
-    final Map<String, double> categoryTotals = {};
+    final Map<int, double> categoryTotals = {};
     for (var transaction in widget.transactions) {
-      if (categoryTotals.containsKey(transaction.category)) {
-        categoryTotals[transaction.category] =
-            categoryTotals[transaction.category]! + transaction.amount;
-      } else {
-        categoryTotals[transaction.category] = transaction.amount;
+      final category = transaction.category.target;
+      if (category != null) {
+        if (categoryTotals.containsKey(category.id)) {
+          categoryTotals[category.id] =
+              categoryTotals[category.id]! + transaction.amount;
+        } else {
+          categoryTotals[category.id] = transaction.amount;
+        }
       }
     }
 
     // Create a new list of merged transactions
     final mergedTransactions = categoryTotals.entries.map((entry) {
+      final category = widget.transactions
+          .firstWhere(
+              (transaction) => transaction.category.target?.id == entry.key)
+          .category
+          .target;
+
       return Transaction(
         title:
-            '${entry.key} at ${widget.transactionName}', // Optional: Add a prefix to indicate merging
-        category: entry.key,
+            '${category?.title} at ${widget.transactionName}', // Optional: Add a prefix to indicate merging
+        category: category,
         amount: entry.value,
-        isIncome: false, // Assuming all transactions are expenses
         date: DateTime.now(), // Use the current date or a default date
       );
     }).toList();
@@ -99,6 +107,7 @@ class _BulkAddTransactionsScreenState extends State<BulkAddTransactionsScreen> {
               itemCount: widget.transactions.length,
               itemBuilder: (context, index) {
                 final transaction = widget.transactions[index];
+                final category = transaction.category.target;
 
                 return Dismissible(
                   key: UniqueKey(),
@@ -146,13 +155,13 @@ class _BulkAddTransactionsScreenState extends State<BulkAddTransactionsScreen> {
                   ),
                   child: Card(
                     child: ListTile(
-                      leading: const Icon(
-                        Icons.receipt_long,
-                        color: Colors.blue,
+                      leading: Icon(
+                        category?.icon ?? Icons.category,
+                        color: Color(category?.colorValue ?? 0xFF000000),
                       ),
                       title: Text(transaction.title),
                       subtitle: Text(
-                          'Price: ${transaction.amount.toStringAsFixed(2)}. ${transaction.category}'),
+                          'Price: ${transaction.amount.toStringAsFixed(2)}. Category: ${category?.title ?? 'Uncategorized'}'),
                       trailing: const Icon(Icons.edit),
                       onTap: () async {
                         // Navigate to TransactionFormScreen to edit the transaction

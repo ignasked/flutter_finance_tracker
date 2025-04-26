@@ -12,7 +12,9 @@ import 'package:flat_buffers/flat_buffers.dart' as fb;
 import 'package:objectbox/internal.dart'
     as obx_int; // generated code can access "internal" functionality
 import 'package:objectbox/objectbox.dart' as obx;
+import 'package:objectbox_flutter_libs/objectbox_flutter_libs.dart';
 
+import 'backend/models/category.dart';
 import 'backend/models/transaction.dart';
 
 export 'package:objectbox/objectbox.dart'; // so that callers only have to import this file
@@ -21,7 +23,7 @@ final _entities = <obx_int.ModelEntity>[
   obx_int.ModelEntity(
       id: const obx_int.IdUid(1, 1380094922926077824),
       name: 'Transaction',
-      lastPropertyId: const obx_int.IdUid(6, 6651851518781937861),
+      lastPropertyId: const obx_int.IdUid(7, 7831126263941629501),
       flags: 0,
       properties: <obx_int.ModelProperty>[
         obx_int.ModelProperty(
@@ -40,23 +42,69 @@ final _entities = <obx_int.ModelEntity>[
             type: 8,
             flags: 0),
         obx_int.ModelProperty(
-            id: const obx_int.IdUid(4, 3854934649027657622),
-            name: 'isIncome',
-            type: 1,
-            flags: 0),
-        obx_int.ModelProperty(
-            id: const obx_int.IdUid(5, 2820295823686522613),
-            name: 'category',
-            type: 9,
-            flags: 0),
-        obx_int.ModelProperty(
             id: const obx_int.IdUid(6, 6651851518781937861),
             name: 'date',
             type: 10,
+            flags: 0),
+        obx_int.ModelProperty(
+            id: const obx_int.IdUid(7, 7831126263941629501),
+            name: 'categoryId',
+            type: 11,
+            flags: 520,
+            indexId: const obx_int.IdUid(1, 8794143413428559289),
+            relationTarget: 'Category')
+      ],
+      relations: <obx_int.ModelRelation>[],
+      backlinks: <obx_int.ModelBacklink>[]),
+  obx_int.ModelEntity(
+      id: const obx_int.IdUid(2, 6364566181600309643),
+      name: 'Category',
+      lastPropertyId: const obx_int.IdUid(7, 1698196631533817491),
+      flags: 0,
+      properties: <obx_int.ModelProperty>[
+        obx_int.ModelProperty(
+            id: const obx_int.IdUid(1, 4875631690864412976),
+            name: 'id',
+            type: 6,
+            flags: 1),
+        obx_int.ModelProperty(
+            id: const obx_int.IdUid(2, 4377061731528793579),
+            name: 'title',
+            type: 9,
+            flags: 0),
+        obx_int.ModelProperty(
+            id: const obx_int.IdUid(3, 3078786122418248550),
+            name: 'descriptionForAI',
+            type: 9,
+            flags: 0),
+        obx_int.ModelProperty(
+            id: const obx_int.IdUid(4, 7881552178410288707),
+            name: 'isEnabled',
+            type: 1,
+            flags: 0),
+        obx_int.ModelProperty(
+            id: const obx_int.IdUid(5, 626766704933445069),
+            name: 'iconCodePoint',
+            type: 6,
+            flags: 0),
+        obx_int.ModelProperty(
+            id: const obx_int.IdUid(6, 2731193553403493661),
+            name: 'typeValue',
+            type: 6,
+            flags: 0),
+        obx_int.ModelProperty(
+            id: const obx_int.IdUid(7, 1698196631533817491),
+            name: 'colorValue',
+            type: 6,
             flags: 0)
       ],
       relations: <obx_int.ModelRelation>[],
-      backlinks: <obx_int.ModelBacklink>[])
+      backlinks: <obx_int.ModelBacklink>[
+        obx_int.ModelBacklink(
+            name: 'transactions',
+            srcEntity: 'Transaction',
+            srcField: 'category')
+      ])
 ];
 
 /// Shortcut for [obx.Store.new] that passes [getObjectBoxModel] and for Flutter
@@ -70,16 +118,17 @@ final _entities = <obx_int.ModelEntity>[
 /// For Flutter apps, also calls `loadObjectBoxLibraryAndroidCompat()` from
 /// the ObjectBox Flutter library to fix loading the native ObjectBox library
 /// on Android 6 and older.
-obx.Store openStore(
+Future<obx.Store> openStore(
     {String? directory,
     int? maxDBSizeInKB,
     int? maxDataSizeInKB,
     int? fileMode,
     int? maxReaders,
     bool queriesCaseSensitiveDefault = true,
-    String? macosApplicationGroup}) {
+    String? macosApplicationGroup}) async {
+  await loadObjectBoxLibraryAndroidCompat();
   return obx.Store(getObjectBoxModel(),
-      directory: directory,
+      directory: directory ?? (await defaultStoreDirectory()).path,
       maxDBSizeInKB: maxDBSizeInKB,
       maxDataSizeInKB: maxDataSizeInKB,
       fileMode: fileMode,
@@ -93,13 +142,13 @@ obx.Store openStore(
 obx_int.ModelDefinition getObjectBoxModel() {
   final model = obx_int.ModelInfo(
       entities: _entities,
-      lastEntityId: const obx_int.IdUid(1, 1380094922926077824),
-      lastIndexId: const obx_int.IdUid(0, 0),
+      lastEntityId: const obx_int.IdUid(2, 6364566181600309643),
+      lastIndexId: const obx_int.IdUid(1, 8794143413428559289),
       lastRelationId: const obx_int.IdUid(0, 0),
       lastSequenceId: const obx_int.IdUid(0, 0),
       retiredEntityUids: const [],
       retiredIndexUids: const [],
-      retiredPropertyUids: const [],
+      retiredPropertyUids: const [3854934649027657622, 2820295823686522613],
       retiredRelationUids: const [],
       modelVersion: 5,
       modelVersionParserMinimum: 5,
@@ -108,7 +157,7 @@ obx_int.ModelDefinition getObjectBoxModel() {
   final bindings = <Type, obx_int.EntityDefinition>{
     Transaction: obx_int.EntityDefinition<Transaction>(
         model: _entities[0],
-        toOneRelations: (Transaction object) => [],
+        toOneRelations: (Transaction object) => [object.category],
         toManyRelations: (Transaction object) => {},
         getId: (Transaction object) => object.id,
         setId: (Transaction object, int id) {
@@ -116,14 +165,12 @@ obx_int.ModelDefinition getObjectBoxModel() {
         },
         objectToFB: (Transaction object, fb.Builder fbb) {
           final titleOffset = fbb.writeString(object.title);
-          final categoryOffset = fbb.writeString(object.category);
-          fbb.startTable(7);
+          fbb.startTable(8);
           fbb.addInt64(0, object.id);
           fbb.addOffset(1, titleOffset);
           fbb.addFloat64(2, object.amount);
-          fbb.addBool(3, object.isIncome);
-          fbb.addOffset(4, categoryOffset);
           fbb.addInt64(5, object.date.millisecondsSinceEpoch);
+          fbb.addInt64(6, object.category.targetId);
           fbb.finish(fbb.endTable());
           return object.id;
         },
@@ -136,20 +183,76 @@ obx_int.ModelDefinition getObjectBoxModel() {
               .vTableGet(buffer, rootOffset, 6, '');
           final amountParam =
               const fb.Float64Reader().vTableGet(buffer, rootOffset, 8, 0);
-          final isIncomeParam =
-              const fb.BoolReader().vTableGet(buffer, rootOffset, 10, false);
-          final categoryParam = const fb.StringReader(asciiOptimization: true)
-              .vTableGet(buffer, rootOffset, 12, '');
           final dateParam = DateTime.fromMillisecondsSinceEpoch(
               const fb.Int64Reader().vTableGet(buffer, rootOffset, 14, 0));
           final object = Transaction(
               id: idParam,
               title: titleParam,
               amount: amountParam,
-              isIncome: isIncomeParam,
-              category: categoryParam,
               date: dateParam);
-
+          object.category.targetId =
+              const fb.Int64Reader().vTableGet(buffer, rootOffset, 16, 0);
+          object.category.attach(store);
+          return object;
+        }),
+    Category: obx_int.EntityDefinition<Category>(
+        model: _entities[1],
+        toOneRelations: (Category object) => [],
+        toManyRelations: (Category object) => {
+              obx_int.RelInfo<Transaction>.toOneBacklink(7, object.id,
+                      (Transaction srcObject) => srcObject.category):
+                  object.transactions
+            },
+        getId: (Category object) => object.id,
+        setId: (Category object, int id) {
+          object.id = id;
+        },
+        objectToFB: (Category object, fb.Builder fbb) {
+          final titleOffset = fbb.writeString(object.title);
+          final descriptionForAIOffset =
+              fbb.writeString(object.descriptionForAI);
+          fbb.startTable(8);
+          fbb.addInt64(0, object.id);
+          fbb.addOffset(1, titleOffset);
+          fbb.addOffset(2, descriptionForAIOffset);
+          fbb.addBool(3, object.isEnabled);
+          fbb.addInt64(4, object.iconCodePoint);
+          fbb.addInt64(5, object.typeValue);
+          fbb.addInt64(6, object.colorValue);
+          fbb.finish(fbb.endTable());
+          return object.id;
+        },
+        objectFromFB: (obx.Store store, ByteData fbData) {
+          final buffer = fb.BufferContext(fbData);
+          final rootOffset = buffer.derefObject(0);
+          final idParam =
+              const fb.Int64Reader().vTableGet(buffer, rootOffset, 4, 0);
+          final titleParam = const fb.StringReader(asciiOptimization: true)
+              .vTableGet(buffer, rootOffset, 6, '');
+          final descriptionForAIParam =
+              const fb.StringReader(asciiOptimization: true)
+                  .vTableGet(buffer, rootOffset, 8, '');
+          final colorValueParam =
+              const fb.Int64Reader().vTableGet(buffer, rootOffset, 16, 0);
+          final iconCodePointParam =
+              const fb.Int64Reader().vTableGet(buffer, rootOffset, 12, 0);
+          final typeValueParam =
+              const fb.Int64Reader().vTableGet(buffer, rootOffset, 14, 0);
+          final isEnabledParam =
+              const fb.BoolReader().vTableGet(buffer, rootOffset, 10, false);
+          final object = Category(
+              id: idParam,
+              title: titleParam,
+              descriptionForAI: descriptionForAIParam,
+              colorValue: colorValueParam,
+              iconCodePoint: iconCodePointParam,
+              typeValue: typeValueParam,
+              isEnabled: isEnabledParam);
+          obx_int.InternalToManyAccess.setRelInfo<Category>(
+              object.transactions,
+              store,
+              obx_int.RelInfo<Transaction>.toOneBacklink(
+                  7, object.id, (Transaction srcObject) => srcObject.category));
           return object;
         })
   };
@@ -171,15 +274,46 @@ class Transaction_ {
   static final amount =
       obx.QueryDoubleProperty<Transaction>(_entities[0].properties[2]);
 
-  /// See [Transaction.isIncome].
-  static final isIncome =
-      obx.QueryBooleanProperty<Transaction>(_entities[0].properties[3]);
+  /// See [Transaction.date].
+  static final date =
+      obx.QueryDateProperty<Transaction>(_entities[0].properties[3]);
 
   /// See [Transaction.category].
   static final category =
-      obx.QueryStringProperty<Transaction>(_entities[0].properties[4]);
+      obx.QueryRelationToOne<Transaction, Category>(_entities[0].properties[4]);
+}
 
-  /// See [Transaction.date].
-  static final date =
-      obx.QueryDateProperty<Transaction>(_entities[0].properties[5]);
+/// [Category] entity fields to define ObjectBox queries.
+class Category_ {
+  /// See [Category.id].
+  static final id =
+      obx.QueryIntegerProperty<Category>(_entities[1].properties[0]);
+
+  /// See [Category.title].
+  static final title =
+      obx.QueryStringProperty<Category>(_entities[1].properties[1]);
+
+  /// See [Category.descriptionForAI].
+  static final descriptionForAI =
+      obx.QueryStringProperty<Category>(_entities[1].properties[2]);
+
+  /// See [Category.isEnabled].
+  static final isEnabled =
+      obx.QueryBooleanProperty<Category>(_entities[1].properties[3]);
+
+  /// See [Category.iconCodePoint].
+  static final iconCodePoint =
+      obx.QueryIntegerProperty<Category>(_entities[1].properties[4]);
+
+  /// See [Category.typeValue].
+  static final typeValue =
+      obx.QueryIntegerProperty<Category>(_entities[1].properties[5]);
+
+  /// See [Category.colorValue].
+  static final colorValue =
+      obx.QueryIntegerProperty<Category>(_entities[1].properties[6]);
+
+  /// see [Category.transactions]
+  static final transactions =
+      obx.QueryBacklinkToMany<Transaction, Category>(Transaction_.category);
 }
