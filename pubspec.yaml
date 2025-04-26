@@ -78,7 +78,8 @@ flutter:
   uses-material-design: true
 
   assets:
-    - Assets/marker.png
+    - assets/icons/money_owl_transparent.png
+    - assets/icons/receipt_scan_icon.png
   # To add assets to your application, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg

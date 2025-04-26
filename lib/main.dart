@@ -14,8 +14,10 @@ late CategoryRepository categoryRepository;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
   transactionRepository = await TransactionRepository.create();
-  categoryRepository = await CategoryRepository.create();
+  categoryRepository =
+      await CategoryRepository.create(transactionRepository.store);
 
   runApp(const MyApp());
 }
@@ -27,11 +29,11 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiRepositoryProvider(
       providers: [
-        RepositoryProvider<TransactionRepository>(
-          create: (context) => transactionRepository,
-        ),
         RepositoryProvider<CategoryRepository>(
           create: (context) => categoryRepository,
+        ),
+        RepositoryProvider<TransactionRepository>(
+          create: (context) => transactionRepository,
         ),
       ],
       child: MultiBlocProvider(

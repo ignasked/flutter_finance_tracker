@@ -6,35 +6,35 @@ import 'package:money_owl/backend/models/category.dart';
 import 'package:flutter/material.dart';
 
 class CategoryRepository {
-  static Store? _store; // Singleton Store instance
+  late final _store;
 
   /// Private constructor
-  CategoryRepository._();
+  CategoryRepository._(this._store);
 
   /// Initializes ObjectBox store and adds default categories if needed
-  static Future<CategoryRepository> create() async {
-    if (_store == null) {
-      final docsDir = await getApplicationDocumentsDirectory();
-      _store =
-          await openStore(directory: p.join(docsDir.path, "categories_db"));
-    }
-
-    final repository = CategoryRepository._();
-
-    // Add default categories if they don't exist
-    await repository._initializeDefaultCategories();
-
+  static Future<CategoryRepository> create(Store store) async {
+    final repository = CategoryRepository._(store);
+    repository._initializeDefaultCategories();
     return repository;
   }
 
+  // final repository = CategoryRepository._();
+
+  // Add default categories if they don't exist
+  // await repository._initializeDefaultCategories();
+  // repository.getCategories(); // Preload categories
+
+  // return repository;
+  // }
+
   /// Get the ObjectBox store
-  Store get store {
-    if (_store == null) {
-      throw Exception(
-          'Store is not initialized. Call CategoryRepository.create() first.');
-    }
-    return _store!;
-  }
+  // Store get store {
+  //   if (_store == null) {
+  //     throw Exception(
+  //         'Store is not initialized. Call CategoryRepository.create() first.');
+  //   }
+  //   return _store!;
+  // }
 
   /// Dispose the ObjectBox store
   void dispose() {
@@ -45,7 +45,7 @@ class CategoryRepository {
   /// Get all categories
   List<Category> getCategories() {
     try {
-      return store.box<Category>().getAll();
+      return _store.box<Category>().getAll();
     } catch (e) {
       print('Error fetching categories: $e');
       return [];
@@ -55,7 +55,7 @@ class CategoryRepository {
   /// Get a category by ID
   Category? getCategory(int id) {
     try {
-      return store.box<Category>().get(id);
+      return _store.box<Category>().get(id);
     } catch (e) {
       print('Error fetching category with ID $id: $e');
       return null;
@@ -65,7 +65,7 @@ class CategoryRepository {
   /// Add or update a category
   void addCategory(Category category) {
     try {
-      store.box<Category>().put(category);
+      _store.box<Category>().put(category);
     } catch (e) {
       print('Error adding/updating category: $e');
     }
@@ -74,7 +74,7 @@ class CategoryRepository {
   /// Delete a category by ID
   void deleteCategory(int id) {
     try {
-      store.box<Category>().remove(id);
+      _store.box<Category>().remove(id);
     } catch (e) {
       print('Error deleting category with ID $id: $e');
     }
@@ -83,7 +83,7 @@ class CategoryRepository {
   /// Delete all categories
   void deleteAllCategories() {
     try {
-      store.box<Category>().removeAll();
+      _store.box<Category>().removeAll();
     } catch (e) {
       print('Error deleting all categories: $e');
     }
@@ -92,7 +92,7 @@ class CategoryRepository {
   /// Add multiple categories
   void addCategories(List<Category> categories) {
     try {
-      store.box<Category>().putMany(categories);
+      _store.box<Category>().putMany(categories);
     } catch (e) {
       print('Error adding multiple categories: $e');
     }
@@ -102,7 +102,7 @@ class CategoryRepository {
   bool isTitleUnique(String title) {
     try {
       final query =
-          store.box<Category>().query(Category_.title.equals(title)).build();
+          _store.box<Category>().query(Category_.title.equals(title)).build();
       final isUnique = query.find().isEmpty;
       query.close();
       return isUnique;
@@ -115,8 +115,10 @@ class CategoryRepository {
   /// Fetch only enabled categories
   List<Category> getEnabledCategories() {
     try {
-      final query =
-          store.box<Category>().query(Category_.isEnabled.equals(true)).build();
+      final query = _store
+          .box<Category>()
+          .query(Category_.isEnabled.equals(true))
+          .build();
       final enabledCategories = query.find();
       query.close();
       return enabledCategories;
@@ -137,7 +139,7 @@ class CategoryRepository {
 
   /// Initialize default categories
   Future<void> _initializeDefaultCategories() async {
-    final categoryBox = store.box<Category>();
+    final categoryBox = _store.box<Category>();
 
     // Check if there are any existing categories
     if (categoryBox.isEmpty()) {
@@ -186,12 +188,22 @@ class CategoryRepository {
         ),
       ];
 
-      // Add default categories to the database
-      try {
-        categoryBox.putMany(defaultCategories);
-        print('Default categories added.');
-      } catch (e) {
-        print('Error adding default categories: $e');
+      // Add only missing categories
+      for (final defaultCategory in defaultCategories) {
+        final query = categoryBox
+            .query(Category_.title.equals(defaultCategory.title))
+            .build();
+        final exists = query.find().isNotEmpty;
+        query.close();
+
+        if (!exists) {
+          try {
+            categoryBox.put(defaultCategory);
+            print('Added default category: ${defaultCategory.title}');
+          } catch (e) {
+            print('Error adding default category ${defaultCategory.title}: $e');
+          }
+        }
       }
     }
   }
