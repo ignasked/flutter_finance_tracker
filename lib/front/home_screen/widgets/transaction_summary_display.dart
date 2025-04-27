@@ -13,7 +13,7 @@ class TransactionSummaryDisplay extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'Balance: \$${state.balance.toStringAsFixed(2)}',
+              'Balance: \$${state.txSummary.balance.toStringAsFixed(2)}',
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -24,12 +24,12 @@ class TransactionSummaryDisplay extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  '${state.totalIncome.toStringAsFixed(2)}\$',
+                  '${state.txSummary.totalIncome.toStringAsFixed(2)}\$',
                   style: const TextStyle(fontSize: 14, color: Colors.green),
                 ),
                 const SizedBox(width: 10),
                 Text(
-                  '${state.totalExpenses.toStringAsFixed(2)}\$',
+                  '${state.txSummary.totalExpenses.toStringAsFixed(2)}\$',
                   style: const TextStyle(fontSize: 14, color: Colors.red),
                 ),
               ],

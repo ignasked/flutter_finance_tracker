@@ -8,6 +8,7 @@ import 'package:money_owl/backend/repositories/account_repository.dart';
 import 'package:money_owl/backend/repositories/transaction_repository.dart';
 import 'package:money_owl/backend/repositories/transaction_utils.dart';
 import 'package:money_owl/front/home_screen/cubit/transaction_filters_state.dart';
+import 'package:money_owl/front/home_screen/cubit/transaction_summary_state.dart';
 import 'package:money_owl/front/transaction_form_screen/cubit/transaction_form_cubit.dart';
 
 part 'account_transaction_state.dart';
@@ -15,18 +16,15 @@ part 'account_transaction_state.dart';
 class AccountTransactionCubit extends Cubit<AccountTransactionState> {
   final TransactionRepository txRepo;
   final AccountRepository accRepo;
-
-  // Private field for all transactions
+  // Private field for tracking all transactions
   List<Transaction> _allTransactions = [];
 
   AccountTransactionCubit(this.txRepo, this.accRepo)
       : super(const AccountTransactionState(
           displayedTransactions: [],
-          filters: TransactionFiltersState(),
           allAccounts: [],
-          totalIncome: 0.0,
-          totalExpenses: 0.0,
-          balance: 0.0,
+          filters: TransactionFiltersState(),
+          txSummary: TransactionSummaryState(),
         )) {
     _loadAccounts();
     _loadAllTransactions();
@@ -87,10 +85,7 @@ class AccountTransactionCubit extends Cubit<AccountTransactionState> {
     _allTransactions.clear(); // Clear the local list
     txRepo.removeAll(); // Remove all from the repository
     emit(state.copyWith(
-        displayedTransactions: [],
-        totalIncome: 0.0,
-        totalExpenses: 0.0,
-        balance: 0.0));
+        displayedTransactions: [], txSummary: const TransactionSummaryState()));
   }
 
   // Receive result from transaction form screen and handle it
@@ -185,10 +180,11 @@ class AccountTransactionCubit extends Cubit<AccountTransactionState> {
     final balance = totalIncome - totalExpenses;
 
     emit(state.copyWith(
+        txSummary: state.txSummary.copyWith(
       totalIncome: totalIncome,
       totalExpenses: totalExpenses,
       balance: balance,
-    ));
+    )));
   }
 
   void changeSelectedAccount(Account? account) {

@@ -4,18 +4,13 @@ class AccountTransactionState extends Equatable {
   final List<Transaction> displayedTransactions; // Filtered transactions
   final List<Account> allAccounts;
   final TransactionFiltersState filters; // Filters applied to transactions
-
-  final double totalIncome;
-  final double totalExpenses;
-  final double balance;
+  final TransactionSummaryState txSummary; // Summary of transactions
 
   const AccountTransactionState({
     this.displayedTransactions = const [],
     this.allAccounts = const [],
-    this.totalIncome = 0.0,
-    this.totalExpenses = 0.0,
-    this.balance = 0.0,
     this.filters = const TransactionFiltersState(),
+    this.txSummary = const TransactionSummaryState(),
   });
 
   /// Creates a copy of this state with the specified properties updated.
@@ -26,18 +21,14 @@ class AccountTransactionState extends Equatable {
     List<Transaction>? displayedTransactions,
     List<Account>? allAccounts,
     final TransactionFiltersState? filters, // Grouped filters
-    double? totalIncome,
-    double? totalExpenses,
-    double? balance,
+    final TransactionSummaryState? txSummary,
   }) {
     return AccountTransactionState(
       displayedTransactions:
           displayedTransactions ?? this.displayedTransactions,
       allAccounts: allAccounts ?? this.allAccounts,
       filters: filters ?? this.filters,
-      totalIncome: totalIncome ?? this.totalIncome,
-      totalExpenses: totalExpenses ?? this.totalExpenses,
-      balance: balance ?? this.balance,
+      txSummary: txSummary ?? this.txSummary,
     );
   }
 
@@ -46,8 +37,6 @@ class AccountTransactionState extends Equatable {
         displayedTransactions,
         allAccounts,
         filters,
-        totalIncome,
-        totalExpenses,
-        balance,
+        txSummary,
       ];
 }

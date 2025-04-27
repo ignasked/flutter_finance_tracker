@@ -33,7 +33,7 @@ class SummaryBarWidget extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Text(
-                    '\$${state.balance.toStringAsFixed(2)}',
+                    '\$${state.txSummary.balance.toStringAsFixed(2)}',
                     style: const TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
@@ -45,7 +45,7 @@ class SummaryBarWidget extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        '\$${state.totalIncome.toStringAsFixed(2)}',
+                        '\$${state.txSummary.totalIncome.toStringAsFixed(2)}',
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
@@ -54,7 +54,7 @@ class SummaryBarWidget extends StatelessWidget {
                       ),
                       const SizedBox(width: 16),
                       Text(
-                        '\$${state.totalExpenses.toStringAsFixed(2)}',
+                        '\$${state.txSummary.totalExpenses.toStringAsFixed(2)}',
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
