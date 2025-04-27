@@ -4,9 +4,7 @@ import 'package:money_owl/front/home_screen/cubit/account_transaction_cubit.dart
 import 'package:money_owl/front/home_screen/widgets/transaction_filter_widget.dart';
 
 class SummaryBarWidget extends StatelessWidget {
-  const SummaryBarWidget({
-    Key? key,
-  }) : super(key: key);
+  const SummaryBarWidget({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {

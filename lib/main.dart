@@ -6,7 +6,6 @@ import 'package:money_owl/backend/repositories/transaction_repository.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:money_owl/front/home_screen/cubit/account_transaction_cubit.dart';
 import 'package:money_owl/front/home_screen/widgets/navbar.dart';
-import 'front/home_screen/cubit/transaction_summary_cubit.dart';
 import 'front/home_screen/cubit/date_cubit.dart';
 
 /// Repository providers
@@ -49,9 +48,6 @@ class MyApp extends StatelessWidget {
             create: (context) => AccountTransactionCubit(
                 context.read<TransactionRepository>(),
                 context.read<AccountRepository>()),
-          ),
-          BlocProvider<TransactionSummaryCubit>(
-            create: (context) => TransactionSummaryCubit(),
           ),
           BlocProvider<DateCubit>(
             create: (context) => DateCubit(),

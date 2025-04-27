@@ -21,7 +21,6 @@ class AccountTransactionCubit extends Cubit<AccountTransactionState> {
 
   AccountTransactionCubit(this.txRepo, this.accRepo)
       : super(const AccountTransactionState(
-          //selectedAccount: null, // Default to "All Accounts"
           displayedTransactions: [],
           filters: TransactionFiltersState(),
           allAccounts: [],
