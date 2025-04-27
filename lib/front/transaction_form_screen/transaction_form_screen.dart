@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:formz/formz.dart';
-import 'package:money_owl/backend/models/category.dart';
 import 'package:money_owl/backend/models/transaction.dart';
-import 'package:money_owl/backend/repositories/category_repository.dart';
 import 'package:money_owl/front/transaction_form_screen/cubit/transaction_form_cubit.dart';
 import 'package:intl/intl.dart';
-import 'package:money_owl/utils/enums.dart';
+import 'package:money_owl/front/transaction_form_screen/widgets/account_dropdown.dart';
+import 'package:money_owl/front/transaction_form_screen/widgets/category_dropdown.dart';
 
 class TransactionFromScreen extends StatelessWidget {
   final Transaction? transaction; // Nullable for adding vs editing
@@ -87,60 +86,12 @@ class _TransactionForm extends StatelessWidget {
                   ),
                   const SizedBox(height: 20),
 
+                  // Account Dropdown
+                  const AccountDropdown(),
+                  const SizedBox(height: 20),
+
                   // Category Dropdown
-                  FutureBuilder<List<Category>>(
-                    future: Future.value(context
-                        .read<CategoryRepository>()
-                        .getEnabledCategories()),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const CircularProgressIndicator();
-                      }
-
-                      if (snapshot.hasError) {
-                        return const Text('Error loading categories');
-                      }
-
-                      final categories = snapshot.data ?? [];
-
-                      return DropdownButtonFormField<Category>(
-                        value: state.category,
-                        items: categories.map((category) {
-                          return DropdownMenuItem(
-                            value: category,
-                            child: Row(
-                              children: [
-                                Icon(category.icon, color: category.color),
-                                const SizedBox(width: 8),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(category.title), // Category title
-                                    Text(
-                                      category.type == TransactionType.income
-                                          ? 'Income'
-                                          : 'Expense', // Transaction type
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: (value) => context
-                            .read<TransactionFormCubit>()
-                            .categoryChanged(value!),
-                        decoration: const InputDecoration(
-                          labelText: 'Category',
-                          border: OutlineInputBorder(),
-                        ),
-                      );
-                    },
-                  ),
+                  const CategoryDropdown(),
                   const SizedBox(height: 20),
 
                   // Date Picker

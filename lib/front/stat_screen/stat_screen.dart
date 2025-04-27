@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:money_owl/front/home_screen/widgets/transaction_summary.dart';
-import 'package:money_owl/front/home_screen/widgets/transaction_filter.dart'
-    as filter;
+import 'package:money_owl/front/home_screen/widgets/summary_bar_widget.dart';
+import 'package:money_owl/front/home_screen/widgets/date_bar_widget.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
-import 'package:money_owl/front/home_screen/cubit/transaction_cubit.dart';
 import 'package:intl/intl.dart';
+import 'package:money_owl/front/home_screen/cubit/account_transaction_cubit.dart';
 import 'cubit/chart_cubit.dart';
 import 'cubit/chart_state.dart';
 
@@ -20,40 +19,46 @@ class StatScreen extends StatelessWidget {
         body: SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(20.0),
-            child: BlocBuilder<TransactionCubit, TransactionState>(
-              builder: (context, transactionState) {
-                if (transactionState.transactions.isEmpty) {
-                  return const Center(child: Text('No transactions available'));
+            child:
+                BlocBuilder<AccountTransactionCubit, AccountTransactionState>(
+              builder: (context, accountTransactionState) {
+                final selectedAccount = accountTransactionState.selectedAccount;
+                final transactions =
+                    accountTransactionState.displayedTransactions;
+
+                if (transactions.isEmpty) {
+                  return const Center(
+                    child: Text('No transactions available.'),
+                  );
                 }
 
                 // Update chart data when transactions change
-                context
-                    .read<ChartCubit>()
-                    .calculateChartData(transactionState.transactions);
+                context.read<ChartCubit>().calculateChartData(transactions);
 
                 return BlocBuilder<ChartCubit, ChartState>(
                   builder: (context, chartState) {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          flex: 1,
-                          child: TransactionSummary(
-                            onCalendarPressed: () =>
-                                filter.TransactionFilter.showDateFilter(
-                                    context),
-                            onFilterPressed: () =>
-                                filter.TransactionFilter.showFilterOptions(
-                                    context),
-                          ),
-                        ),
+                        // Transaction Summary
+                        SummaryBarWidget(
+                            // onFilterPressed: () => _showFilterOptions(context),
+                            // onChangeAccountPressed: () =>
+                            //     _showAccountSelectionDialog(context),
+                            ),
+                        const SizedBox(height: 16),
+
+                        // Date Selector
+                        DateBarWidget(),
                         const SizedBox(height: 20),
+
+                        // Charts Section
                         Expanded(
-                          flex: 6,
                           child: SingleChildScrollView(
                             child: Column(
                               children: [
                                 const SizedBox(height: 20),
+                                // Pie Chart
                                 SizedBox(
                                   height:
                                       MediaQuery.of(context).size.height * 0.4,
@@ -80,6 +85,8 @@ class StatScreen extends StatelessWidget {
                                   ),
                                 ),
                                 const SizedBox(height: 20),
+
+                                // Line Chart
                                 SizedBox(
                                   height:
                                       MediaQuery.of(context).size.height * 0.4,
@@ -130,5 +137,9 @@ class StatScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  void _showFilterOptions(BuildContext context) {
+    // Show filter options logic
   }
 }

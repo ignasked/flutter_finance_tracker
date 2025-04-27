@@ -7,7 +7,7 @@ import 'package:money_owl/backend/repositories/category_repository.dart';
 import 'package:money_owl/backend/services/mistral_service.dart';
 import 'package:money_owl/backend/services/file_picker_service.dart';
 import 'package:money_owl/front/bulk_add_transactions_screen.dart';
-import 'package:money_owl/front/home_screen/cubit/transaction_cubit.dart';
+import 'package:money_owl/front/home_screen/cubit/account_transaction_cubit.dart';
 import 'package:money_owl/utils/receipt_format.dart';
 
 class ReceiptAnalyzerWidget extends StatefulWidget {
@@ -64,8 +64,8 @@ class _ReceiptAnalyzerWidgetState extends State<ReceiptAnalyzerWidget> {
 
       if (newTransactions != null) {
         print('New transactions: $newTransactions');
-        final transactionCubit = context.read<TransactionCubit>();
-        transactionCubit.addTransactions(newTransactions);
+        final txCubit = context.read<AccountTransactionCubit>();
+        txCubit.addTransactions(newTransactions);
       }
     } catch (e) {
       if (!mounted) return; // Check if the widget is still mounted
@@ -192,8 +192,8 @@ class _ReceiptAnalyzerWidgetState extends State<ReceiptAnalyzerWidget> {
 
       if (newTransactions != null) {
         print('New transactions: $newTransactions');
-        final transactionCubit = context.read<TransactionCubit>();
-        transactionCubit.addTransactions(newTransactions);
+        final txCubit = context.read<AccountTransactionCubit>();
+        txCubit.addTransactions(newTransactions);
       }
     } catch (e) {
       if (!mounted) return; // Check if the widget is still mounted

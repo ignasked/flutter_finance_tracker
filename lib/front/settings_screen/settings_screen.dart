@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:money_owl/front/home_screen/cubit/transaction_cubit.dart';
+import 'package:money_owl/front/home_screen/cubit/account_transaction_cubit.dart';
 import 'package:money_owl/front/settings_screen/cubit/csv_cubit.dart';
 import 'package:money_owl/front/settings_screen/widgets/receipt_analyzer_widget.dart';
 import 'package:money_owl/front/settings_screen/category_management_screen.dart';
@@ -75,8 +75,10 @@ class SettingsScreen extends StatelessWidget {
           onPressed: state.isLoading
               ? null
               : () {
-                  final transactions =
-                      context.read<TransactionCubit>().state.transactions;
+                  final transactions = context
+                      .read<AccountTransactionCubit>()
+                      .state
+                      .displayedTransactions;
                   context.read<CsvCubit>().exportTransactions(transactions);
                 },
           child: state.isLoading
@@ -112,10 +114,10 @@ class SettingsScreen extends StatelessWidget {
   }
 
   Future<void> _handleImport(BuildContext context) async {
-    final transactionCubit = context.read<TransactionCubit>();
+    final txCubit = context.read<AccountTransactionCubit>();
     final csvCubit = context.read<CsvCubit>();
 
-    final existingTransactions = transactionCubit.state.transactions;
+    final existingTransactions = txCubit.state.displayedTransactions;
     final newTransactions =
         await csvCubit.importTransactions(existingTransactions, false);
 
@@ -124,12 +126,12 @@ class SettingsScreen extends StatelessWidget {
     if (newTransactions == null && csvCubit.state.duplicates.isNotEmpty) {
       await _showDuplicatesDialog(context);
     } else if (newTransactions != null) {
-      transactionCubit.addTransactions(newTransactions);
+      txCubit.addTransactions(newTransactions);
     }
   }
 
   Future<void> _showDuplicatesDialog(BuildContext context) async {
-    final transactionCubit = context.read<TransactionCubit>();
+    final txCubit = context.read<AccountTransactionCubit>();
     final csvCubit = context.read<CsvCubit>();
     final duplicatesCount = csvCubit.state.duplicates.length;
 
@@ -161,32 +163,32 @@ class SettingsScreen extends StatelessWidget {
     if (result == 'all') {
       // Import all transactions including duplicates
       final transactions = await csvCubit.importTransactions(
-          transactionCubit.state.transactions, true);
+          txCubit.state.displayedTransactions, true);
 
       if (!context.mounted) return;
 
       if (transactions != null) {
-        transactionCubit.addTransactions(transactions);
+        txCubit.addTransactions(transactions);
       }
     } else if (result == 'non-duplicates') {
       final allImportedTransactions = await csvCubit.importTransactions(
-          transactionCubit.state.transactions, true);
+          txCubit.state.displayedTransactions, true);
 
       if (!context.mounted) return;
 
       if (allImportedTransactions != null) {
         // Filter out duplicates using the existing state
         final nonDuplicates = allImportedTransactions
-            .where((tx) => !transactionCubit.state.transactions.contains(tx))
+            .where((tx) => !txCubit.state.displayedTransactions.contains(tx))
             .toList();
 
-        transactionCubit.addTransactions(nonDuplicates);
+        txCubit.addTransactions(nonDuplicates);
       }
     }
   }
 
   Future<void> _showDeleteConfirmation(BuildContext context) async {
-    final transactionCubit = context.read<TransactionCubit>();
+    final txCubit = context.read<AccountTransactionCubit>();
 
     final confirm = await showDialog<bool>(
       context: context,
@@ -210,7 +212,7 @@ class SettingsScreen extends StatelessWidget {
     if (!context.mounted) return;
 
     if (confirm == true) {
-      transactionCubit.deleteAllTransactions();
+      txCubit.deleteAllTransactions();
     }
   }
 }

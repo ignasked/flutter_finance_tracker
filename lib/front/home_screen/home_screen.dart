@@ -1,45 +1,42 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
+import 'package:money_owl/backend/models/account.dart';
 import 'package:money_owl/backend/models/transaction_result.dart';
-
-import 'package:money_owl/front/home_screen/cubit/transaction_cubit.dart';
+import 'package:money_owl/backend/repositories/account_repository.dart';
+import 'package:money_owl/front/home_screen/cubit/account_transaction_cubit.dart';
+import 'package:money_owl/front/home_screen/widgets/date_bar_widget.dart';
 import 'package:money_owl/front/transaction_form_screen/transaction_form_screen.dart';
-
 import 'package:money_owl/front/home_screen/widgets/transaction_list.dart';
-import 'package:money_owl/front/home_screen/widgets/transaction_summary.dart';
-import 'package:money_owl/front/home_screen/widgets/transaction_filter.dart';
+import 'package:money_owl/front/home_screen/widgets/summary_bar_widget.dart';
+import 'package:money_owl/front/home_screen/widgets/transaction_filter_widget.dart';
 import 'package:money_owl/front/settings_screen/widgets/receipt_analyzer_widget.dart';
 
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    bool isReceiptAnalyzerOpen =
-        false; // Move this variable outside the StatefulBuilder
-
     return Scaffold(
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(20.0),
-          child: BlocBuilder<TransactionCubit, TransactionState>(
+          child: BlocBuilder<AccountTransactionCubit, AccountTransactionState>(
             builder: (context, state) {
-              if (state.transactions.isEmpty) {
-                return Column(
+              if (state.displayedTransactions.isEmpty) {
+                return const Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Transaction Summary
+                    SummaryBarWidget(),
+                    SizedBox(height: 2),
+
+                    // Date Selector
+                    DateBarWidget(),
+                    SizedBox(height: 20),
+
+                    // No Transactions Message
                     Expanded(
-                      flex: 1,
-                      child: TransactionSummary(
-                        onCalendarPressed: () =>
-                            TransactionFilter.showDateFilter(context),
-                        onFilterPressed: () =>
-                            TransactionFilter.showFilterOptions(context),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    const Expanded(
-                      flex: 6,
                       child: Center(child: Text('No transactions.')),
                     ),
                   ],
@@ -48,19 +45,18 @@ class HomeScreen extends StatelessWidget {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    flex: 1,
-                    child: TransactionSummary(
-                      onCalendarPressed: () =>
-                          TransactionFilter.showDateFilter(context),
-                      onFilterPressed: () =>
-                          TransactionFilter.showFilterOptions(context),
-                    ),
-                  ),
+                  // Transaction Summary
+                  const SummaryBarWidget(),
+                  const SizedBox(height: 16),
+
+                  // Date Selector
+                  const DateBarWidget(),
                   const SizedBox(height: 20),
+
+                  // Transaction List
                   Expanded(
-                    flex: 6,
-                    child: TransactionList(transactions: state.transactions),
+                    child: TransactionList(
+                        transactions: state.displayedTransactions),
                   ),
                 ],
               );
@@ -70,102 +66,74 @@ class HomeScreen extends StatelessWidget {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          showModalBottomSheet(
-            context: context,
-            isScrollControlled: true, // Allows the bottom sheet to expand fully
-            shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-            ),
-            builder: (context) {
-              return StatefulBuilder(
-                builder: (BuildContext context, StateSetter setState) {
-                  return Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 300),
-                      child: isReceiptAnalyzerOpen
-                          ? Column(
-                              key: const ValueKey('ReceiptAnalyzer'),
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Row(
-                                  children: [
-                                    IconButton(
-                                      icon: const Icon(Icons.arrow_back),
-                                      onPressed: () {
-                                        setState(() {
-                                          isReceiptAnalyzerOpen = false;
-                                        });
-                                      },
-                                    ),
-                                    const Text(
-                                      'Read Receipt',
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 16),
-                                const ReceiptAnalyzerWidget(),
-                              ],
-                            )
-                          : Column(
-                              key: const ValueKey('MainOptions'),
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                ListTile(
-                                  leading: const Icon(Icons.add),
-                                  title: const Text('Add Transaction'),
-                                  onTap: () async {
-                                    final transactionCubit =
-                                        context.read<TransactionCubit>();
-
-                                    final TransactionResult?
-                                        transactionFormResult =
-                                        await Navigator.push<TransactionResult>(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) =>
-                                            const TransactionFromScreen(),
-                                      ),
-                                    );
-                                    print(
-                                        'Transaction Form Result: $transactionFormResult');
-
-                                    if (!context.mounted) return;
-
-                                    if (transactionFormResult != null) {
-                                      transactionCubit
-                                          .handleTransactionFormResult(
-                                              transactionFormResult);
-                                    }
-
-                                    Navigator.pop(
-                                        context); // Close the bottom sheet
-                                  },
-                                ),
-                                ListTile(
-                                  leading: const Icon(Icons.receipt),
-                                  title: const Text('Read Receipt'),
-                                  onTap: () {
-                                    setState(() {
-                                      isReceiptAnalyzerOpen = true;
-                                    });
-                                  },
-                                ),
-                              ],
-                            ),
-                    ),
-                  );
-                },
-              );
-            },
-          );
+          _showBottomSheet(context);
         },
         child: const Icon(Icons.add),
       ),
+    );
+  }
+
+  /// Show the bottom sheet for adding transactions or scanning receipts
+  void _showBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.add),
+                title: const Text('Add Transaction'),
+                onTap: () async {
+                  final accountTransactionCubit =
+                      context.read<AccountTransactionCubit>();
+
+                  final TransactionResult? transactionFormResult =
+                      await Navigator.push<TransactionResult>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const TransactionFromScreen(),
+                    ),
+                  );
+
+                  if (!context.mounted) return;
+
+                  if (transactionFormResult != null) {
+                    accountTransactionCubit
+                        .addTransaction(transactionFormResult.transaction);
+                  }
+
+                  Navigator.pop(context);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.receipt),
+                title: const Text('Read Receipt'),
+                onTap: () {
+                  Navigator.pop(context);
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    shape: const RoundedRectangleBorder(
+                      borderRadius:
+                          BorderRadius.vertical(top: Radius.circular(20)),
+                    ),
+                    builder: (context) {
+                      return const ReceiptAnalyzerWidget();
+                    },
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

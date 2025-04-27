@@ -4,11 +4,10 @@ import 'package:money_owl/backend/repositories/base_repository.dart';
 import 'package:money_owl/backend/repositories/category_repository.dart';
 import 'package:money_owl/backend/repositories/transaction_repository.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-
+import 'package:money_owl/front/home_screen/cubit/account_transaction_cubit.dart';
 import 'package:money_owl/front/home_screen/widgets/navbar.dart';
-import 'package:money_owl/front/home_screen/cubit/transaction_cubit.dart';
-
 import 'front/home_screen/cubit/transaction_summary_cubit.dart';
+import 'front/home_screen/cubit/date_cubit.dart';
 
 /// Repository providers
 late TransactionRepository transactionRepository;
@@ -46,15 +45,21 @@ class MyApp extends StatelessWidget {
       ],
       child: MultiBlocProvider(
         providers: [
-          BlocProvider<TransactionCubit>(
-            create: (context) => TransactionCubit(transactionRepository),
+          BlocProvider<AccountTransactionCubit>(
+            create: (context) => AccountTransactionCubit(
+                context.read<TransactionRepository>(),
+                context.read<AccountRepository>()),
           ),
           BlocProvider<TransactionSummaryCubit>(
             create: (context) => TransactionSummaryCubit(),
           ),
+          BlocProvider<DateCubit>(
+            create: (context) => DateCubit(),
+          ),
         ],
         child: MaterialApp(
-          title: 'Finance tracker',
+          title: 'Money Owl',
+          themeMode: ThemeMode.system,
           theme: ThemeData(
             colorScheme: ColorScheme.fromSeed(seedColor: Colors.amber),
             useMaterial3: true,

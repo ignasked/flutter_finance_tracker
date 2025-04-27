@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:money_owl/backend/models/category.dart';
 import 'package:money_owl/backend/repositories/category_repository.dart';
-import 'package:money_owl/front/home_screen/cubit/transaction_cubit.dart';
+import 'package:money_owl/front/home_screen/cubit/account_transaction_cubit.dart';
 
 class TransactionFilter {
   static void showFilterOptions(BuildContext context) {
@@ -16,28 +16,47 @@ class TransactionFilter {
     );
   }
 
-  static Future<void> showDateFilter(BuildContext context) async {
-    final transactionCubit = context.read<TransactionCubit>();
+  // static void showAccountFilter(BuildContext context) {
+  //   // TODO: Implement account filter dialog
+  //   showDialog(
+  //     context: context,
+  //     builder: (BuildContext context) {
+  //       return AlertDialog(
+  //         title: const Text('Select Account'),
+  //         content: const Text('Account selection dialog to be implemented'),
+  //         actions: [
+  //           TextButton(
+  //             onPressed: () => Navigator.pop(context),
+  //             child: const Text('Close'),
+  //           ),
+  //         ],
+  //       );
+  //     },
+  //   );
+  // }
 
-    final DateTimeRange? selectedRange = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2101),
-      initialDateRange: DateTimeRange(
-        start: DateTime.now().subtract(const Duration(days: 7)),
-        end: DateTime.now(),
-      ),
-    );
+  // static Future<void> showDateFilter(BuildContext context) async {
+  //   final transactionCubit = context.read<AccountTransactionCubit>();
 
-    if (!context.mounted) return;
+  //   final DateTimeRange? selectedRange = await showDateRangePicker(
+  //     context: context,
+  //     firstDate: DateTime(2000),
+  //     lastDate: DateTime(2101),
+  //     initialDateRange: DateTimeRange(
+  //       start: DateTime.now().subtract(const Duration(days: 7)),
+  //       end: DateTime.now(),
+  //     ),
+  //   );
 
-    if (selectedRange != null) {
-      transactionCubit.filterTransactions(
-        startDate: selectedRange.start,
-        endDate: selectedRange.end,
-      );
-    }
-  }
+  //   if (!context.mounted) return;
+
+  //   if (selectedRange != null) {
+  //     transactionCubit.filterTransactions(
+  //       startDate: selectedRange.start,
+  //       endDate: selectedRange.end,
+  //     );
+  //   }
+  // }
 }
 
 class TransactionFilterSheet extends StatefulWidget {
@@ -130,8 +149,8 @@ class _TransactionFilterSheetState extends State<TransactionFilterSheet> {
   }
 
   void _applyFilters(BuildContext context) {
-    final cubit = context.read<TransactionCubit>();
-    cubit.loadTransactions();
+    final cubit = context.read<AccountTransactionCubit>();
+    cubit.displayTransactionsForSelectedAccount();
 
     if (selectedCategories.isNotEmpty) {
       // Pass category IDs to the filter

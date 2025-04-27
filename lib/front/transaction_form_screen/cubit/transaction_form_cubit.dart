@@ -1,6 +1,7 @@
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:formz/formz.dart';
+import 'package:money_owl/backend/models/account.dart';
 import 'package:money_owl/backend/models/category.dart';
 import 'package:money_owl/backend/models/transaction_result.dart';
 
@@ -13,7 +14,8 @@ enum ActionType { addNew, edit, delete }
 class TransactionFormState extends Equatable {
   final TitleInput title;
   final MoneyInput amount;
-  final Category? category; // Updated to use Category object
+  final Category? category; // Selected category
+  final Account? account; // Selected account
   final DateTime date;
   final int id;
 
@@ -35,6 +37,7 @@ class TransactionFormState extends Equatable {
     this.title = const TitleInput.pure(),
     this.amount = const MoneyInput.pure(),
     this.category,
+    this.account, // Initialize account
     this.status = FormzSubmissionStatus.initial,
     this.isValid = false,
     DateTime? date,
@@ -54,6 +57,7 @@ class TransactionFormState extends Equatable {
   })  : title = TitleInput.dirty(transaction.title),
         amount = MoneyInput.dirty(transaction.amount.toString()),
         category = transaction.category.target, // Use the target Category
+        account = transaction.account.target, // Use the target Account
         status = FormzSubmissionStatus.initial,
         isValid = true,
         actionType = ActionType.edit,
@@ -65,6 +69,7 @@ class TransactionFormState extends Equatable {
     MoneyInput? amount,
     String? transactionType,
     Category? category,
+    Account? account, // Add account to copyWith
     DateTime? date,
     FormzSubmissionStatus? status,
     bool? isValid,
@@ -78,6 +83,7 @@ class TransactionFormState extends Equatable {
       title: title ?? this.title,
       amount: amount ?? this.amount,
       category: category ?? this.category,
+      account: account ?? this.account, // Copy account
       date: date ?? this.date,
       status: status ?? this.status,
       isValid: isValid ?? this.isValid,
@@ -94,6 +100,7 @@ class TransactionFormState extends Equatable {
         title,
         amount,
         category,
+        account, // Include account in props
         date,
         status,
         isValid,
@@ -146,6 +153,11 @@ class TransactionFormCubit extends Cubit<TransactionFormState> {
     emit(state.copyWith(date: date));
   }
 
+  void accountChanged(Account value) {
+    final account = value;
+    emit(state.copyWith(account: account));
+  }
+
   // Pressed submit button (adding new or editing existing transaction)
   void submitForm() {
     if (!state.isValid) {
@@ -161,6 +173,7 @@ class TransactionFormCubit extends Cubit<TransactionFormState> {
         title: state.title.value,
         amount: double.parse(state.amount.value),
         category: state.category, // Use the selected Category
+        account: state.account, // Use the selected Account
         date: state.date,
       );
 
@@ -186,6 +199,7 @@ class TransactionFormCubit extends Cubit<TransactionFormState> {
         title: state.title.value,
         amount: double.parse(state.amount.value),
         category: state.category, // Use the selected Category
+        account: state.account, // Use the selected Account
         date: DateTime.now(),
       );
 
