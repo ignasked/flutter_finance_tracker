@@ -2,10 +2,8 @@ part of 'account_transaction_cubit.dart';
 
 class AccountTransactionState extends Equatable {
   final List<Transaction> displayedTransactions; // Filtered transactions
-  final Account? selectedAccount;
-  final List<Category> selectedCategories;
-
   final List<Account> allAccounts;
+  final TransactionFiltersState filters; // Filters applied to transactions
 
   final double totalIncome;
   final double totalExpenses;
@@ -14,11 +12,10 @@ class AccountTransactionState extends Equatable {
   const AccountTransactionState({
     this.displayedTransactions = const [],
     this.allAccounts = const [],
-    this.selectedCategories = const [],
-    this.selectedAccount,
     this.totalIncome = 0.0,
     this.totalExpenses = 0.0,
     this.balance = 0.0,
+    this.filters = const TransactionFiltersState(),
   });
 
   /// Creates a copy of this state with the specified properties updated.
@@ -28,9 +25,7 @@ class AccountTransactionState extends Equatable {
   AccountTransactionState copyWith({
     List<Transaction>? displayedTransactions,
     List<Account>? allAccounts,
-    List<Category>? selectedCategories,
-    Account? selectedAccount,
-    bool resetSelectedAccount = false, // Reset selected account to null
+    final TransactionFiltersState? filters, // Grouped filters
     double? totalIncome,
     double? totalExpenses,
     double? balance,
@@ -39,9 +34,7 @@ class AccountTransactionState extends Equatable {
       displayedTransactions:
           displayedTransactions ?? this.displayedTransactions,
       allAccounts: allAccounts ?? this.allAccounts,
-      selectedAccount:
-          resetSelectedAccount ? null : selectedAccount ?? this.selectedAccount,
-      selectedCategories: selectedCategories ?? this.selectedCategories,
+      filters: filters ?? this.filters,
       totalIncome: totalIncome ?? this.totalIncome,
       totalExpenses: totalExpenses ?? this.totalExpenses,
       balance: balance ?? this.balance,
@@ -52,8 +45,7 @@ class AccountTransactionState extends Equatable {
   List<Object?> get props => [
         displayedTransactions,
         allAccounts,
-        selectedAccount,
-        selectedCategories,
+        filters,
         totalIncome,
         totalExpenses,
         balance,

@@ -1,3 +1,4 @@
+import 'package:money_owl/backend/models/account.dart';
 import 'package:money_owl/backend/models/transaction.dart';
 
 double calculateBalance(List<Transaction> transactions) {
@@ -53,6 +54,23 @@ class TypeFilterDecorator extends TransactionFilter {
   List<Transaction> filter(List<Transaction> transactions) {
     final filtered = transactions
         .where((transaction) => transaction.isIncome == isIncome)
+        .toList();
+    return super.filter(filtered);
+  }
+}
+
+class AccountFilterDecorator extends TransactionFilter {
+  final Account account;
+
+  AccountFilterDecorator({
+    required this.account,
+    TransactionFilter? nextFilter,
+  }) : super(nextFilter: nextFilter);
+
+  @override
+  List<Transaction> filter(List<Transaction> transactions) {
+    final filtered = transactions
+        .where((transaction) => transaction.account.targetId == account.id)
         .toList();
     return super.filter(filtered);
   }

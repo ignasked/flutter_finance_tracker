@@ -22,7 +22,8 @@ class StatScreen extends StatelessWidget {
             child:
                 BlocBuilder<AccountTransactionCubit, AccountTransactionState>(
               builder: (context, accountTransactionState) {
-                final selectedAccount = accountTransactionState.selectedAccount;
+                final selectedAccount =
+                    accountTransactionState.filters.selectedAccount;
                 final transactions =
                     accountTransactionState.displayedTransactions;
 

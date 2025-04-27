@@ -12,7 +12,7 @@ class SummaryBarWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<AccountTransactionCubit, AccountTransactionState>(
       builder: (context, state) {
-        final selectedAccount = state.selectedAccount;
+        final selectedAccount = state.filters.selectedAccount;
 
         return Container(
           padding: const EdgeInsets.all(14.0),
@@ -133,7 +133,7 @@ class SummaryBarWidget extends StatelessWidget {
                     leading: const Icon(Icons.all_inclusive),
                     title: const Text('All Accounts'),
                     onTap: () {
-                      accountTransactionCubit.updateSelectedAccount(null);
+                      accountTransactionCubit.changeSelectedAccount(null);
                       Navigator.pop(context); // Close the dialog
                     },
                   );
@@ -148,7 +148,7 @@ class SummaryBarWidget extends StatelessWidget {
                   ),
                   title: Text(account.name),
                   onTap: () {
-                    accountTransactionCubit.updateSelectedAccount(account);
+                    accountTransactionCubit.changeSelectedAccount(account);
                     Navigator.pop(context); // Close the dialog
                   },
                 );

@@ -7,6 +7,7 @@ import 'package:money_owl/backend/models/transaction_result.dart';
 import 'package:money_owl/backend/repositories/account_repository.dart';
 import 'package:money_owl/backend/repositories/transaction_repository.dart';
 import 'package:money_owl/backend/repositories/transaction_utils.dart';
+import 'package:money_owl/front/home_screen/cubit/transaction_filters_state.dart';
 import 'package:money_owl/front/transaction_form_screen/cubit/transaction_form_cubit.dart';
 
 part 'account_transaction_state.dart';
@@ -20,7 +21,7 @@ class AccountTransactionCubit extends Cubit<AccountTransactionState> {
 
   AccountTransactionCubit(this.txRepo, this.accRepo)
       : super(const AccountTransactionState(
-          selectedAccount: null, // Default to "All Accounts"
+          //selectedAccount: null, // Default to "All Accounts"
           displayedTransactions: [],
           allAccounts: [],
           totalIncome: 0.0,
@@ -56,34 +57,34 @@ class AccountTransactionCubit extends Cubit<AccountTransactionState> {
   }
 
   /// Load transactions for a specific account
-  void _displayTransactionsForAccount(Account account) {
-    final transactions = _allTransactions
-        .where((transaction) => transaction.account.targetId == account.id)
-        .toList();
+  // void _displayTransactionsForAccount(Account account) {
+  //   // final transactions = _allTransactions
+  //   //     .where((transaction) => transaction.account.targetId == account.id)
+  //   //     .toList();
 
-    emit(state.copyWith(displayedTransactions: transactions));
-    _calculateSummary(transactions);
-  }
+  //   emit(state.copyWith(displayedTransactions: transactions));
+  //   _calculateSummary(transactions);
+  // }
 
   /// Display transactions for the selected account or all accounts if none is selected
   void displayTransactionsForSelectedAccount() {
-    if (state.selectedAccount == null) {
+    if (state.filters.selectedAccount == null) {
       _displayTransactionsForAllAccounts(); // Load all accounts
     } else {
-      _displayTransactionsForAccount(
-          state.selectedAccount!); // Load specific account
+      changeSelectedAccount(
+          state.filters.selectedAccount!); // Load specific account
     }
   }
 
   /// Update the selected account
-  void updateSelectedAccount(Account? account) {
-    if (account == null) {
-      emit(state.copyWith(resetSelectedAccount: true));
-    } else {
-      emit(state.copyWith(selectedAccount: account));
-    }
-    displayTransactionsForSelectedAccount();
-  }
+  // void updateSelectedAccount(Account? account) {
+  //   if (account == null) {
+  //     emit(state.copyWith(resetSelectedAccount: true));
+  //   } else {
+  //     emit(state.copyWith(selectedAccount: account));
+  //   }
+  //   displayTransactionsForSelectedAccount();
+  // }
 
   /// Add a new transaction
   void addTransaction(Transaction transaction) {
@@ -153,15 +154,15 @@ class AccountTransactionCubit extends Cubit<AccountTransactionState> {
         balance: 0.0));
   }
 
-  /// Update selected categories
-  void updateSelectedCategories(List<Category> categories) {
-    emit(state.copyWith(selectedCategories: categories));
-  }
+  // /// Update selected categories
+  // void updateSelectedCategories(List<Category> categories) {
+  //   emit(state.copyWith(selectedCategories: categories));
+  // }
 
-  /// Reset selected categories
-  void resetSelectedCategories() {
-    emit(state.copyWith(selectedCategories: []));
-  }
+  // /// Reset selected categories
+  // void resetSelectedCategories() {
+  //   emit(state.copyWith(selectedCategories: []));
+  // }
 
   // Receive result from transaction form screen and handle it
   void handleTransactionFormResult(TransactionResult transactionFormResult) {
@@ -186,8 +187,16 @@ class AccountTransactionCubit extends Cubit<AccountTransactionState> {
     DateTime? endDate,
     double? minAmount,
     List<int>? categoryIds,
+    Account? account,
   }) {
     TransactionFilter filter = BaseTransactionFilter();
+
+    if (account != null) {
+      filter = AccountFilterDecorator(
+        account: account,
+        nextFilter: filter,
+      );
+    }
 
     if (startDate != null && endDate != null) {
       filter = DateFilterDecorator(
@@ -218,7 +227,7 @@ class AccountTransactionCubit extends Cubit<AccountTransactionState> {
       );
     }
 
-    final filteredTransactions = filter.filter(state.displayedTransactions);
+    final filteredTransactions = filter.filter(_allTransactions);
     emit(state.copyWith(displayedTransactions: filteredTransactions));
     _calculateSummary(filteredTransactions);
   }
@@ -226,7 +235,8 @@ class AccountTransactionCubit extends Cubit<AccountTransactionState> {
   /// Reset filters and show all transactions
   void resetFilters() {
     emit(state.copyWith(
-        displayedTransactions: _allTransactions, selectedCategories: []));
+        displayedTransactions: _allTransactions,
+        filters: TransactionFiltersState()));
     _calculateSummary(_allTransactions);
   }
 
@@ -250,5 +260,59 @@ class AccountTransactionCubit extends Cubit<AccountTransactionState> {
       totalExpenses: totalExpenses,
       balance: balance,
     ));
+  }
+
+  void changeSelectedAccount(Account? account) {
+    if (account == null) {
+      emit(state.copyWith(
+        filters: state.filters.copyWith(resetSelectedAccount: true),
+      ));
+      _applyFilters();
+    } else {
+      emit(state.copyWith(
+        filters: state.filters.copyWith(selectedAccount: account),
+      ));
+      _applyFilters();
+    }
+  }
+
+  void changeSelectedCategories(List<Category> categories) {
+    emit(state.copyWith(
+      filters: state.filters.copyWith(selectedCategories: categories),
+    ));
+    _applyFilters();
+  }
+
+  void changeDateRange(DateTime? startDate, DateTime? endDate) {
+    emit(state.copyWith(
+      filters: state.filters.copyWith(startDate: startDate, endDate: endDate),
+    ));
+    _applyFilters();
+  }
+
+  void changeMinAmount(double? minAmount) {
+    emit(state.copyWith(
+      filters: state.filters.copyWith(minAmount: minAmount),
+    ));
+    _applyFilters();
+  }
+
+  void changeIsIncome(bool? isIncome) {
+    emit(state.copyWith(
+      filters: state.filters.copyWith(isIncome: isIncome),
+    ));
+    _applyFilters();
+  }
+
+  void _applyFilters() {
+    final filters = state.filters;
+    filterTransactions(
+      isIncome: filters.isIncome,
+      startDate: filters.startDate,
+      endDate: filters.endDate,
+      minAmount: filters.minAmount,
+      categoryIds: filters.selectedCategories.map((c) => c.id).toList(),
+      account: filters.selectedAccount,
+    );
   }
 }

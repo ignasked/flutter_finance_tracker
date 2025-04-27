@@ -22,7 +22,7 @@ class TransactionFilterSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cubit = context.watch<AccountTransactionCubit>();
-    final selectedCategories = cubit.state.selectedCategories;
+    final selectedCategories = cubit.state.filters.selectedCategories;
     final categories =
         context.read<CategoryRepository>().getEnabledCategories();
 
@@ -86,7 +86,7 @@ class TransactionFilterSheet extends StatelessWidget {
       BuildContext context, Category category, bool isSelected) {
     final cubit = context.read<AccountTransactionCubit>();
     final updatedCategories =
-        List<Category>.from(cubit.state.selectedCategories);
+        List<Category>.from(cubit.state.filters.selectedCategories);
 
     if (isSelected) {
       updatedCategories.remove(category);
@@ -94,18 +94,22 @@ class TransactionFilterSheet extends StatelessWidget {
       updatedCategories.add(category);
     }
 
-    cubit.updateSelectedCategories(updatedCategories);
+    cubit.changeSelectedCategories(updatedCategories);
   }
 
   void _applyFilters(BuildContext context, List<Category> selectedCategories) {
     final cubit = context.read<AccountTransactionCubit>();
 
-    // Apply category filters
+    // // Apply category filters
     if (selectedCategories.isNotEmpty) {
       final categoryIds =
           selectedCategories.map((category) => category.id).toList();
-      cubit.filterTransactions(categoryIds: categoryIds);
+      // cubit.filterTransactions(categoryIds: categoryIds);
+      cubit.changeSelectedCategories(selectedCategories);
     }
+    // cubit.fil(
+    //   selectedCategories: selectedCategories,
+    // );
 
     Navigator.pop(context);
   }
