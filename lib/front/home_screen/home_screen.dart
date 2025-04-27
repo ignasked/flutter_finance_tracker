@@ -19,7 +19,7 @@ class HomeScreen extends StatelessWidget {
     return Scaffold(
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(20.0),
+          padding: const EdgeInsets.all(18.0),
           child: BlocBuilder<AccountTransactionCubit, AccountTransactionState>(
             builder: (context, state) {
               if (state.displayedTransactions.isEmpty) {
@@ -28,11 +28,11 @@ class HomeScreen extends StatelessWidget {
                   children: [
                     // Transaction Summary
                     SummaryBarWidget(),
-                    SizedBox(height: 2),
+                    SizedBox(height: 10),
 
                     // Date Selector
                     DateBarWidget(),
-                    SizedBox(height: 20),
+                    SizedBox(height: 6),
 
                     // No Transactions Message
                     Expanded(
@@ -46,11 +46,10 @@ class HomeScreen extends StatelessWidget {
                 children: [
                   // Transaction Summary
                   const SummaryBarWidget(),
-                  const SizedBox(height: 16),
-
+                  const SizedBox(height: 10),
                   // Date Selector
                   const DateBarWidget(),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 6),
 
                   // Transaction List
                   Expanded(

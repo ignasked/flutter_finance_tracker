@@ -130,6 +130,14 @@ class AccountTransactionCubit extends Cubit<AccountTransactionState> {
       );
     }
 
+    if (startDate != null && endDate == null) {
+      filter = DateFilterDecorator(
+        startDate: startDate,
+        endDate: startDate,
+        nextFilter: filter,
+      );
+    }
+
     if (minAmount != null) {
       filter = AmountFilterDecorator(
         minAmount: minAmount,
@@ -211,6 +219,13 @@ class AccountTransactionCubit extends Cubit<AccountTransactionState> {
   void changeDateRange(DateTime? startDate, DateTime? endDate) {
     emit(state.copyWith(
       filters: state.filters.copyWith(startDate: startDate, endDate: endDate),
+    ));
+    _applyFilters();
+  }
+
+  void changeSingleDay(DateTime? singleDay) {
+    emit(state.copyWith(
+      filters: state.filters.copyWith(startDate: singleDay, singleDay: true),
     ));
     _applyFilters();
   }

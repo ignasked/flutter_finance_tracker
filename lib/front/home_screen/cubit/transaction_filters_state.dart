@@ -5,8 +5,8 @@ import 'package:money_owl/backend/models/category.dart';
 class TransactionFiltersState extends Equatable {
   final Account? selectedAccount;
   final List<Category> selectedCategories;
-  final DateTime? startDate;
-  final DateTime? endDate;
+  final DateTime? startDate; // For date range filter
+  final DateTime? endDate; // For date range filter
   final double? minAmount;
   final bool? isIncome;
 
@@ -23,6 +23,7 @@ class TransactionFiltersState extends Equatable {
     Account? selectedAccount,
     bool resetSelectedAccount = false,
     List<Category>? selectedCategories,
+    bool singleDay = false,
     DateTime? startDate,
     DateTime? endDate,
     double? minAmount,
@@ -33,7 +34,7 @@ class TransactionFiltersState extends Equatable {
           (resetSelectedAccount ? null : this.selectedAccount),
       selectedCategories: selectedCategories ?? this.selectedCategories,
       startDate: startDate ?? this.startDate,
-      endDate: endDate ?? this.endDate,
+      endDate: singleDay ? null : endDate ?? this.endDate,
       minAmount: minAmount ?? this.minAmount,
       isIncome: isIncome ?? this.isIncome,
     );

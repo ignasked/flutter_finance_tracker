@@ -66,8 +66,12 @@ class DateFilterDecorator extends TransactionFilter {
   List<Transaction> filter(List<Transaction> transactions) {
     final filtered = transactions
         .where((transaction) =>
-            transaction.date.isAfter(startDate) &&
-            transaction.date.isBefore(endDate))
+            (transaction.date.year >= startDate.year &&
+                transaction.date.month >= startDate.month &&
+                transaction.date.day >= startDate.day) &&
+            (transaction.date.year <= endDate.year &&
+                transaction.date.month <= endDate.month &&
+                transaction.date.day <= endDate.day))
         .toList();
     return super.filter(filtered); // Delegate to the next filter
   }
