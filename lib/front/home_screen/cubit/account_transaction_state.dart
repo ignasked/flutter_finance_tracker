@@ -3,6 +3,7 @@ part of 'account_transaction_cubit.dart';
 class AccountTransactionState extends Equatable {
   final List<Transaction> displayedTransactions; // Filtered transactions
   final Account? selectedAccount;
+  final List<Category> selectedCategories;
 
   final List<Account> allAccounts;
 
@@ -13,6 +14,7 @@ class AccountTransactionState extends Equatable {
   const AccountTransactionState({
     this.displayedTransactions = const [],
     this.allAccounts = const [],
+    this.selectedCategories = const [],
     this.selectedAccount,
     this.totalIncome = 0.0,
     this.totalExpenses = 0.0,
@@ -26,6 +28,7 @@ class AccountTransactionState extends Equatable {
   AccountTransactionState copyWith({
     List<Transaction>? displayedTransactions,
     List<Account>? allAccounts,
+    List<Category>? selectedCategories,
     Account? selectedAccount,
     bool resetSelectedAccount = false, // Reset selected account to null
     double? totalIncome,
@@ -38,6 +41,7 @@ class AccountTransactionState extends Equatable {
       allAccounts: allAccounts ?? this.allAccounts,
       selectedAccount:
           resetSelectedAccount ? null : selectedAccount ?? this.selectedAccount,
+      selectedCategories: selectedCategories ?? this.selectedCategories,
       totalIncome: totalIncome ?? this.totalIncome,
       totalExpenses: totalExpenses ?? this.totalExpenses,
       balance: balance ?? this.balance,
@@ -49,6 +53,7 @@ class AccountTransactionState extends Equatable {
         displayedTransactions,
         allAccounts,
         selectedAccount,
+        selectedCategories,
         totalIncome,
         totalExpenses,
         balance,

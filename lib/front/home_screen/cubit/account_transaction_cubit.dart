@@ -1,6 +1,7 @@
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:money_owl/backend/models/account.dart';
+import 'package:money_owl/backend/models/category.dart';
 import 'package:money_owl/backend/models/transaction.dart';
 import 'package:money_owl/backend/models/transaction_result.dart';
 import 'package:money_owl/backend/repositories/account_repository.dart';
@@ -152,6 +153,16 @@ class AccountTransactionCubit extends Cubit<AccountTransactionState> {
         balance: 0.0));
   }
 
+  /// Update selected categories
+  void updateSelectedCategories(List<Category> categories) {
+    emit(state.copyWith(selectedCategories: categories));
+  }
+
+  /// Reset selected categories
+  void resetSelectedCategories() {
+    emit(state.copyWith(selectedCategories: []));
+  }
+
   // Receive result from transaction form screen and handle it
   void handleTransactionFormResult(TransactionResult transactionFormResult) {
     switch (transactionFormResult.actionType) {
@@ -214,7 +225,8 @@ class AccountTransactionCubit extends Cubit<AccountTransactionState> {
 
   /// Reset filters and show all transactions
   void resetFilters() {
-    emit(state.copyWith(displayedTransactions: _allTransactions));
+    emit(state.copyWith(
+        displayedTransactions: _allTransactions, selectedCategories: []));
     _calculateSummary(_allTransactions);
   }
 
