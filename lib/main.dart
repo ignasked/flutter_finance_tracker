@@ -53,13 +53,14 @@ class MyApp extends StatelessWidget {
       ],
       child: MultiBlocProvider(
         providers: [
+          BlocProvider<DateCubit>(
+            create: (context) => DateCubit(),
+          ),
           BlocProvider<AccountTransactionCubit>(
             create: (context) => AccountTransactionCubit(
                 context.read<TransactionRepository>(),
-                context.read<AccountRepository>()),
-          ),
-          BlocProvider<DateCubit>(
-            create: (context) => DateCubit(),
+                context.read<AccountRepository>(),
+                context.read<DateCubit>()),
           ),
         ],
         child: MaterialApp(

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:money_owl/backend/models/account.dart';
@@ -7,6 +9,7 @@ import 'package:money_owl/backend/models/transaction_result.dart';
 import 'package:money_owl/backend/repositories/account_repository.dart';
 import 'package:money_owl/backend/repositories/transaction_repository.dart';
 import 'package:money_owl/backend/models/transaction_filter_decorator.dart';
+import 'package:money_owl/front/home_screen/cubit/date_cubit.dart';
 import 'package:money_owl/front/home_screen/cubit/transaction_filters_state.dart';
 import 'package:money_owl/front/home_screen/cubit/transaction_summary_state.dart';
 import 'package:money_owl/front/transaction_form_screen/cubit/transaction_form_cubit.dart';
@@ -14,12 +17,13 @@ import 'package:money_owl/front/transaction_form_screen/cubit/transaction_form_c
 part 'account_transaction_state.dart';
 
 class AccountTransactionCubit extends Cubit<AccountTransactionState> {
+  late final StreamSubscription<DateState> _dateSubscription;
   final TransactionRepository txRepo;
   final AccountRepository accRepo;
   // Private field for tracking all transactions
   List<Transaction> _allTransactions = [];
 
-  AccountTransactionCubit(this.txRepo, this.accRepo)
+  AccountTransactionCubit(this.txRepo, this.accRepo, DateCubit dateCubit)
       : super(const AccountTransactionState(
           displayedTransactions: [],
           allAccounts: [],
@@ -28,6 +32,20 @@ class AccountTransactionCubit extends Cubit<AccountTransactionState> {
         )) {
     _loadAccounts();
     _loadAllTransactions();
+
+    _dateSubscription = dateCubit.stream.listen((dateState) {
+      if (dateState.selectedEndDate == null) {
+        changeSingleDay(dateState.selectedStartDate);
+      } else if (dateState.selectedEndDate != null) {
+        changeDateRange(dateState.selectedStartDate, dateState.selectedEndDate);
+      }
+    });
+  }
+
+  @override
+  Future<void> close() {
+    _dateSubscription.cancel();
+    return super.close();
   }
 
   /// Load all transactions from the repository

@@ -12,10 +12,12 @@ class DateState {
   DateState copyWith({
     DateTime? selectedStartDate,
     DateTime? selectedEndDate,
+    bool singleDay = false,
   }) {
     return DateState(
       selectedStartDate: selectedStartDate ?? this.selectedStartDate,
-      selectedEndDate: selectedEndDate ?? this.selectedEndDate,
+      selectedEndDate:
+          singleDay ? null : selectedEndDate ?? this.selectedEndDate,
     );
   }
 }
@@ -66,10 +68,19 @@ class DateCubit extends Cubit<DateState> {
     }
   }
 
-  void selectDateRange(DateTime startDate, DateTime? endDate) {
+  void selectDateRange(DateTime startDate, DateTime? endDate, bool singleDay) {
+    if (singleDay) {
+      endDate = null;
+    } else if (endDate != null) {
+      // If the end date is not null, ensure it is after the start date
+      if (endDate.isBefore(startDate)) {
+        endDate = startDate;
+      }
+    }
     emit(state.copyWith(
       selectedStartDate: startDate,
       selectedEndDate: endDate,
+      singleDay: singleDay,
     ));
   }
 }
