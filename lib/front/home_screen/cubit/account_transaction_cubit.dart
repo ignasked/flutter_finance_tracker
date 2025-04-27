@@ -207,15 +207,15 @@ class AccountTransactionCubit extends Cubit<AccountTransactionState> {
       );
     }
 
-    /// Reset filters and show all transactions
-    void resetFilters() {
-      emit(state.copyWith(displayedTransactions: _allTransactions));
-      _calculateSummary(_allTransactions);
-    }
-
     final filteredTransactions = filter.filter(state.displayedTransactions);
     emit(state.copyWith(displayedTransactions: filteredTransactions));
     _calculateSummary(filteredTransactions);
+  }
+
+  /// Reset filters and show all transactions
+  void resetFilters() {
+    emit(state.copyWith(displayedTransactions: _allTransactions));
+    _calculateSummary(_allTransactions);
   }
 
   /// Calculate total income, expenses, and balance

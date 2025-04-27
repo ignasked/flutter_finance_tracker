@@ -101,8 +101,7 @@ class SummaryBarWidget extends StatelessWidget {
                   // Filter Button
                   IconButton(
                     icon: const Icon(Icons.filter_list, color: Colors.blue),
-                    onPressed: () =>
-                        TransactionFilter.showFilterOptions(context),
+                    onPressed: () => TransactionFilterSheet.show(context),
                   ),
                 ],
               ),
