@@ -4,7 +4,7 @@ import 'package:money_owl/backend/models/transaction.dart';
 import 'package:money_owl/backend/models/transaction_result.dart';
 import 'package:money_owl/front/home_screen/cubit/account_transaction_cubit.dart';
 import 'package:money_owl/front/transaction_form_screen/transaction_form_screen.dart';
-import 'package:money_owl/utils/AppColors.dart';
+import 'package:money_owl/backend/utils/AppColors.dart';
 
 class TransactionList extends StatelessWidget {
   final List<Transaction> transactions;

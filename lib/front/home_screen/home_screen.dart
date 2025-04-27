@@ -9,8 +9,7 @@ import 'package:money_owl/front/home_screen/widgets/date_bar_widget.dart';
 import 'package:money_owl/front/transaction_form_screen/transaction_form_screen.dart';
 import 'package:money_owl/front/home_screen/widgets/transaction_list.dart';
 import 'package:money_owl/front/home_screen/widgets/summary_bar_widget.dart';
-import 'package:money_owl/front/home_screen/widgets/transaction_filter_widget.dart';
-import 'package:money_owl/front/settings_screen/widgets/receipt_analyzer_widget.dart';
+import 'package:money_owl/front/receipt_scan_screen/receipt_analyzer_widget.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({Key? key}) : super(key: key);

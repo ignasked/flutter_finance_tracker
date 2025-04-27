@@ -1,7 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:objectbox/objectbox.dart';
 import 'transaction.dart';
-import 'package:money_owl/utils/enums.dart';
+import 'package:money_owl/backend/utils/enums.dart';
 
 @Entity()
 // ignore: must_be_immutable

@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:money_owl/backend/models/account.dart';
-import 'package:money_owl/utils/enums.dart';
+import 'package:money_owl/backend/utils/enums.dart';
 import 'package:objectbox/objectbox.dart';
 import 'category.dart'; // Import the Category model
 

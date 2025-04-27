@@ -6,9 +6,9 @@ import 'package:money_owl/backend/models/transaction.dart';
 import 'package:money_owl/backend/repositories/category_repository.dart';
 import 'package:money_owl/backend/services/mistral_service.dart';
 import 'package:money_owl/backend/services/file_picker_service.dart';
-import 'package:money_owl/front/bulk_add_transactions_screen.dart';
+import 'package:money_owl/front/receipt_scan_screen/bulk_add_transactions_screen.dart';
 import 'package:money_owl/front/home_screen/cubit/account_transaction_cubit.dart';
-import 'package:money_owl/utils/receipt_format.dart';
+import 'package:money_owl/backend/utils/receipt_format.dart';
 
 class ReceiptAnalyzerWidget extends StatefulWidget {
   const ReceiptAnalyzerWidget({super.key});

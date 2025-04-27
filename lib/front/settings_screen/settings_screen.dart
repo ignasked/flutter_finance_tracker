@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:money_owl/front/home_screen/cubit/account_transaction_cubit.dart';
 import 'package:money_owl/front/settings_screen/cubit/csv_cubit.dart';
-import 'package:money_owl/front/settings_screen/widgets/receipt_analyzer_widget.dart';
+import 'package:money_owl/front/receipt_scan_screen/receipt_analyzer_widget.dart';
 import 'package:money_owl/front/settings_screen/category_management_screen.dart';
 
 class SettingsScreen extends StatelessWidget {

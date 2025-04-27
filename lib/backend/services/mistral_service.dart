@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:money_owl/config/env.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:money_owl/utils/receipt_format.dart';
+import 'package:money_owl/backend/utils/receipt_format.dart';
 import 'package:money_owl/backend/models/transaction.dart'; // Import your Transaction model
 
 class MistralService {

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:money_owl/backend/models/transaction.dart';
-import 'package:money_owl/utils/enums.dart';
+import 'package:money_owl/backend/utils/enums.dart';
 import 'package:equatable/equatable.dart';
 import 'package:objectbox/objectbox.dart';
 

@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:money_owl/backend/models/category.dart';
 import 'package:money_owl/backend/repositories/category_repository.dart';
 import 'package:money_owl/front/transaction_form_screen/cubit/transaction_form_cubit.dart';
-import 'package:money_owl/utils/enums.dart';
+import 'package:money_owl/backend/utils/enums.dart';
 
 class CategoryDropdown extends StatelessWidget {
   const CategoryDropdown({Key? key}) : super(key: key);

@@ -1,5 +1,5 @@
 import 'package:money_owl/backend/repositories/base_repository.dart';
-import 'package:money_owl/utils/enums.dart';
+import 'package:money_owl/backend/utils/enums.dart';
 import '../../objectbox.g.dart'; // ObjectBox generated file
 import 'package:money_owl/backend/models/category.dart';
 import 'package:flutter/material.dart';

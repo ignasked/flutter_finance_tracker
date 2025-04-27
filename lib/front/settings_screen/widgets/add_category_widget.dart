@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:money_owl/backend/models/category.dart';
-import 'package:money_owl/utils/enums.dart';
+import 'package:money_owl/backend/utils/enums.dart';
 
 class AddCategoryWidget extends StatefulWidget {
   @override
