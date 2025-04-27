@@ -5,7 +5,7 @@
   "entities": [
     {
       "id": "1:1380094922926077824",
-      "lastPropertyId": "7:7831126263941629501",
+      "lastPropertyId": "9:2107624887463801340",
       "name": "Transaction",
       "properties": [
         {
@@ -36,6 +36,19 @@
           "flags": 520,
           "indexId": "1:8794143413428559289",
           "relationTarget": "Category"
+        },
+        {
+          "id": "8:5558096695123691779",
+          "name": "description",
+          "type": 9
+        },
+        {
+          "id": "9:2107624887463801340",
+          "name": "accountId",
+          "type": 11,
+          "flags": 520,
+          "indexId": "2:8691141417268497684",
+          "relationTarget": "Account"
         }
       ],
       "relations": []
@@ -83,10 +96,59 @@
         }
       ],
       "relations": []
+    },
+    {
+      "id": "3:1793876900561739160",
+      "lastPropertyId": "9:8058047281768453366",
+      "name": "Account",
+      "properties": [
+        {
+          "id": "1:4908124682675194776",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:4925447501015872339",
+          "name": "name",
+          "type": 9
+        },
+        {
+          "id": "4:6146198306681935013",
+          "name": "iconCodePoint",
+          "type": 6
+        },
+        {
+          "id": "5:2424780407380365336",
+          "name": "colorValue",
+          "type": 6
+        },
+        {
+          "id": "6:4388684377286962396",
+          "name": "balance",
+          "type": 8
+        },
+        {
+          "id": "7:2424376348139700456",
+          "name": "isEnabled",
+          "type": 1
+        },
+        {
+          "id": "8:4990014992515693203",
+          "name": "typeValue",
+          "type": 5
+        },
+        {
+          "id": "9:8058047281768453366",
+          "name": "excludeFromTotalBalance",
+          "type": 1
+        }
+      ],
+      "relations": []
     }
   ],
-  "lastEntityId": "2:6364566181600309643",
-  "lastIndexId": "1:8794143413428559289",
+  "lastEntityId": "3:1793876900561739160",
+  "lastIndexId": "2:8691141417268497684",
   "lastRelationId": "0:0",
   "lastSequenceId": "0:0",
   "modelVersion": 5,
@@ -95,7 +157,8 @@
   "retiredIndexUids": [],
   "retiredPropertyUids": [
     3854934649027657622,
-    2820295823686522613
+    2820295823686522613,
+    157190384727437192
   ],
   "retiredRelationUids": [],
   "version": 1

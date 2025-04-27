@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:money_owl/backend/models/account.dart';
 import 'package:money_owl/utils/enums.dart';
 import 'package:objectbox/objectbox.dart';
 import 'category.dart'; // Import the Category model
@@ -10,11 +11,14 @@ import 'category.dart'; // Import the Category model
 class Transaction extends Equatable {
   @Id()
   int id;
+
   final String title;
   final double amount;
+  final String? description; // Optional description
 
   // Define a relation to the Category model
   final ToOne<Category> category = ToOne<Category>();
+  final ToOne<Account> account = ToOne<Account>(); // Relation to Account
 
   @Property(type: PropertyType.date)
   final DateTime date;
@@ -23,11 +27,16 @@ class Transaction extends Equatable {
     this.id = 0,
     required this.title,
     required this.amount,
+    this.description,
     required this.date,
     Category? category,
+    Account? account,
   }) {
     if (category != null) {
       this.category.target = category;
+    }
+    if (account != null) {
+      this.account.target = account;
     }
   }
 
@@ -37,8 +46,16 @@ class Transaction extends Equatable {
   }
 
   @override
-  List<Object?> get props =>
-      [id, title, amount, isIncome, category.target, date];
+  List<Object?> get props => [
+        id,
+        title,
+        amount,
+        isIncome,
+        category.target,
+        account.target,
+        date,
+        description
+      ];
 
   /// Creates a copy of this transaction with updated fields.
   Transaction copyWith({
@@ -46,24 +63,28 @@ class Transaction extends Equatable {
     String? title,
     double? amount,
     Category? category,
+    Account? account,
     DateTime? date,
+    String? description,
   }) {
     final updatedTransaction = Transaction(
       id: id ?? this.id,
       title: title ?? this.title,
       amount: amount ?? this.amount,
       date: date ?? this.date,
+      description: description ?? this.description,
     );
     updatedTransaction.category.target = category ?? this.category.target;
+    updatedTransaction.account.target = account ?? this.account.target;
     return updatedTransaction;
   }
 
   static String toCSVHeader() {
-    return 'id,title,amount,isIncome,category,date';
+    return 'id,title,description,amount,isIncome,category,account,date';
   }
 
   String toCSV() {
-    return '$id,$title,$amount,$isIncome,${category.target?.id},$date';
+    return '$id,$title,${description ?? ''},$amount,$isIncome,${category.target?.id},${account.target?.id},$date';
   }
 
   static Transaction fromCSV(String csv) {
@@ -75,9 +96,11 @@ class Transaction extends Equatable {
     return Transaction(
       id: int.parse(fields[0]),
       title: fields[1],
-      amount: double.parse(fields[2]),
-      date: DateTime.parse(fields[5]),
+      description: fields[2].isNotEmpty ? fields[2] : null,
+      amount: double.parse(fields[3]),
+      date: DateTime.parse(fields[7]),
       category: null, // TODO: Implement proper Category parsing from CSV
+      account: null, // TODO: Implement proper Account parsing from CSV
     );
   }
 
@@ -88,7 +111,9 @@ class Transaction extends Equatable {
       title: json['title'] ?? 'Unknown',
       amount: (json['amount'] ?? 0.0).toDouble(),
       date: DateTime.parse(json['date']),
-    )..category.targetId = json['categoryId'];
+    )
+      ..category.targetId = json['categoryId']
+      ..account.targetId = json['accountId'];
   }
 
   // Convert a Transaction object to a JSON-compatible map
@@ -96,9 +121,11 @@ class Transaction extends Equatable {
     return {
       'id': id,
       'title': title,
+      'description': description,
       'amount': amount,
       'isIncome': isIncome, // Derived from the category
       'categoryId': category.targetId, // Save the category ID
+      'accountId': account.targetId, // Save the account ID
       'date': date.toIso8601String(),
     };
   }

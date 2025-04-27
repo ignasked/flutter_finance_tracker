@@ -15,6 +15,8 @@ class TransactionRepository extends BaseRepository<Transaction> {
   void put(Transaction transaction) {
     try {
       transaction.category.attach(store); // Attach the category relation
+      transaction.account.attach(store); // Attach the account relation
+
       super.put(transaction); // Call the base method to save the transaction
     } catch (e) {
       print('Error adding/updating transaction: $e');

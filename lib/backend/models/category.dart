@@ -5,9 +5,11 @@ import 'package:equatable/equatable.dart';
 import 'package:objectbox/objectbox.dart';
 
 @Entity()
+// ignore: must_be_immutable
 class Category extends Equatable {
   @Id()
   int id; // ObjectBox requires an ID field for persistence
+
   final String title;
   final String descriptionForAI; // Description for AI interpretation
   final int iconCodePoint; // Store IconData as an int
