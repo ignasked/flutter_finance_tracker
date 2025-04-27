@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:money_owl/backend/repositories/base_repository.dart';
 import 'package:money_owl/backend/repositories/category_repository.dart';
 import 'package:money_owl/backend/repositories/transaction_repository.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -15,9 +16,10 @@ late CategoryRepository categoryRepository;
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  transactionRepository = await TransactionRepository.create();
-  categoryRepository =
-      await CategoryRepository.create(transactionRepository.store);
+  final store = await BaseRepository.createStore();
+  // Pass the same store to both repositories
+  transactionRepository = TransactionRepository(store);
+  categoryRepository = CategoryRepository(store);
 
   runApp(const MyApp());
 }

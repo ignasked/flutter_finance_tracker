@@ -21,16 +21,16 @@ class TransactionState extends Equatable {
 }
 
 class TransactionCubit extends Cubit<TransactionState> {
-  final TransactionRepository transRepository;
+  final TransactionRepository txRepository;
 
-  TransactionCubit(this.transRepository)
+  TransactionCubit(this.txRepository)
       : super(const TransactionState(transactions: [])) {
     loadTransactions();
   }
 
   // Load all transactions from ObjectBox
   void loadTransactions() {
-    final transactions = transRepository.getTransactions();
+    final transactions = txRepository.getAll();
 // Force emit even if transactions are empty to trigger listeners
     emit(TransactionState(transactions: List.from(transactions)));
   }
@@ -39,7 +39,7 @@ class TransactionCubit extends Cubit<TransactionState> {
   void addTransaction(Transaction transaction) {
     List<Transaction> transactionsList = List.from(state.transactions);
     transactionsList.add(transaction);
-    transRepository.addTransaction(transaction);
+    txRepository.put(transaction);
     emit(state.copyWith(transactions: transactionsList));
   }
 
@@ -48,7 +48,7 @@ class TransactionCubit extends Cubit<TransactionState> {
     List<Transaction> transactionsList = List.from(state.transactions);
     transactionsList.addAll(transactions);
     //save to objectbox
-    transRepository.addTransactions(transactions);
+    txRepository.putMany(transactions);
     emit(state.copyWith(transactions: transactionsList));
   }
 
@@ -57,7 +57,7 @@ class TransactionCubit extends Cubit<TransactionState> {
     if (index >= 0 && index < state.transactions.length) {
       List<Transaction> transactionsList = List.from(state.transactions);
       transactionsList[index] = transaction;
-      transRepository.updateTransaction(transaction);
+      txRepository.put(transaction);
       emit(state.copyWith(transactions: transactionsList));
     }
   }
@@ -69,13 +69,13 @@ class TransactionCubit extends Cubit<TransactionState> {
       int id = transactionsList[index].id;
       transactionsList.removeAt(index);
 
-      transRepository.deleteTransaction(id);
+      txRepository.remove(id);
       emit(state.copyWith(transactions: transactionsList));
     }
   }
 
   void deleteAllTransactions() {
-    transRepository.deleteAllTransactions();
+    txRepository.removeAll();
     emit(state.copyWith(transactions: []));
   }
 

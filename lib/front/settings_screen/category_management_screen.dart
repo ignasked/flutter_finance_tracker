@@ -26,7 +26,7 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
   }
 
   Future<void> _loadCategories() async {
-    final categories = _categoryRepository.getCategories();
+    final categories = _categoryRepository.getAll();
     setState(() {
       _categories = categories;
     });
@@ -34,8 +34,7 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
 
   void _toggleCategory(Category category, bool isEnabled) {
     final updatedCategory = category.copyWith(isEnabled: isEnabled);
-    _categoryRepository
-        .addCategory(updatedCategory); // Save the updated category
+    _categoryRepository.put(updatedCategory); // Save the updated category
     setState(() {
       _categories[_categories.indexWhere((c) => c.id == category.id)] =
           updatedCategory;
@@ -49,7 +48,7 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
     );
 
     if (newCategory != null) {
-      _categoryRepository.addCategory(newCategory); // Save the new category
+      _categoryRepository.put(newCategory); // Save the new category
       setState(() {
         _categories.add(newCategory);
       });

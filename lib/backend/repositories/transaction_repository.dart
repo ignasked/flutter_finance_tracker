@@ -1,81 +1,39 @@
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
+import 'package:money_owl/backend/repositories/base_repository.dart';
 import '../../objectbox.g.dart'; // ObjectBox generated file
 import 'package:money_owl/backend/models/transaction.dart';
 
-class TransactionRepository {
-  late final Store _store;
+class TransactionRepository extends BaseRepository<Transaction> {
+  TransactionRepository(Store store) : super(store);
 
-  TransactionRepository._(this._store);
-
-  /// Initializes ObjectBox store
-  static Future<TransactionRepository> create() async {
-    final docsDir = await getApplicationDocumentsDirectory();
-    final store =
-        await openStore(directory: p.join(docsDir.path, "finance_tracker_db"));
-    return TransactionRepository._(store);
+  /// Factory method for asynchronous initialization
+  static Future<TransactionRepository> create([Store? store]) async {
+    final newStore = store ?? await BaseRepository.createStore();
+    return TransactionRepository(newStore);
   }
 
-  /// Get the ObjectBox store
-  Store get store {
-    return _store;
-  }
-
-  List<Transaction> getTransactions() {
+  @override
+  void put(Transaction transaction) {
     try {
-      final transactions = _store.box<Transaction>().getAll();
+      transaction.category.attach(store); // Attach the category relation
+      super.put(transaction); // Call the base method to save the transaction
+    } catch (e) {
+      print('Error adding/updating transaction: $e');
+    }
+  }
 
+  /// Fetch all transactions and ensure relations are loaded
+  @override
+  List<Transaction> getAll() {
+    try {
+      final transactions = super.getAll();
       for (var transaction in transactions) {
-        transaction.category.target; // This ensures the target is loaded
+        transaction.category
+            .target; // Ensure the target is loaded (fixes lazy loading)
       }
-
       return transactions;
     } catch (e) {
       print('Error fetching transactions: $e');
       return [];
     }
-  }
-
-  Transaction? getTransaction(int id) {
-    return _store.box<Transaction>().get(id);
-  }
-
-  void addTransaction(Transaction transaction) {
-    try {
-      // Attach the transaction to the store
-      transaction.category.attach(_store);
-
-      _store.box<Transaction>().put(transaction);
-    } catch (e) {
-      print('Error adding transaction: $e');
-    }
-  }
-
-  void updateTransaction(Transaction transaction) {
-    try {
-      // Attach the transaction to the store
-      transaction.category.attach(_store);
-
-      print(
-          'Category Target ID Before Saving: ${transaction.category.targetId}');
-
-      _store.box<Transaction>().put(transaction);
-    } catch (e) {
-      print('Error updating transaction: $e');
-    }
-  }
-
-  void deleteTransaction(int id) {
-    _store.box<Transaction>().remove(id);
-  }
-
-  void deleteAllTransactions() {
-    _store.box<Transaction>().removeAll();
-  }
-
-  void addTransactions(List<Transaction> transactions) {
-    print("Adding transactions: ${transactions.length}");
-
-    _store.box<Transaction>().putMany(transactions);
   }
 }
