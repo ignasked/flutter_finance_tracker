@@ -23,6 +23,7 @@ class AccountTransactionCubit extends Cubit<AccountTransactionState> {
       : super(const AccountTransactionState(
           //selectedAccount: null, // Default to "All Accounts"
           displayedTransactions: [],
+          filters: TransactionFiltersState(),
           allAccounts: [],
           totalIncome: 0.0,
           totalExpenses: 0.0,
@@ -47,68 +48,19 @@ class AccountTransactionCubit extends Cubit<AccountTransactionState> {
     emit(state.copyWith(allAccounts: accounts));
   }
 
-  /// Select all accounts and load all transactions
-  void _displayTransactionsForAllAccounts() {
-    // _allTransactions = txRepo.getAll();
-    emit(state.copyWith(
-      displayedTransactions: _allTransactions,
-    ));
-    _calculateSummary(_allTransactions);
-  }
-
-  /// Load transactions for a specific account
-  // void _displayTransactionsForAccount(Account account) {
-  //   // final transactions = _allTransactions
-  //   //     .where((transaction) => transaction.account.targetId == account.id)
-  //   //     .toList();
-
-  //   emit(state.copyWith(displayedTransactions: transactions));
-  //   _calculateSummary(transactions);
-  // }
-
-  /// Display transactions for the selected account or all accounts if none is selected
-  void displayTransactionsForSelectedAccount() {
-    if (state.filters.selectedAccount == null) {
-      _displayTransactionsForAllAccounts(); // Load all accounts
-    } else {
-      changeSelectedAccount(
-          state.filters.selectedAccount!); // Load specific account
-    }
-  }
-
-  /// Update the selected account
-  // void updateSelectedAccount(Account? account) {
-  //   if (account == null) {
-  //     emit(state.copyWith(resetSelectedAccount: true));
-  //   } else {
-  //     emit(state.copyWith(selectedAccount: account));
-  //   }
-  //   displayTransactionsForSelectedAccount();
-  // }
-
   /// Add a new transaction
   void addTransaction(Transaction transaction) {
     _allTransactions.add(transaction); // Add to the local list
-
-    List<Transaction> transactionsList = List.from(state.displayedTransactions);
-    transactionsList.add(transaction);
-
     txRepo.put(transaction); // Save to the repository
-    emit(state.copyWith(displayedTransactions: transactionsList));
-    _calculateSummary(transactionsList);
+    _applyFilters();
+    _calculateSummary(state.displayedTransactions);
   }
 
   void addTransactions(List<Transaction> transactions) {
     _allTransactions.addAll(transactions); // Add to the local list
-
-    //create local copy of transactions
-    List<Transaction> transactionsList = List.from(state.displayedTransactions);
-    transactionsList.addAll(transactions);
-
     txRepo.putMany(transactions); // Save to the repository
-
-    emit(state.copyWith(displayedTransactions: transactionsList));
-    _calculateSummary(transactionsList);
+    _applyFilters();
+    _calculateSummary(state.displayedTransactions);
   }
 
   /// Update an existing transaction by ID
@@ -117,52 +69,30 @@ class AccountTransactionCubit extends Cubit<AccountTransactionState> {
       return t.id == transaction.id ? transaction : t;
     }).toList();
 
-    final updatedTransactions = state.displayedTransactions.map((t) {
-      return t.id == transaction.id ? transaction : t;
-    }).toList();
-
     txRepo.put(transaction); // Update in the repository
-    emit(state.copyWith(displayedTransactions: updatedTransactions));
-    _calculateSummary(updatedTransactions);
+    _applyFilters();
+    _calculateSummary(state.displayedTransactions);
   }
 
   /// Delete a transaction by ID
   void deleteTransaction(Transaction transaction) {
     _allTransactions =
         _allTransactions.where((t) => t.id != transaction.id).toList();
-
-    final updatedTransactions = state.displayedTransactions
-        .where((t) => t.id != transaction.id)
-        .toList();
-
     txRepo.remove(transaction.id); // Remove from the repository
-
-    emit(state.copyWith(displayedTransactions: updatedTransactions));
-    _calculateSummary(updatedTransactions);
+    _applyFilters();
+    _calculateSummary(state.displayedTransactions);
   }
 
   /// Delete all transactions
   void deleteAllTransactions() {
     _allTransactions.clear(); // Clear the local list
-
     txRepo.removeAll(); // Remove all from the repository
-
     emit(state.copyWith(
         displayedTransactions: [],
         totalIncome: 0.0,
         totalExpenses: 0.0,
         balance: 0.0));
   }
-
-  // /// Update selected categories
-  // void updateSelectedCategories(List<Category> categories) {
-  //   emit(state.copyWith(selectedCategories: categories));
-  // }
-
-  // /// Reset selected categories
-  // void resetSelectedCategories() {
-  //   emit(state.copyWith(selectedCategories: []));
-  // }
 
   // Receive result from transaction form screen and handle it
   void handleTransactionFormResult(TransactionResult transactionFormResult) {
@@ -181,7 +111,7 @@ class AccountTransactionCubit extends Cubit<AccountTransactionState> {
   }
 
   // Filter transactions
-  void filterTransactions({
+  void _filterTransactions({
     bool? isIncome,
     DateTime? startDate,
     DateTime? endDate,
@@ -236,7 +166,7 @@ class AccountTransactionCubit extends Cubit<AccountTransactionState> {
   void resetFilters() {
     emit(state.copyWith(
         displayedTransactions: _allTransactions,
-        filters: TransactionFiltersState()));
+        filters: const TransactionFiltersState()));
     _calculateSummary(_allTransactions);
   }
 
@@ -306,7 +236,7 @@ class AccountTransactionCubit extends Cubit<AccountTransactionState> {
 
   void _applyFilters() {
     final filters = state.filters;
-    filterTransactions(
+    _filterTransactions(
       isIncome: filters.isIncome,
       startDate: filters.startDate,
       endDate: filters.endDate,
