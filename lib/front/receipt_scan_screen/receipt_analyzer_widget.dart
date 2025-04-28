@@ -9,6 +9,7 @@ import 'package:money_owl/backend/services/file_picker_service.dart';
 import 'package:money_owl/front/receipt_scan_screen/bulk_add_transactions_screen.dart';
 import 'package:money_owl/front/home_screen/cubit/account_transaction_cubit.dart';
 import 'package:money_owl/backend/utils/receipt_format.dart';
+import 'package:money_owl/front/common/loading_widget.dart';
 
 class ReceiptAnalyzerWidget extends StatefulWidget {
   const ReceiptAnalyzerWidget({super.key});
@@ -21,15 +22,10 @@ class _ReceiptAnalyzerWidgetState extends State<ReceiptAnalyzerWidget> {
   final _mistralService = MistralService.instance;
   final _filePickerService = FilePickerService.instance;
   String _analysisResult = '';
-  bool _isLoading = false;
   File? _imageFile;
 
   Future<void> _analyzeFile(File file, ReceiptFormat format) async {
-    setState(() {
-      _isLoading = true;
-      _analysisResult = '';
-      _imageFile = null; // Clear any previous image
-    });
+    showLoadingPopup(context, message: 'Analyzing receipt. Please wait...');
 
     try {
       String categoryTitles = context
@@ -73,10 +69,7 @@ class _ReceiptAnalyzerWidgetState extends State<ReceiptAnalyzerWidget> {
         _analysisResult = 'Error analyzing file: $e';
       });
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
-      Navigator.pop(context); // Close the bottom sheet
+      hideLoadingPopup(context);
     }
   }
 
@@ -88,10 +81,8 @@ class _ReceiptAnalyzerWidgetState extends State<ReceiptAnalyzerWidget> {
 
       if (imageFile == null) {
         setState(() {
-          _isLoading = false;
           _analysisResult = 'No image selected';
         });
-        if (!mounted) return; // Check if the widget is still mounted
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('No image selected')),
         );
@@ -118,10 +109,8 @@ class _ReceiptAnalyzerWidgetState extends State<ReceiptAnalyzerWidget> {
 
       if (pdfFile == null) {
         setState(() {
-          _isLoading = false;
           _analysisResult = 'No PDF selected';
         });
-        if (!mounted) return; // Check if the widget is still mounted
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('No PDF selected')),
         );
@@ -138,11 +127,7 @@ class _ReceiptAnalyzerWidgetState extends State<ReceiptAnalyzerWidget> {
   }
 
   Future<void> _loadSavedData() async {
-    setState(() {
-      _isLoading = true;
-      _analysisResult = '';
-      _imageFile = null; // Clear any previous image
-    });
+    showLoadingPopup(context, message: 'Loading saved data...');
 
     try {
       final savedData = await _mistralService.loadSavedApiOutput();
@@ -151,10 +136,8 @@ class _ReceiptAnalyzerWidgetState extends State<ReceiptAnalyzerWidget> {
       print('Saved data: $savedData');
       if (savedData == null) {
         setState(() {
-          _isLoading = false;
           _analysisResult = 'No saved data found';
         });
-        if (!mounted) return; // Check if the widget is still mounted
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('No saved data found')),
         );
@@ -201,11 +184,7 @@ class _ReceiptAnalyzerWidgetState extends State<ReceiptAnalyzerWidget> {
         _analysisResult = 'Error loading saved data: $e';
       });
     } finally {
-      if (!mounted) return; // Check if the widget is still mounted
-      setState(() {
-        _isLoading = false;
-      });
-      Navigator.pop(context); // Close the bottom sheet
+      hideLoadingPopup(context);
     }
   }
 
@@ -218,12 +197,12 @@ class _ReceiptAnalyzerWidgetState extends State<ReceiptAnalyzerWidget> {
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
             ElevatedButton.icon(
-              onPressed: _isLoading ? null : () => _pickAndAnalyzeImage(false),
+              onPressed: () => _pickAndAnalyzeImage(false),
               icon: const Icon(Icons.camera_alt),
               label: const Text('Scan Receipt'),
             ),
             ElevatedButton.icon(
-              onPressed: _isLoading ? null : () => _pickAndAnalyzeImage(true),
+              onPressed: () => _pickAndAnalyzeImage(true),
               icon: const Icon(Icons.photo_library),
               label: const Text('From Gallery'),
             ),
@@ -236,12 +215,12 @@ class _ReceiptAnalyzerWidgetState extends State<ReceiptAnalyzerWidget> {
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
             ElevatedButton.icon(
-              onPressed: _isLoading ? null : _pickAndAnalyzePDF,
+              onPressed: _pickAndAnalyzePDF,
               icon: const Icon(Icons.picture_as_pdf),
               label: const Text('From PDF'),
             ),
             ElevatedButton.icon(
-              onPressed: _isLoading ? null : _loadSavedData,
+              onPressed: _loadSavedData,
               icon: const Icon(Icons.barcode_reader),
               label: const Text('Load Saved Data'),
             ),
@@ -260,10 +239,8 @@ class _ReceiptAnalyzerWidgetState extends State<ReceiptAnalyzerWidget> {
           ),
         ],
 
-        // Display loading indicator or analysis result
-        if (_isLoading)
-          const CircularProgressIndicator()
-        else if (_analysisResult.isNotEmpty)
+        // Display analysis result
+        if (_analysisResult.isNotEmpty)
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Text(_analysisResult),

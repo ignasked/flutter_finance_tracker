@@ -111,9 +111,7 @@ class Transaction extends Equatable {
       title: json['title'] ?? 'Unknown',
       amount: (json['amount'] ?? 0.0).toDouble(),
       date: DateTime.parse(json['date']),
-    )
-      ..category.targetId = json['categoryId']
-      ..account.targetId = json['accountId'];
+    )..category.targetId = json['categoryId'];
   }
 
   // Convert a Transaction object to a JSON-compatible map
