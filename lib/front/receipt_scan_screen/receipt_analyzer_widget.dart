@@ -28,23 +28,23 @@ class _ReceiptAnalyzerWidgetState extends State<ReceiptAnalyzerWidget> {
     showLoadingPopup(context, message: 'Analyzing receipt. Please wait...');
 
     try {
-      String categoryTitles = context
+      final userCategories = context
           .read<CategoryRepository>()
-          .getEnabledCategoryTitles(); // Load categories
+          .getEnabledCategories(); // Load categories
 
       final receiptJson =
-          await _mistralService.analyzeAndFormat(file, format, categoryTitles);
+          await _mistralService.analyzeAndFormat(file, format, userCategories);
 
       if (!mounted) return; // Check if the widget is still mounted
 
-      setState(() {
-        _analysisResult = const JsonEncoder.withIndent('  ').convert({
-          'transactionName': receiptJson['transactionName'],
-          'transactions': (receiptJson['transactions'] as List<Transaction>)
-              .map((t) => t.toJson())
-              .toList(),
-        });
-      });
+      // setState(() {
+      //   _analysisResult = const JsonEncoder.withIndent('  ').convert({
+      //     'transactionName': receiptJson['transactionName'],
+      //     'transactions': (receiptJson['transactions'] as List<Transaction>)
+      //         .map((t) => t.toJson())
+      //         .toList(),
+      //   });
+      // });
 
       final newTransactions = await Navigator.push(
         context,
@@ -154,8 +154,9 @@ class _ReceiptAnalyzerWidgetState extends State<ReceiptAnalyzerWidget> {
       }
 
       final transactions = (savedData['transactions'] as List<dynamic>)
-          .map((transaction) =>
-              Transaction.fromJson(transaction as Map<String, dynamic>))
+          .map((transaction) => Transaction.fromJson(
+              transaction as Map<String, dynamic>,
+              context.read<CategoryRepository>()))
           .toList();
 
       if (!mounted) return; // Check if the widget is still mounted

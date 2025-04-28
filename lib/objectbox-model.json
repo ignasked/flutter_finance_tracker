@@ -99,7 +99,7 @@
     },
     {
       "id": "3:1793876900561739160",
-      "lastPropertyId": "9:8058047281768453366",
+      "lastPropertyId": "10:5137004119186492609",
       "name": "Account",
       "properties": [
         {
@@ -142,6 +142,11 @@
           "id": "9:8058047281768453366",
           "name": "excludeFromTotalBalance",
           "type": 1
+        },
+        {
+          "id": "10:5137004119186492609",
+          "name": "currency",
+          "type": 9
         }
       ],
       "relations": []

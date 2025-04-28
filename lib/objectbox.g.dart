@@ -121,7 +121,7 @@ final _entities = <obx_int.ModelEntity>[
   obx_int.ModelEntity(
       id: const obx_int.IdUid(3, 1793876900561739160),
       name: 'Account',
-      lastPropertyId: const obx_int.IdUid(9, 8058047281768453366),
+      lastPropertyId: const obx_int.IdUid(10, 5137004119186492609),
       flags: 0,
       properties: <obx_int.ModelProperty>[
         obx_int.ModelProperty(
@@ -163,6 +163,11 @@ final _entities = <obx_int.ModelEntity>[
             id: const obx_int.IdUid(9, 8058047281768453366),
             name: 'excludeFromTotalBalance',
             type: 1,
+            flags: 0),
+        obx_int.ModelProperty(
+            id: const obx_int.IdUid(10, 5137004119186492609),
+            name: 'currency',
+            type: 9,
             flags: 0)
       ],
       relations: <obx_int.ModelRelation>[],
@@ -351,7 +356,8 @@ obx_int.ModelDefinition getObjectBoxModel() {
         },
         objectToFB: (Account object, fb.Builder fbb) {
           final nameOffset = fbb.writeString(object.name);
-          fbb.startTable(10);
+          final currencyOffset = fbb.writeString(object.currency);
+          fbb.startTable(11);
           fbb.addInt64(0, object.id);
           fbb.addOffset(1, nameOffset);
           fbb.addInt64(3, object.iconCodePoint);
@@ -360,6 +366,7 @@ obx_int.ModelDefinition getObjectBoxModel() {
           fbb.addBool(6, object.isEnabled);
           fbb.addInt32(7, object.typeValue);
           fbb.addBool(8, object.excludeFromTotalBalance);
+          fbb.addOffset(9, currencyOffset);
           fbb.finish(fbb.endTable());
           return object.id;
         },
@@ -370,14 +377,16 @@ obx_int.ModelDefinition getObjectBoxModel() {
               const fb.Int64Reader().vTableGet(buffer, rootOffset, 4, 0);
           final nameParam = const fb.StringReader(asciiOptimization: true)
               .vTableGet(buffer, rootOffset, 6, '');
+          final typeValueParam =
+              const fb.Int32Reader().vTableGet(buffer, rootOffset, 18, 0);
+          final currencyParam = const fb.StringReader(asciiOptimization: true)
+              .vTableGet(buffer, rootOffset, 22, '');
+          final balanceParam =
+              const fb.Float64Reader().vTableGet(buffer, rootOffset, 14, 0);
           final iconCodePointParam =
               const fb.Int64Reader().vTableGet(buffer, rootOffset, 10, 0);
           final colorValueParam =
               const fb.Int64Reader().vTableGet(buffer, rootOffset, 12, 0);
-          final typeValueParam =
-              const fb.Int32Reader().vTableGet(buffer, rootOffset, 18, 0);
-          final balanceParam =
-              const fb.Float64Reader().vTableGet(buffer, rootOffset, 14, 0);
           final isEnabledParam =
               const fb.BoolReader().vTableGet(buffer, rootOffset, 16, false);
           final excludeFromTotalBalanceParam =
@@ -385,10 +394,11 @@ obx_int.ModelDefinition getObjectBoxModel() {
           final object = Account(
               id: idParam,
               name: nameParam,
+              typeValue: typeValueParam,
+              currency: currencyParam,
+              balance: balanceParam,
               iconCodePoint: iconCodePointParam,
               colorValue: colorValueParam,
-              typeValue: typeValueParam,
-              balance: balanceParam,
               isEnabled: isEnabledParam,
               excludeFromTotalBalance: excludeFromTotalBalanceParam);
           obx_int.InternalToManyAccess.setRelInfo<Account>(
@@ -502,6 +512,10 @@ class Account_ {
   /// See [Account.excludeFromTotalBalance].
   static final excludeFromTotalBalance =
       obx.QueryBooleanProperty<Account>(_entities[2].properties[7]);
+
+  /// See [Account.currency].
+  static final currency =
+      obx.QueryStringProperty<Account>(_entities[2].properties[8]);
 
   /// see [Account.transactions]
   static final transactions =

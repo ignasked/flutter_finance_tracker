@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:money_owl/backend/models/account.dart';
+import 'package:money_owl/backend/repositories/category_repository.dart';
 import 'package:money_owl/backend/utils/enums.dart';
 import 'package:objectbox/objectbox.dart';
 import 'category.dart'; // Import the Category model
@@ -7,7 +8,7 @@ import 'category.dart'; // Import the Category model
 @Entity()
 
 /// Represents a financial transaction with details such as title, amount, type (income/expense), category, and date.
-// ignore: must_be_immutable
+// ignore: must-be-immutable
 class Transaction extends Equatable {
   @Id()
   int id;
@@ -105,13 +106,46 @@ class Transaction extends Equatable {
   }
 
   // Factory method to create a Transaction from JSON
-  factory Transaction.fromJson(Map<String, dynamic> json) {
-    return Transaction(
-      id: json['id'] ?? 0,
-      title: json['title'] ?? 'Unknown',
-      amount: (json['amount'] ?? 0.0).toDouble(),
-      date: DateTime.parse(json['date']),
-    )..category.targetId = json['categoryId'];
+  factory Transaction.fromJson(
+      Map<String, dynamic> json, CategoryRepository categoryRepository) {
+    Category? category;
+    if (json['categoryId'] != null) {
+      category = categoryRepository.box.get(json['categoryId']);
+      // if (category != null) {
+      //   transaction.category.target = category;
+      // }
+    }
+
+    if (json['accountId'] != null) {
+      // transaction.account.target = Account(
+      //   id: json['accountId'],
+      //   name: json['accountName'] ?? 'Unknown Account',
+      //   currency: json['accountCurrency'] ?? 'USD',
+      //   iconCodePoint: json['accountIconCodePoint'] ?? 0,
+      //   colorValue: json['accountColorValue'] ?? 0xFF000000,
+      //   typeValue: json['accountTypeValue'] ?? 0,
+      //   balance: json['accountBalance'] ?? 0.0,
+      // );
+    }
+
+    final transaction = Transaction(
+      id: json['id'] as int? ?? 0,
+      title: json['title'] as String? ?? 'Unknown',
+      amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
+      date: _parseDate(json['date']),
+      category: category,
+    );
+
+    return transaction;
+  }
+
+  // Helper method for safe date parsing
+  static DateTime _parseDate(dynamic date) {
+    try {
+      return date != null ? DateTime.parse(date.toString()) : DateTime.now();
+    } catch (e) {
+      return DateTime.now(); // Fallback to current date if parsing fails
+    }
   }
 
   // Convert a Transaction object to a JSON-compatible map

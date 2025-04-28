@@ -10,17 +10,18 @@ class Account extends Equatable {
   int id;
 
   final String name;
-  final int iconCodePoint; // IconData code point
-  final int colorValue; // Color value as an integer
+  final String currency;
   final double balance; // Optional: Current balance of the account
-  final bool isEnabled;
-  final bool excludeFromTotalBalance; // Exclude from total balance calculation
-
   @Property(type: PropertyType.int)
   final int typeValue; // Store AccountType as an int
-
   @Backlink('account')
   final ToMany<Transaction> transactions = ToMany<Transaction>();
+
+// Visual representation of the account
+  final int iconCodePoint; // IconData code point
+  final int colorValue; // Color value as an integer
+  final bool isEnabled; // Is the account enabled or archived.
+  final bool excludeFromTotalBalance; // Exclude from total balance calculation
 
   // Getter to convert the stored integer back to the enum
   AccountType get type => AccountType.values[typeValue];
@@ -29,10 +30,11 @@ class Account extends Equatable {
   Account({
     this.id = 0,
     required this.name,
+    required this.typeValue, // Pass AccountType as an int
+    required this.currency,
+    this.balance = 0.0,
     required this.iconCodePoint,
     required this.colorValue,
-    required this.typeValue, // Pass AccountType as an int
-    this.balance = 0.0,
     this.isEnabled = true,
     this.excludeFromTotalBalance = false,
   }) : assert(
@@ -45,12 +47,14 @@ class Account extends Equatable {
     return {
       'id': id,
       'name': name,
+      'currency': currency,
+      'typeValue': typeValue,
+      'balance': balance,
+      'type': type.toString().split('.').last, // Save enum as string
       'iconCodePoint': iconCodePoint,
       'colorValue': colorValue,
-      'balance': balance,
       'isEnabled': isEnabled,
       'excludeFromTotalBalance': excludeFromTotalBalance,
-      'type': type.toString().split('.').last, // Save enum as string
     };
   }
 
@@ -59,6 +63,8 @@ class Account extends Equatable {
     return Account(
       id: json['id'] ?? 0,
       name: json['name'],
+      currency: json['currency'] ?? 'USD',
+
       iconCodePoint: json['iconCodePoint'],
       colorValue: json['colorValue'],
       typeValue: AccountType.values
@@ -76,6 +82,7 @@ class Account extends Equatable {
   Account copyWith({
     int? id,
     String? name,
+    String? currency,
     int? iconCodePoint,
     int? colorValue,
     int? typeValue,
@@ -86,6 +93,7 @@ class Account extends Equatable {
     return Account(
       id: id ?? this.id,
       name: name ?? this.name,
+      currency: currency ?? this.currency,
       iconCodePoint: iconCodePoint ?? this.iconCodePoint,
       colorValue: colorValue ?? this.colorValue,
       typeValue: typeValue ?? this.typeValue,

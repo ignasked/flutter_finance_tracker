@@ -19,17 +19,21 @@ class AccountRepository extends BaseRepository<Account> {
     final defaultAccounts = [
       Account(
         name: 'Bank Account',
+        typeValue: AccountType.bank.index, // Convert enum to int
+        currency: 'USD',
+        balance: 0.0,
         colorValue: Colors.blue.value, // Convert Color to int
         iconCodePoint:
             Icons.account_balance.codePoint, // Convert IconData to int
-        typeValue: AccountType.bank.index, // Convert enum to int
       ),
       Account(
         name: 'Cash',
+        typeValue: AccountType.cash.index, // Convert enum to int
+        currency: 'USD',
+        balance: 0.0,
         colorValue: Colors.green.value, // Convert Color to int
         iconCodePoint:
             Icons.account_balance_wallet.codePoint, // Convert IconData to int
-        typeValue: AccountType.cash.index, // Convert enum to int
       ),
     ];
 

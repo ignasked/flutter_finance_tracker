@@ -1,7 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:money_owl/backend/models/category.dart';
+import 'package:money_owl/backend/repositories/category_repository.dart';
 import 'package:money_owl/config/env.dart';
+import 'package:money_owl/main.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:money_owl/backend/utils/receipt_format.dart';
 import 'package:money_owl/backend/models/transaction.dart'; // Import your Transaction model
@@ -66,7 +69,7 @@ class MistralService {
 
   // Analyze and format data
   Future<Map<String, dynamic>> analyzeAndFormat(
-      File file, ReceiptFormat format, String enabledCategoryTitles) async {
+      File file, ReceiptFormat format, List<Category> categories) async {
     final base64File = await _encodeFileToBase64(file);
     final ocrResponse = await _postRequest('ocr', {
       'model': 'mistral-ocr-latest',
@@ -85,6 +88,10 @@ class MistralService {
     final pages = ocrJsonResponse['pages'] as List;
     final markdownTexts =
         pages.map((page) => page['markdown'] as String).join('\n\n');
+
+    final categoryIdNamePairs = categories
+        .map((category) => '${category.id}:${category.title}')
+        .join(', ');
 
     final llmResponse = await _postRequest('chat/completions', {
       'model': 'mistral-medium',
@@ -106,12 +113,13 @@ convert into a structured JSON response.
   "transactions": [
     {
       "title": "string",
-      "category": "string",
+      "categoryId": "number",
       "amount": "number"
     }
   ]
 }
-- category should be one of the following enabled categories: $enabledCategoryTitles
+- Use the following id-categoryName combinations for categories: $categoryIdNamePairs
+- Only return categoryId in the response.
 - transactionName should be the name of the shop or service where the transaction took place.
 ''',
         }
@@ -130,8 +138,8 @@ convert into a structured JSON response.
         llmJsonResponse['choices'][0]['message']['content'].trim();
 
     final json = _extractJson(rawContent);
-    final parsedData = _validateAndExtractData(json);
-    await saveApiOutput(parsedData);
+    final parsedData = _validateAndExtractData(json, categoryRepository);
+    //await saveApiOutput(parsedData);
 
     return parsedData;
   }
@@ -180,7 +188,8 @@ convert into a structured JSON response.
   }
 
   // Validate and extract data from the JSON response
-  Map<String, dynamic> _validateAndExtractData(String jsonString) {
+  Map<String, dynamic> _validateAndExtractData(
+      String jsonString, CategoryRepository categoryRepository) {
     final parsedData = jsonDecode(jsonString);
 
     // Extract transactionName
@@ -189,7 +198,8 @@ convert into a structured JSON response.
 
     // Extract and validate transactions
     final transactions = (parsedData['transactions'] as List<dynamic>)
-        .map((transaction) => Transaction.fromJson(transaction))
+        .map((transaction) =>
+            Transaction.fromJson(transaction, categoryRepository))
         .toList();
 
     return {
