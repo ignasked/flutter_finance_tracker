@@ -36,7 +36,9 @@ class MistralService {
 
     final json = _extractJson(rawContent);
 
-    return _extractJson(rawContent);
+    await saveApiOutput(json);
+
+    return json;
   }
 
   // Helper method to make API calls
@@ -94,6 +96,9 @@ class MistralService {
 - Use the following categories: $categoryMappings
 - transactionName should be the name of the shop or service where the transaction took place.
 - totalName should be the total amount of the receipt.
+- date should be in YYYY-MM-DD format.
+- for totalAmount don't calculate, just extract how much should be paid from the receipt.
+- for title of transactions try to fix any typos and simplify the name but do it in the original language.
 - Return the data in a JSON format with the following structure:
 {
   "transactionName": "string",

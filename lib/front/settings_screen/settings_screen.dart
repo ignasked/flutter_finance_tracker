@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:money_owl/backend/repositories/category_repository.dart';
 import 'package:money_owl/front/home_screen/cubit/account_transaction_cubit.dart';
 import 'package:money_owl/front/settings_screen/cubit/csv_cubit.dart';
 import 'package:money_owl/front/receipt_scan_screen/receipt_analyzer_widget.dart';
@@ -32,6 +33,15 @@ class SettingsScreen extends StatelessWidget {
                 const Text('Settings Screen'),
                 _buildExportButton(),
                 _buildDeleteAllButton(context),
+                ElevatedButton(
+                  onPressed: () =>
+                      context.read<CategoryRepository>().removeAll(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text("Delete All Categories"),
+                ),
                 _buildImportButton(),
                 const Divider(height: 32),
                 const Text(

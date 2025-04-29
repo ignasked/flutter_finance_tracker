@@ -2,10 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:money_owl/backend/models/account.dart';
 import 'package:money_owl/backend/repositories/account_repository.dart';
-import 'package:money_owl/front/transaction_form_screen/cubit/transaction_form_cubit.dart';
 
 class AccountDropdown extends StatelessWidget {
-  const AccountDropdown({Key? key}) : super(key: key);
+  final Account? selectedAccount;
+  final ValueChanged<Account?> onAccountChanged;
+
+  const AccountDropdown({
+    Key? key,
+    required this.selectedAccount,
+    required this.onAccountChanged,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +29,7 @@ class AccountDropdown extends StatelessWidget {
         final accounts = snapshot.data ?? [];
 
         return DropdownButtonFormField<Account>(
-          value: context.watch<TransactionFormCubit>().state.account,
+          value: selectedAccount,
           items: accounts.map((account) {
             return DropdownMenuItem(
               value: account,
@@ -36,12 +42,13 @@ class AccountDropdown extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   Text(account.name),
+                  const SizedBox(width: 20),
+                  Text('${account.balance.toString()} ${account.currency}'),
                 ],
               ),
             );
           }).toList(),
-          onChanged: (value) =>
-              context.read<TransactionFormCubit>().accountChanged(value!),
+          onChanged: onAccountChanged,
           decoration: const InputDecoration(
             labelText: 'Account',
             border: OutlineInputBorder(),

@@ -56,44 +56,137 @@ class CategoryRepository extends BaseRepository<Category> {
       Category(
         title: 'Food',
         descriptionForAI: 'Expenses related to food and dining',
-        colorValue: Colors.red.value, // Convert Color to int
-        iconCodePoint: Icons.fastfood.codePoint, // Convert IconData to int
-        typeValue: TransactionType.expense.index, // Convert enum to int
+        colorValue: Colors.orange.value,
+        iconCodePoint: Icons.restaurant.codePoint,
+        typeValue: TransactionType.expense.index,
       ),
       Category(
         title: 'Transportation',
-        descriptionForAI: 'Expenses related to transportation',
+        descriptionForAI:
+            'Expenses related to transportation like fuel, public transit, taxis',
         colorValue: Colors.blue.value,
         iconCodePoint: Icons.directions_car.codePoint,
         typeValue: TransactionType.expense.index,
       ),
       Category(
-        title: 'Entertainment',
-        descriptionForAI: 'Expenses related to entertainment',
-        colorValue: Colors.purple.value,
-        iconCodePoint: Icons.movie.codePoint,
+        title: 'Accomodation',
+        descriptionForAI: 'Expenses related to housing, rent, hotels',
+        colorValue: Colors.brown.value,
+        iconCodePoint: Icons.home.codePoint,
         typeValue: TransactionType.expense.index,
       ),
       Category(
-        title: 'Salary',
-        descriptionForAI: 'Income from salary',
+        title: 'Groceries',
+        descriptionForAI:
+            'Expenses related to grocery shopping and household supplies',
         colorValue: Colors.green.value,
-        iconCodePoint: Icons.attach_money.codePoint,
-        typeValue: TransactionType.income.index,
+        iconCodePoint: Icons.shopping_cart.codePoint,
+        typeValue: TransactionType.expense.index,
+      ),
+      Category(
+        title: 'Junk Food',
+        descriptionForAI: 'Expenses related to snacks and fast food',
+        colorValue: Colors.red.value,
+        iconCodePoint: Icons.fastfood.codePoint,
+        typeValue: TransactionType.expense.index,
+      ),
+      Category(
+        title: 'Services',
+        descriptionForAI:
+            'Expenses related to various services and subscriptions',
+        colorValue: Colors.indigo.value,
+        iconCodePoint: Icons.miscellaneous_services.codePoint,
+        typeValue: TransactionType.expense.index,
+      ),
+      Category(
+        title: 'Fitness',
+        descriptionForAI:
+            'Expenses related to gym memberships and fitness activities',
+        colorValue: Colors.deepOrange.value,
+        iconCodePoint: Icons.fitness_center.codePoint,
+        typeValue: TransactionType.expense.index,
+      ),
+      Category(
+        title: 'Entertainment',
+        descriptionForAI:
+            'Expenses related to entertainment and leisure activities',
+        colorValue: Colors.purple.value,
+        iconCodePoint: Icons.sports_esports.codePoint,
+        typeValue: TransactionType.expense.index,
       ),
       Category(
         title: 'Healthcare',
-        descriptionForAI: 'Expenses related to healthcare',
-        colorValue: Colors.orange.value,
+        descriptionForAI:
+            'Expenses related to medical care and health services',
+        colorValue: Colors.red.value,
         iconCodePoint: Icons.local_hospital.codePoint,
         typeValue: TransactionType.expense.index,
       ),
       Category(
         title: 'Utilities',
-        descriptionForAI: 'Expenses related to utilities',
-        colorValue: Colors.yellow.value,
-        iconCodePoint: Icons.lightbulb.codePoint,
+        descriptionForAI:
+            'Expenses related to utilities like electricity, water, internet',
+        colorValue: Colors.blue.value,
+        iconCodePoint: Icons.power.codePoint,
         typeValue: TransactionType.expense.index,
+      ),
+      Category(
+        title: 'Clothing',
+        descriptionForAI: 'Expenses related to clothes and accessories',
+        colorValue: Colors.pink.value,
+        iconCodePoint: Icons.shopping_bag.codePoint,
+        typeValue: TransactionType.expense.index,
+      ),
+      Category(
+        title: 'Deposit',
+        descriptionForAI: 'Money deposited or saved from bottle returns',
+        colorValue: Colors.amber.value,
+        iconCodePoint: Icons.recycling.codePoint,
+        typeValue: TransactionType.expense.index,
+      ),
+      Category(
+        title: 'Other Expenses',
+        descriptionForAI:
+            'Miscellaneous expenses that don\'t fit other categories',
+        colorValue: Colors.grey.value,
+        iconCodePoint: Icons.more_horiz.codePoint,
+        typeValue: TransactionType.expense.index,
+      ),
+      Category(
+        title: 'Salary',
+        descriptionForAI: 'Regular income from employment',
+        colorValue: Colors.green.value,
+        iconCodePoint: Icons.work.codePoint,
+        typeValue: TransactionType.income.index,
+      ),
+      Category(
+        title: 'Gifts',
+        descriptionForAI: 'Recieved gifts',
+        colorValue: Colors.pink.value,
+        iconCodePoint: Icons.card_giftcard.codePoint,
+        typeValue: TransactionType.income.index,
+      ),
+      Category(
+        title: 'Side Hustle',
+        descriptionForAI: 'Income from side jobs or freelance work',
+        colorValue: Colors.teal.value,
+        iconCodePoint: Icons.business_center.codePoint,
+        typeValue: TransactionType.income.index,
+      ),
+      Category(
+        title: 'Other Income',
+        descriptionForAI:
+            'Miscellaneous income that doesn\'t fit other categories',
+        colorValue: Colors.grey.value,
+        iconCodePoint: Icons.more_horiz.codePoint,
+        typeValue: TransactionType.income.index,
+      ),
+      Category(
+        title: 'Discount',
+        descriptionForAI: 'Money saved through discounts and rebates',
+        colorValue: Colors.green.value,
+        iconCodePoint: Icons.local_offer.codePoint,
+        typeValue: TransactionType.income.index,
       ),
     ];
 

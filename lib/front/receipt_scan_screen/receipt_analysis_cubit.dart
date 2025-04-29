@@ -46,6 +46,37 @@ class ReceiptAnalysisCubit extends Cubit<ReceiptAnalysisState> {
     }
   }
 
+  Future<void> loadLastScan() async {
+    emit(ReceiptAnalysisLoading());
+
+    try {
+      final categoryNames = _categoryRepository.getEnabledCategoryTitles();
+      final availableCategories = _categoryRepository.getEnabledCategories();
+
+      final receiptJson = await _mistralService.loadSavedApiOutput();
+      if (receiptJson == null) {
+        emit(ReceiptAnalysisError('No saved scan found.'));
+        return;
+      }
+
+      // Convert string categories to category IDs before validation
+      for (final transaction in receiptJson['transactions']) {
+        try {
+          final category = availableCategories
+              .firstWhere((cat) => cat.title == transaction['category']);
+          transaction['categoryId'] = category.id;
+        } catch (e) {
+          transaction['categoryId'] = Defaults().defaultCategory.id;
+        }
+      }
+
+      final receiptData = _validateJSONAndExtractData(receiptJson);
+      emit(ReceiptAnalysisSuccess(receiptData));
+    } catch (e) {
+      emit(ReceiptAnalysisError('Error analyzing file: $e'));
+    }
+  }
+
   // Pick an image from the gallery or camera
   Future<File?> pickImage({bool fromGallery = false}) async {
     final picker = ImagePicker();
@@ -73,6 +104,7 @@ class ReceiptAnalysisCubit extends Cubit<ReceiptAnalysisState> {
   Map<String, dynamic> _validateJSONAndExtractData(Map<String, dynamic> json) {
     final transactionName = json['transactionName'] ?? 'Unnamed Transaction';
     final date = _parseDate(json['date']);
+    final totalAmount = json['totalAmount'] ?? 0.0;
 
     final transactions = (json['transactions'] as List<dynamic>)
         .where((transaction) => transaction is Map<String, dynamic>)
@@ -87,6 +119,7 @@ class ReceiptAnalysisCubit extends Cubit<ReceiptAnalysisState> {
     return {
       'transactionName': transactionName,
       'date': date,
+      'totalAmount': totalAmount,
       'transactions': transactions,
     };
   }

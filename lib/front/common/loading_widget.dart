@@ -20,7 +20,7 @@ class LoadingWidget extends StatelessWidget {
               width: 100,
             ),
             const SizedBox(height: 16),
-            const CircularProgressIndicator(),
+            const CircularProgressIndicator(color: Colors.white),
             if (message != null) ...[
               const SizedBox(height: 16),
               Text(

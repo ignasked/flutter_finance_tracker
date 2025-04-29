@@ -1,17 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:money_owl/backend/models/account.dart';
 import 'package:money_owl/backend/models/transaction.dart';
 import 'package:money_owl/backend/models/transaction_result.dart';
+import 'package:money_owl/backend/repositories/transaction_repository.dart';
+import 'package:money_owl/backend/utils/defaults.dart';
 import 'package:money_owl/front/transaction_form_screen/transaction_form_screen.dart';
+import 'package:money_owl/front/transaction_form_screen/widgets/account_dropdown.dart';
 
 class BulkAddTransactionsScreen extends StatefulWidget {
   final String transactionName;
   final DateTime date;
+  final double totalExpensesFromReceipt;
   final List<Transaction> transactions;
 
   const BulkAddTransactionsScreen({
     Key? key,
     required this.transactionName,
     required this.date,
+    required this.totalExpensesFromReceipt,
     required this.transactions,
   }) : super(key: key);
 
@@ -22,20 +29,37 @@ class BulkAddTransactionsScreen extends StatefulWidget {
 
 class _BulkAddTransactionsScreenState extends State<BulkAddTransactionsScreen> {
   late double totalExpenses;
+  Account? selectedAccount;
+  String? warningMessage;
 
   @override
   void initState() {
     super.initState();
     print('Transaction Name: ${widget.transactionName}');
     print('Transactions: ${widget.transactions}');
+    selectedAccount = Defaults().defaultAccount;
     totalExpenses = _calculateTotalExpenses();
+
+    // Check if totalExpensesFromReceipt matches calculated totalExpenses
+    if (widget.totalExpensesFromReceipt != totalExpenses) {
+      warningMessage =
+          'Check the transactions.\n Total expenses should be: ${widget.totalExpensesFromReceipt?.toStringAsFixed(2)}';
+    }
   }
 
   double _calculateTotalExpenses() {
-    return widget.transactions.fold<double>(
+    final totalExpenses = widget.transactions.fold<double>(
       0.0,
       (sum, transaction) => sum + transaction.amount,
     );
+
+    if (totalExpenses != widget.totalExpensesFromReceipt) {
+      warningMessage =
+          'Check the transactions.\n Total expenses should be: ${widget.totalExpensesFromReceipt?.toStringAsFixed(2)}';
+    } else {
+      warningMessage = null; // Clear warning if they match
+    }
+    return totalExpenses;
   }
 
   void _removeTransaction(int index) {
@@ -72,7 +96,7 @@ class _BulkAddTransactionsScreenState extends State<BulkAddTransactionsScreen> {
         title:
             '${category?.title} at ${widget.transactionName}', // Optional: Add a prefix to indicate merging
         category: category,
-        amount: entry.value,
+        amount: double.parse(entry.value.toStringAsFixed(2)),
         date: DateTime.now(), // Use the current date or a default date
       );
     }).toList();
@@ -88,18 +112,21 @@ class _BulkAddTransactionsScreenState extends State<BulkAddTransactionsScreen> {
     print('Transactions merged by category: $mergedTransactions');
   }
 
+  void _applyAccountToAllTransactions(Account account) {
+    setState(() {
+      for (var transaction in widget.transactions) {
+        transaction.account.target =
+            account; // Assuming Transaction has an 'account' field
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.transactionName),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.merge_type),
-            tooltip: 'Merge by Categories',
-            onPressed: _mergeTransactionsByCategory,
-          ),
-        ],
+        title: Text(
+            '${widget.transactionName} | ${DateFormat("yMMMd").format(widget.date)}'),
       ),
       body: Column(
         children: [
@@ -218,41 +245,95 @@ class _BulkAddTransactionsScreenState extends State<BulkAddTransactionsScreen> {
                     ),
                   ],
                 ),
+
+                // Warning message
+                if (warningMessage != null)
+                  Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.warning,
+                            color: Colors.orange,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            warningMessage!,
+                            style: const TextStyle(
+                              color: Colors.orange,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      )),
+
                 const SizedBox(height: 16),
 
-                // Confirm, Cancel, and Merge buttons
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    // Confirm button with icon
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        // Handle confirm action
-                        print('Confirmed transactions');
-                        Navigator.of(context).pop(widget.transactions);
-                      },
-                      icon: const Icon(Icons.check),
-                      label: const Text(''),
-                    ),
+                // Account dropdown
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  child: AccountDropdown(
+                    selectedAccount: selectedAccount,
+                    onAccountChanged: (account) {
+                      setState(() {
+                        selectedAccount = account;
+                        _applyAccountToAllTransactions(account!);
+                      });
+                    },
+                  ),
+                ),
 
-                    // Cancel button with icon
-                    OutlinedButton.icon(
-                      onPressed: () {
-                        // Handle cancel action
-                        print('Cancelled transactions');
-                        Navigator.of(context).pop();
-                      },
-                      icon: const Icon(Icons.close),
-                      label: const Text(''),
-                    ),
-
-                    // Merge by Categories button
-                    ElevatedButton.icon(
-                      onPressed: _mergeTransactionsByCategory,
-                      icon: const Icon(Icons.merge_type),
-                      label: const Text(''),
-                    ),
-                  ],
+                // Buttons row
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: () {
+                          print('Cancelled transactions');
+                          Navigator.of(context).pop();
+                        },
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 24, vertical: 12),
+                        ),
+                        icon: const Icon(Icons.close),
+                        label: const Text('Cancel'),
+                      ),
+                      ElevatedButton.icon(
+                        onPressed: _mergeTransactionsByCategory,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 24, vertical: 12),
+                        ),
+                        icon: const Icon(
+                          Icons.merge_type,
+                          color: Colors.white,
+                        ),
+                        label: const Text('Merge',
+                            style: TextStyle(color: Colors.white)),
+                      ),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          print('Confirmed transactions');
+                          Navigator.of(context).pop(widget.transactions);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 24, vertical: 12),
+                        ),
+                        icon: const Icon(
+                          Icons.check,
+                          color: Colors.white,
+                        ),
+                        label: const Text('Save',
+                            style: TextStyle(color: Colors.white)),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),

@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:money_owl/backend/models/account.dart';
 import 'package:money_owl/backend/repositories/base_repository.dart';
+import 'package:money_owl/backend/utils/defaults.dart';
 import 'package:money_owl/backend/utils/enums.dart';
 import '../../objectbox.g.dart'; // ObjectBox generated file
 
 class AccountRepository extends BaseRepository<Account> {
   AccountRepository(Store store) : super(store) {
     _initializeDefaultAccounts();
+    final defaultAcc = getById(1);
+    if (defaultAcc != null) {
+      Defaults().defaultAccount = defaultAcc; // Set default account
+    }
   }
 
   /// Factory method for asynchronous initialization

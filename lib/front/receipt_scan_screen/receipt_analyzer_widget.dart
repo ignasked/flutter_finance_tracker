@@ -1,10 +1,13 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:money_owl/backend/models/transaction.dart';
+import 'package:money_owl/backend/repositories/transaction_repository.dart';
 import 'package:money_owl/backend/services/mistral_service.dart';
 import 'package:money_owl/backend/repositories/category_repository.dart';
 import 'package:money_owl/backend/services/file_picker_service.dart';
 import 'package:money_owl/backend/utils/receipt_format.dart';
+import 'package:money_owl/front/home_screen/cubit/account_transaction_cubit.dart';
 import 'package:money_owl/front/receipt_scan_screen/bulk_add_transactions_screen.dart';
 import 'package:money_owl/front/receipt_scan_screen/receipt_analysis_cubit.dart';
 import 'package:money_owl/front/common/loading_widget.dart';
@@ -36,7 +39,7 @@ class ReceiptAnalyzerWidget extends StatelessWidget {
         context.read<CategoryRepository>(),
       ),
       child: BlocConsumer<ReceiptAnalysisCubit, ReceiptAnalysisState>(
-        listener: (context, state) {
+        listener: (context, state) async {
           if (state is ReceiptAnalysisLoading) {
             showLoadingPopup(context,
                 message: 'Analyzing receipt. Please wait...');
@@ -50,16 +53,22 @@ class ReceiptAnalyzerWidget extends StatelessWidget {
             );
           } else if (state is ReceiptAnalysisSuccess) {
             final receiptData = state.receiptData;
-            Navigator.push(
+            final transactions = await Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => BulkAddTransactionsScreen(
                   transactionName: receiptData['transactionName'],
                   date: receiptData['date'],
+                  totalExpensesFromReceipt: receiptData['totalAmount'],
                   transactions: receiptData['transactions'],
                 ),
               ),
             );
+            if (transactions != null) {
+              context
+                  .read<AccountTransactionCubit>()
+                  .addTransactions(transactions as List<Transaction>);
+            }
           }
         },
         builder: (context, state) {
@@ -92,7 +101,7 @@ class ReceiptAnalyzerWidget extends StatelessWidget {
                       final imageFile = await FilePickerService.instance
                           .pickImage(fromGallery: false);
                       if (imageFile != null) {
-                        context
+                        await context
                             .read<ReceiptAnalysisCubit>()
                             .analyzeFile(imageFile, ReceiptFormat.image);
                       }
@@ -105,10 +114,17 @@ class ReceiptAnalyzerWidget extends StatelessWidget {
                       final imageFile = await FilePickerService.instance
                           .pickImage(fromGallery: true);
                       if (imageFile != null) {
-                        context
+                        await context
                             .read<ReceiptAnalysisCubit>()
                             .analyzeFile(imageFile, ReceiptFormat.image);
                       }
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.save),
+                    title: const Text('Last Scan'),
+                    onTap: () async {
+                      await context.read<ReceiptAnalysisCubit>().loadLastScan();
                     },
                   ),
                   if (imageFile != null) ...[
