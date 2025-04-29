@@ -76,7 +76,18 @@ class TransactionFilterSheet extends StatelessWidget {
             backgroundColor: isSelected ? Colors.blue : Colors.grey[300],
             foregroundColor: isSelected ? Colors.white : Colors.black,
           ),
-          child: Text(category.title),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                category.icon,
+                size: 16,
+                color: category.color,
+              ),
+              const SizedBox(width: 8),
+              Text(category.title),
+            ],
+          ),
         );
       }).toList(),
     );

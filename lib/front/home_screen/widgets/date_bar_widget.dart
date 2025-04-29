@@ -98,7 +98,7 @@ class DateRangeDisplay extends StatelessWidget {
   /// If [endDate] is null, only the [startDate] is displayed.
   /// Otherwise, the range is displayed as "startDate - endDate".
   String _formatDateRange(DateTime startDate, DateTime? endDate) {
-    final dateFormat = DateFormat('MMM dd, yyyy');
+    final dateFormat = DateFormat('yyyy.MM.dd');
     if (endDate == null) {
       return dateFormat.format(startDate); // Single day
     } else {
@@ -155,7 +155,7 @@ class SelectDayButton extends StatelessWidget {
       onPressed: () async {
         final selectedDay = await showDatePicker(
           context: context,
-          initialDate: dateCubit.state.selectedStartDate,
+          initialDate: DateTime.now(),
           initialDatePickerMode: DatePickerMode.day,
           firstDate: DateTime(2000),
           lastDate: DateTime(2100),

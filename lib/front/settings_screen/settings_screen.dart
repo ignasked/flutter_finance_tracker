@@ -89,7 +89,7 @@ class SettingsScreen extends StatelessWidget {
                               width: 50,
                               height: 50,
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 7),
                             const Text('Financial Analysis'),
                           ],
                         ),

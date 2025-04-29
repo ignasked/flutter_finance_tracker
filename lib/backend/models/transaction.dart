@@ -81,27 +81,37 @@ class Transaction extends Equatable {
   }
 
   static String toCSVHeader() {
-    return 'id,title,description,amount,isIncome,category,account,date';
+    return 'id,title,description,amount,categoryId,categoryName,accountId,accountName,date';
   }
 
   String toCSV() {
-    return '$id,$title,${description ?? ''},$amount,$isIncome,${category.target?.id},${account.target?.id},$date';
+    return [
+      id,
+      title.replaceAll(',', ';'), // Escape commas in text fields
+      (description ?? '').replaceAll(',', ';'),
+      amount,
+      category.target?.id ?? '',
+      (category.target?.title ?? '').replaceAll(',', ';'),
+      account.target?.id ?? '',
+      (account.target?.name ?? '').replaceAll(',', ';'),
+      date.toIso8601String()
+    ].join(',');
   }
 
   static Transaction fromCSV(String csv) {
     List<String> fields = csv.split(',');
-    if (fields.length != 6) {
+    if (fields.length != 9) {
       throw Exception('Invalid CSV format');
     }
-    // Parse the fields and create a Transaction object
+
     return Transaction(
       id: int.parse(fields[0]),
-      title: fields[1],
-      description: fields[2].isNotEmpty ? fields[2] : null,
+      title: fields[1].replaceAll(';', ','),
+      description: fields[2].isNotEmpty ? fields[2].replaceAll(';', ',') : null,
       amount: double.parse(fields[3]),
-      date: DateTime.parse(fields[7]),
-      category: null, // TODO: Implement proper Category parsing from CSV
-      account: null, // TODO: Implement proper Account parsing from CSV
+      date: DateTime.parse(fields[8]),
+      // Category and Account will need to be set separately using the repository
+      // as they require access to the ObjectBox store
     );
   }
 

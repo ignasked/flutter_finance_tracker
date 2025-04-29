@@ -1,4 +1,5 @@
 import 'package:bloc/bloc.dart';
+import 'package:money_owl/backend/utils/defaults.dart';
 
 class DateState {
   final DateTime selectedStartDate;
@@ -25,8 +26,8 @@ class DateState {
 class DateCubit extends Cubit<DateState> {
   DateCubit()
       : super(DateState(
-          selectedStartDate: DateTime.now(),
-          selectedEndDate: null,
+          selectedStartDate: Defaults().defaultDateRangeStart,
+          selectedEndDate: Defaults().defaultDateRangeEnd,
         ));
 
   void moveToPrevious() {
