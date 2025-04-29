@@ -6,6 +6,7 @@ import 'package:money_owl/backend/models/transaction.dart';
 import 'package:money_owl/backend/repositories/category_repository.dart';
 import 'package:money_owl/backend/services/mistral_service.dart';
 import 'package:money_owl/backend/services/file_picker_service.dart';
+import 'package:money_owl/backend/utils/defaults.dart';
 import 'package:money_owl/front/receipt_scan_screen/bulk_add_transactions_screen.dart';
 import 'package:money_owl/front/home_screen/cubit/account_transaction_cubit.dart';
 import 'package:money_owl/backend/utils/receipt_format.dart';
@@ -31,16 +32,13 @@ class _ReceiptAnalyzerWidgetState extends State<ReceiptAnalyzerWidget> {
 
     try {
       final categoryRepository = context.read<CategoryRepository>();
+      final categoryNames = categoryRepository.getEnabledCategoryTitles();
       final availableCategories = categoryRepository.getEnabledCategories();
-      final categoryIdNamePairs = availableCategories
-          .map((category) => '${category.id}:${category.title}')
-          .join(', ');
 
       Map<String, dynamic>? receiptJson;
 
-      //TODO: remove loadSavedResponse parameter from _analyzeFile method
+//TODO: remove loadSavedResponse parameter from _analyzeFile method
       if (loadSavedResponse == true) {
-        // Load saved data from the Mistral service
         receiptJson = await _mistralService.loadSavedApiOutput();
         if (receiptJson == null) {
           setState(() {
@@ -48,18 +46,30 @@ class _ReceiptAnalyzerWidgetState extends State<ReceiptAnalyzerWidget> {
           });
           return;
         }
-        // Process the saved data as needed
       } else {
-        receiptJson =
-            await _mistralService.processReceiptAndExtractTransactions(
-                file, format, categoryIdNamePairs);
+        receiptJson = await _mistralService
+            .processReceiptAndExtractTransactions(file, format, categoryNames);
       }
-      if (!mounted) return; // Check if the widget is still mounted
+      if (!mounted) return;
+
+      // Convert string categories to category IDs before validation
+      for (final transaction in receiptJson['transactions']) {
+        try {
+          final category = availableCategories
+              .firstWhere((cat) => cat.title == transaction['category']);
+          transaction['categoryId'] = category.id;
+        } catch (e) {
+          // Handle case when category is not found
+          print('Category not found for: ${transaction['category']}');
+          transaction['categoryId'] = Defaults().defaultCategory.id;
+        }
+      }
 
       final receiptData =
           _validateJSONAndExtractData(receiptJson, categoryRepository);
 
       final transactionName = receiptData['transactionName'];
+      final date = _parseDate(receiptData['date']);
       final transactions = receiptData['transactions'] as List<Transaction>;
 
       final newTransactions = await Navigator.push(
@@ -67,12 +77,13 @@ class _ReceiptAnalyzerWidgetState extends State<ReceiptAnalyzerWidget> {
         MaterialPageRoute(
           builder: (context) => BulkAddTransactionsScreen(
             transactionName: transactionName,
+            date: date,
             transactions: transactions,
           ),
         ),
       );
 
-      if (!mounted) return; // Check if the widget is still mounted
+      if (!mounted) return;
 
       if (newTransactions != null) {
         print('New transactions: $newTransactions');
@@ -80,7 +91,7 @@ class _ReceiptAnalyzerWidgetState extends State<ReceiptAnalyzerWidget> {
         txCubit.addTransactions(newTransactions);
       }
     } catch (e) {
-      if (!mounted) return; // Check if the widget is still mounted
+      if (!mounted) return;
       setState(() {
         _analysisResult = 'Error analyzing file: $e';
       });
@@ -95,6 +106,8 @@ class _ReceiptAnalyzerWidgetState extends State<ReceiptAnalyzerWidget> {
     // Extract transactionName
     final transactionName = json['transactionName'] ?? 'Unnamed Transaction';
 
+    DateTime date = _parseDate(json['date']);
+
     // Extract and validate transactions
     final transactions = (json['transactions'] as List<dynamic>)
         .where((transaction) => transaction is Map<String, dynamic>)
@@ -102,10 +115,27 @@ class _ReceiptAnalyzerWidgetState extends State<ReceiptAnalyzerWidget> {
             transaction as Map<String, dynamic>, categoryRepository))
         .toList();
 
+    //Apply date to each transaction
+    for (final transaction in transactions) {
+      transaction.copyWith(
+        date: date,
+      );
+    }
+
     return {
       'transactionName': transactionName,
+      'date': date,
       'transactions': transactions,
     };
+  }
+
+  // Helper method for safe date parsing
+  static DateTime _parseDate(dynamic date) {
+    try {
+      return date != null ? DateTime.parse(date.toString()) : DateTime.now();
+    } catch (e) {
+      return DateTime.now(); // Fallback to current date if parsing fails
+    }
   }
 
   Future<void> _pickAndAnalyzeImage(bool fromGallery) async {
@@ -161,68 +191,70 @@ class _ReceiptAnalyzerWidgetState extends State<ReceiptAnalyzerWidget> {
     }
   }
 
-  Future<void> _loadSavedData() async {
-    showLoadingPopup(context, message: 'Loading saved data...');
+  // Future<void> _loadSavedData() async {
+  //   showLoadingPopup(context, message: 'Loading saved data...');
 
-    try {
-      final savedData = await _mistralService.loadSavedApiOutput();
-      if (!mounted) return; // Check if the widget is still mounted
+  //   try {
+  //     final savedData = await _mistralService.loadSavedApiOutput();
+  //     if (!mounted) return; // Check if the widget is still mounted
 
-      print('Saved data: $savedData');
-      if (savedData == null) {
-        setState(() {
-          _analysisResult = 'No saved data found';
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No saved data found')),
-        );
-        return;
-      }
+  //     print('Saved data: $savedData');
+  //     if (savedData == null) {
+  //       setState(() {
+  //         _analysisResult = 'No saved data found';
+  //       });
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         const SnackBar(content: Text('No saved data found')),
+  //       );
+  //       return;
+  //     }
 
-      // Extract transactionName
-      final transactionName =
-          savedData['transactionName'] ?? 'Unnamed Transaction';
+  //     // Extract transactionName
+  //     final transactionName =
+  //         savedData['transactionName'] ?? 'Unnamed Transaction';
+  //     final date = savedData['date'] as DateTime;
 
-      // Convert transactions using Transaction.fromJson
-      if (savedData['transactions'] is! List) {
-        throw Exception('Invalid transactions data: Expected a list');
-      }
+  //     // Convert transactions using Transaction.fromJson
+  //     if (savedData['transactions'] is! List) {
+  //       throw Exception('Invalid transactions data: Expected a list');
+  //     }
 
-      final transactions = (savedData['transactions'] as List<dynamic>)
-          .map((transaction) => Transaction.fromJson(
-              transaction as Map<String, dynamic>,
-              context.read<CategoryRepository>()))
-          .toList();
+  //     final transactions = (savedData['transactions'] as List<dynamic>)
+  //         .map((transaction) => Transaction.fromJson(
+  //             transaction as Map<String, dynamic>,
+  //             context.read<CategoryRepository>()))
+  //         .toList();
 
-      if (!mounted) return; // Check if the widget is still mounted
+  //     if (!mounted) return; // Check if the widget is still mounted
 
-      // Navigate to BulkAddTransactionsScreen
-      final newTransactions = await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => BulkAddTransactionsScreen(
-            transactionName: transactionName,
-            transactions: transactions,
-          ),
-        ),
-      );
+  //     // Navigate to BulkAddTransactionsScreen
+  //     final newTransactions = await Navigator.push(
+  //       context,
+  //       MaterialPageRoute(
+  //         builder: (context) => BulkAddTransactionsScreen(
+  //           transactionName: transactionName,
+  //           transactions: transactions,
+  //           date: date
+  //         ),
+  //       ),
+  //     );
 
-      if (!mounted) return; // Check if the widget is still mounted
+  //     if (!mounted) return; // Check if the widget is still mounted
 
-      if (newTransactions != null) {
-        print('New transactions: $newTransactions');
-        final txCubit = context.read<AccountTransactionCubit>();
-        txCubit.addTransactions(newTransactions);
-      }
-    } catch (e) {
-      if (!mounted) return; // Check if the widget is still mounted
-      setState(() {
-        _analysisResult = 'Error loading saved data: $e';
-      });
-    } finally {
-      hideLoadingPopup(context);
-    }
-  }
+  //     if (newTransactions != null) {
+  //       print('New transactions: $newTransactions');
+  //       final txCubit = context.read<AccountTransactionCubit>();
+  //       txCubit.addTransactions(newTransactions);
+  //     }
+  //   } catch (e) {
+  //     if (!mounted) return; // Check if the widget is still mounted
+  //     setState(() {
+  //       _analysisResult = 'Error loading saved data: $e';
+  //     });
+  //   } finally {
+  //     hideLoadingPopup(context);
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -255,11 +287,11 @@ class _ReceiptAnalyzerWidgetState extends State<ReceiptAnalyzerWidget> {
               icon: const Icon(Icons.picture_as_pdf),
               label: const Text('From PDF'),
             ),
-            ElevatedButton.icon(
-              onPressed: _loadSavedData,
-              icon: const Icon(Icons.barcode_reader),
-              label: const Text('Load Saved Data'),
-            ),
+            // ElevatedButton.icon(
+            //   onPressed: _loadSavedData,
+            //   icon: const Icon(Icons.barcode_reader),
+            //   label: const Text('Load Saved Data'),
+            // ),
           ],
         ),
         const SizedBox(height: 16), // Add spacing below the buttons

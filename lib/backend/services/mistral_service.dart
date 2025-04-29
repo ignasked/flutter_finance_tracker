@@ -77,29 +77,29 @@ class MistralService {
         {
           'role': 'user',
           'content': '''
-This is the OCR data in Markdown format:
-$markdownTexts
-
-First, apply discounts to the prices of each item in the list. Then,
-convert into a structured JSON response.
-- Don't include any other text or explanations, just the JSON response.
+- You are a receipt analyzer.
+- You will receive OCR data from receipt in Markdown format.
+- In your response don't include any other text or explanations, just the JSON response.
 - Ensure the JSON is valid and well-formatted.
-- Use the following id-categoryName combinations for categories: $categoryMappings
-- Only return categoryId in the response.
+- Use the following categories: $categoryMappings
 - transactionName should be the name of the shop or service where the transaction took place.
+- totalName should be the total amount of the receipt.
 - Return the data in a JSON format with the following structure:
 {
   "transactionName": "string",
   "date": "string",
+  "totalAmount": "number",
   "transactions": [
     {
       "title": "string",
-      "categoryId": "number",
+      "category": "string",
       "amount": "number"
     }
   ]
 }
 
+This is the OCR data in Markdown format:
+$markdownTexts
 ''',
         }
       ],

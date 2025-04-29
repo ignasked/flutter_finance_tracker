@@ -5,11 +5,13 @@ import 'package:money_owl/front/transaction_form_screen/transaction_form_screen.
 
 class BulkAddTransactionsScreen extends StatefulWidget {
   final String transactionName;
+  final DateTime date;
   final List<Transaction> transactions;
 
   const BulkAddTransactionsScreen({
     Key? key,
     required this.transactionName,
+    required this.date,
     required this.transactions,
   }) : super(key: key);
 

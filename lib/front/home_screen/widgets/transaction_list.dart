@@ -5,6 +5,7 @@ import 'package:money_owl/backend/models/transaction_result.dart';
 import 'package:money_owl/front/home_screen/cubit/account_transaction_cubit.dart';
 import 'package:money_owl/front/transaction_form_screen/transaction_form_screen.dart';
 import 'package:money_owl/backend/utils/AppColors.dart';
+import 'package:money_owl/front/transaction_item.dart';
 
 class TransactionList extends StatelessWidget {
   final List<Transaction> transactions;
@@ -31,7 +32,7 @@ class TransactionList extends StatelessWidget {
           return ExpansionTile(
             title: Text(entriesDate),
             children: monthTransactions.map((item) {
-              return _buildTransactionItem(context, item);
+              return buildTransactionItem(context, item);
             }).toList(),
           );
         }).toList(),
