@@ -33,14 +33,16 @@ class CsvState extends Equatable {
 class CsvCubit extends Cubit<CsvState> {
   CsvCubit() : super(const CsvState());
 
-  Future<void> exportTransactions(List<Transaction> transactions) async {
+  Future<String> exportTransactions(List<Transaction> transactions) async {
     try {
       emit(state.copyWith(isLoading: true));
       final csvData = generateCSVData(transactions);
       await writeToCSV(csvData);
       emit(state.copyWith(isLoading: false));
+      return csvData;
     } catch (e) {
       emit(state.copyWith(isLoading: false, error: e.toString()));
+      return '';
     }
   }
 

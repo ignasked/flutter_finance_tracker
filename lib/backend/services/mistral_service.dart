@@ -17,6 +17,26 @@ class MistralService {
 
   static final MistralService instance = MistralService._();
 
+  Future<String> provideFinancialAnalysis(String data) async {
+    // final encodedReceipt = await _encodeFileToBase64(receiptFile);
+    // final ocrResultText = await _performOCR(encodedReceipt, receiptFormat);
+
+    // final parsedOcrResult = jsonDecode(ocrResultText);
+    // final extractedPages = parsedOcrResult['pages'] as List;
+    // final markdownTexts =
+    //     extractedPages.map((page) => page['markdown'] as String).join('\n\n');
+
+    final llmResponseText = await _askLLMForAnalysis(data);
+    final rawContent =
+        jsonDecode(llmResponseText)['choices'][0]['message']['content'].trim();
+
+    // final json = _extractJson(rawContent);
+
+    // await saveApiOutput(json);
+
+    return rawContent;
+  }
+
   Future<Map<String, dynamic>> processReceiptAndExtractTransactions(
       File receiptFile,
       ReceiptFormat receiptFormat,
@@ -118,7 +138,35 @@ $markdownTexts
 ''',
         }
       ],
-      'temperature': 0,
+      'temperature': 0.7,
+    });
+
+    if (llmResponse.statusCode != 200) {
+      throw Exception(
+          'LLM API request failed: ${llmResponse.body} /n Status code: ${llmResponse.statusCode}');
+    }
+
+    return utf8.decode(llmResponse.bodyBytes);
+  }
+
+  Future<String> _askLLMForAnalysis(String markdownTexts) async {
+    final llmResponse = await _postRequest('chat/completions', {
+      'model': 'mistral-large-latest',
+      'messages': [
+        {
+          'role': 'user',
+          'content': '''
+- You are the best personal finance analyst.
+- You need to povide personalized suggestions how to improve my finances.
+- Don't tell me about total balance or total income or expenses.
+- Don't include beginning text like "Based on the provided transaction data..." and etc. Go straight to the point.
+
+These are the transactions I made:
+$markdownTexts
+''',
+        }
+      ],
+      'temperature': 0.7,
     });
 
     if (llmResponse.statusCode != 200) {

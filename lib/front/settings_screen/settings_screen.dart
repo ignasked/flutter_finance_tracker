@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:money_owl/backend/repositories/category_repository.dart';
+import 'package:money_owl/backend/services/mistral_service.dart';
 import 'package:money_owl/front/home_screen/cubit/account_transaction_cubit.dart';
 import 'package:money_owl/front/settings_screen/cubit/csv_cubit.dart';
 import 'package:money_owl/front/receipt_scan_screen/receipt_analyzer_widget.dart';
 import 'package:money_owl/front/settings_screen/category_management_screen.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
+import '../common/loading_widget.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -57,6 +60,53 @@ class SettingsScreen extends StatelessWidget {
                 const Text(
                   'AI Financial Advisor',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                ListTile(
+                  title: const Text('Ask AI Financial Advisor'),
+                  trailing: const Icon(Icons.arrow_forward),
+                  onTap: () async {
+                    showLoadingPopup(context,
+                        message: 'Analyzing your data...');
+
+                    final transactions = context
+                        .read<AccountTransactionCubit>()
+                        .state
+                        .displayedTransactions;
+                    final csvCubit = context.read<CsvCubit>();
+                    final csvData =
+                        await csvCubit.exportTransactions(transactions);
+                    final analysis = await MistralService.instance
+                        .provideFinancialAnalysis(csvData);
+
+                    hideLoadingPopup(context);
+                    showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: Row(
+                          children: [
+                            Image.asset(
+                              'assets/icons/money_owl_transparent.png',
+                              width: 64,
+                              height: 64,
+                            ),
+                            const SizedBox(width: 8),
+                            const Text('Financial Analysis'),
+                          ],
+                        ),
+                        content: SizedBox(
+                          width: MediaQuery.of(context).size.width * 0.8,
+                          height: MediaQuery.of(context).size.height * 0.6,
+                          child: Markdown(data: analysis.toString()),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('Close'),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                 ),
                 const Divider(),
                 ListTile(

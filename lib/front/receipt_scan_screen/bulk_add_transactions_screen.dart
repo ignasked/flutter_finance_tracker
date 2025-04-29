@@ -38,6 +38,10 @@ class _BulkAddTransactionsScreenState extends State<BulkAddTransactionsScreen> {
     print('Transaction Name: ${widget.transactionName}');
     print('Transactions: ${widget.transactions}');
     selectedAccount = Defaults().defaultAccount;
+    if (selectedAccount != null) {
+      _applyAccountToAllTransactions(selectedAccount!);
+    }
+    _applyDateToAllTransactions(widget.date);
     totalExpenses = _calculateTotalExpenses();
 
     // Check if totalExpensesFromReceipt matches calculated totalExpenses
@@ -97,7 +101,7 @@ class _BulkAddTransactionsScreenState extends State<BulkAddTransactionsScreen> {
             '${category?.title} at ${widget.transactionName}', // Optional: Add a prefix to indicate merging
         category: category,
         amount: double.parse(entry.value.toStringAsFixed(2)),
-        date: DateTime.now(), // Use the current date or a default date
+        date: widget.date, // Use the current date or a default date
       );
     }).toList();
 
@@ -117,6 +121,15 @@ class _BulkAddTransactionsScreenState extends State<BulkAddTransactionsScreen> {
       for (var transaction in widget.transactions) {
         transaction.account.target =
             account; // Assuming Transaction has an 'account' field
+      }
+    });
+  }
+
+  void _applyDateToAllTransactions(DateTime date) {
+    setState(() {
+      for (var transaction in widget.transactions) {
+        transaction = transaction.copyWith(
+            date: date); // Assuming Transaction has a 'date' field
       }
     });
   }
