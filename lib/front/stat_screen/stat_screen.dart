@@ -18,7 +18,7 @@ class StatScreen extends StatelessWidget {
       child: Scaffold(
         body: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.all(20.0),
+            padding: const EdgeInsets.all(18.0),
             child:
                 BlocBuilder<AccountTransactionCubit, AccountTransactionState>(
               builder: (context, accountTransactionState) {
@@ -27,14 +27,10 @@ class StatScreen extends StatelessWidget {
                 final transactions =
                     accountTransactionState.displayedTransactions;
 
-                if (transactions.isEmpty) {
-                  return const Center(
-                    child: Text('No transactions available.'),
-                  );
-                }
-
                 // Update chart data when transactions change
-                context.read<ChartCubit>().calculateChartData(transactions);
+                if (transactions != null) {
+                  context.read<ChartCubit>().calculateChartData(transactions);
+                }
 
                 return BlocBuilder<ChartCubit, ChartState>(
                   builder: (context, chartState) {
@@ -47,11 +43,11 @@ class StatScreen extends StatelessWidget {
                             // onChangeAccountPressed: () =>
                             //     _showAccountSelectionDialog(context),
                             ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 10),
 
                         // Date Selector
                         DateBarWidget(),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 6),
 
                         // Charts Section
                         Expanded(
