@@ -11,6 +11,8 @@ String generateCSVData(List<Transaction> transactions) {
   return csvData;
 }
 
+/// Writes the given data to a CSV file named 'transactions.csv' in the external storage directory.
+/// Returns a [Future<void>] indicating the completion of the write operation.
 Future<void> writeToCSV(String data) async {
   // Map<Permission, PermissionStatus> statuses = await [
   //   Permission.storage,

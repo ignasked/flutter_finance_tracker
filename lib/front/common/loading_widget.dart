@@ -47,7 +47,7 @@ void showLoadingPopup(BuildContext context, {String? message}) {
     barrierDismissible: false,
     builder: (context) => Dialog(
       insetPadding: EdgeInsets.zero, // Make the dialog fullscreen
-      backgroundColor: Colors.transparent, // Transparent background
+      backgroundColor: Colors.transparent,
       child: LoadingWidget(message: message),
     ),
   );
