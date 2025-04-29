@@ -86,17 +86,20 @@ class SettingsScreen extends StatelessWidget {
                           children: [
                             Image.asset(
                               'assets/icons/money_owl_transparent.png',
-                              width: 64,
-                              height: 64,
+                              width: 50,
+                              height: 50,
                             ),
                             const SizedBox(width: 8),
                             const Text('Financial Analysis'),
                           ],
                         ),
                         content: SizedBox(
-                          width: MediaQuery.of(context).size.width * 0.8,
-                          height: MediaQuery.of(context).size.height * 0.6,
-                          child: Markdown(data: analysis.toString()),
+                          width: MediaQuery.of(context).size.width * 0.95,
+                          height: MediaQuery.of(context).size.height * 1.0,
+                          child: Scrollbar(
+                            thumbVisibility: true,
+                            child: Markdown(data: analysis.toString()),
+                          ),
                         ),
                         actions: [
                           TextButton(
