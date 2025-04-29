@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:formz/formz.dart';
 import 'package:money_owl/backend/models/transaction.dart';
+import 'package:money_owl/backend/utils/defaults.dart';
 import 'package:money_owl/front/transaction_form_screen/cubit/transaction_form_cubit.dart';
 import 'package:intl/intl.dart';
 import 'package:money_owl/front/transaction_form_screen/widgets/account_dropdown.dart';
@@ -88,7 +89,7 @@ class _TransactionForm extends StatelessWidget {
 
                   // Account Dropdown
                   AccountDropdown(
-                    selectedAccount: null,
+                    selectedAccount: Defaults().defaultAccount,
                     onAccountChanged: (account) => {
                       if (account != null)
                         context

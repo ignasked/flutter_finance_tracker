@@ -1,4 +1,5 @@
 import 'package:money_owl/backend/repositories/base_repository.dart';
+import 'package:money_owl/backend/utils/defaults.dart';
 import 'package:money_owl/backend/utils/enums.dart';
 import '../../objectbox.g.dart'; // ObjectBox generated file
 import 'package:money_owl/backend/models/category.dart';
@@ -205,6 +206,10 @@ class CategoryRepository extends BaseRepository<Category> {
           print('Error adding default category ${defaultCategory.title}: $e');
         }
       }
+    }
+    final defaultCategory = getById(1);
+    if (defaultCategory != null) {
+      Defaults().defaultCategory = defaultCategory; // Set default account
     }
   }
 }

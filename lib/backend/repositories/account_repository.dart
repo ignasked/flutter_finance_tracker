@@ -58,5 +58,10 @@ class AccountRepository extends BaseRepository<Account> {
         }
       }
     }
+
+    final defaultAcc = getById(1);
+    if (defaultAcc != null) {
+      Defaults().defaultAccount = defaultAcc; // Set default account
+    }
   }
 }

@@ -4,6 +4,7 @@ import 'package:formz/formz.dart';
 import 'package:money_owl/backend/models/account.dart';
 import 'package:money_owl/backend/models/category.dart';
 import 'package:money_owl/backend/models/transaction_result.dart';
+import 'package:money_owl/backend/utils/defaults.dart';
 
 import '../../../backend/models/transaction.dart';
 import 'package:money_owl/front/transaction_form_screen/formz/money_input.dart';
@@ -36,8 +37,8 @@ class TransactionFormState extends Equatable {
   TransactionFormState({
     this.title = const TitleInput.pure(),
     this.amount = const MoneyInput.pure(),
-    this.category,
-    this.account, // Initialize account
+    Category? category,
+    Account? account, // Initialize account
     this.status = FormzSubmissionStatus.initial,
     this.isValid = false,
     DateTime? date,
@@ -46,7 +47,9 @@ class TransactionFormState extends Equatable {
     this.actionType = ActionType.addNew,
     this.submittedTransaction,
     this.editIndex,
-  }) : date = date ?? DateTime.now();
+  })  : date = date ?? DateTime.now(),
+        category = category ?? Defaults().defaultCategory,
+        account = account ?? Defaults().defaultAccount; // Initialize account
 
   // Edit transaction
   TransactionFormState.edit({

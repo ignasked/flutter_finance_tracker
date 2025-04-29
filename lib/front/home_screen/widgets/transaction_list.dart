@@ -98,7 +98,7 @@ class TransactionList extends StatelessWidget {
         child: ListTile(
           leading: Icon(
             item.category.target?.icon,
-            color: item.category.target?.color ?? ColorPalette.primary,
+            color: item.category.target?.color ?? Colors.black,
           ),
           title: Text(item.title),
           subtitle: Text(

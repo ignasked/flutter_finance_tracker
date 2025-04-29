@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:money_owl/backend/models/category.dart';
 import 'package:money_owl/backend/repositories/category_repository.dart';
+import 'package:money_owl/backend/utils/defaults.dart';
 import 'package:money_owl/front/transaction_form_screen/cubit/transaction_form_cubit.dart';
 import 'package:money_owl/backend/utils/enums.dart';
 
@@ -25,7 +26,8 @@ class CategoryDropdown extends StatelessWidget {
         final categories = snapshot.data ?? [];
 
         return DropdownButtonFormField<Category>(
-          value: context.watch<TransactionFormCubit>().state.category,
+          value: context.watch<TransactionFormCubit>().state.category ??
+              Defaults().defaultCategory,
           items: categories.map((category) {
             return DropdownMenuItem(
               value: category,
