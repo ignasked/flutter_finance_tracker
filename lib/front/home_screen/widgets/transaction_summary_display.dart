@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:money_owl/backend/utils/defaults.dart';
 import 'package:money_owl/front/home_screen/cubit/account_transaction_cubit.dart';
 
 class TransactionSummaryDisplay extends StatelessWidget {
@@ -10,27 +11,36 @@ class TransactionSummaryDisplay extends StatelessWidget {
     return BlocBuilder<AccountTransactionCubit, AccountTransactionState>(
       builder: (context, state) {
         return Column(
-          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Text(
-              'Balance: \$${state.txSummary.balance.toStringAsFixed(2)}',
+              '${state.txSummary.balanceString} ${Defaults().defaultCurrencySymbol}',
               style: const TextStyle(
-                fontSize: 18,
+                fontSize: 24,
                 fontWeight: FontWeight.bold,
               ),
               textAlign: TextAlign.center,
             ),
+            const SizedBox(height: 4),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  '${state.txSummary.totalIncome.toStringAsFixed(2)}\$',
-                  style: const TextStyle(fontSize: 14, color: Colors.green),
+                  '${state.txSummary.totalIncomeString} ${Defaults().defaultCurrencySymbol}',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green,
+                  ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 16),
                 Text(
-                  '${state.txSummary.totalExpenses.toStringAsFixed(2)}\$',
-                  style: const TextStyle(fontSize: 14, color: Colors.red),
+                  '${state.txSummary.totalExpensesString} ${Defaults().defaultCurrencySymbol}',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red,
+                  ),
                 ),
               ],
             ),

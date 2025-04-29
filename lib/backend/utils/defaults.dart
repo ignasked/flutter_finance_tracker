@@ -33,6 +33,7 @@ class Defaults {
 
   // Default currency
   String defaultCurrency = 'USD';
+  String defaultCurrencySymbol = '\$';
 
   DateTime defaultDateRangeStart = DateTime(2010, 1, 1);
   DateTime defaultDateRangeEnd = DateTime.now();

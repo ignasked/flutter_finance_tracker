@@ -4,6 +4,9 @@ class TransactionSummaryState extends Equatable {
   final double totalIncome;
   final double totalExpenses;
   final double balance;
+  String get totalIncomeString => totalIncome.toStringAsFixed(2);
+  String get totalExpensesString => totalExpenses.toStringAsFixed(2);
+  String get balanceString => balance.toStringAsFixed(2);
 
   const TransactionSummaryState({
     this.totalIncome = 0.0,

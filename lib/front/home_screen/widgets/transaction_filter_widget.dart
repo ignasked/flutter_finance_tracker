@@ -113,15 +113,8 @@ class TransactionFilterSheet extends StatelessWidget {
 
     // // Apply category filters
     if (selectedCategories.isNotEmpty) {
-      final categoryIds =
-          selectedCategories.map((category) => category.id).toList();
-      // cubit.filterTransactions(categoryIds: categoryIds);
       cubit.changeSelectedCategories(selectedCategories);
     }
-    // cubit.fil(
-    //   selectedCategories: selectedCategories,
-    // );
-
     Navigator.pop(context);
   }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:money_owl/front/home_screen/cubit/account_transaction_cubit.dart';
 import 'package:money_owl/front/home_screen/widgets/transaction_filter_widget.dart';
+import 'package:money_owl/front/home_screen/widgets/transaction_summary_display.dart';
 
 class SummaryBarWidget extends StatelessWidget {
   const SummaryBarWidget({Key? key}) : super(key: key);
@@ -29,42 +30,7 @@ class SummaryBarWidget extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // Centered Stats Section: Balance, Income, Expenses
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Text(
-                    '\$${state.txSummary.balance.toStringAsFixed(2)}',
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        '\$${state.txSummary.totalIncome.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Text(
-                        '\$${state.txSummary.totalExpenses.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.red,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+              const TransactionSummaryDisplay(),
               // Buttons Section: Account Selector and Filter
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
