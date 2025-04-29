@@ -104,12 +104,12 @@ class ReceiptAnalysisCubit extends Cubit<ReceiptAnalysisState> {
   Map<String, dynamic> _validateJSONAndExtractData(Map<String, dynamic> json) {
     final transactionName = json['transactionName'] ?? 'Unnamed Transaction';
     final date = _parseDate(json['date']);
-    final totalAmount = json['totalAmount'] ?? 0.0;
+    final totalAmount = json['totalAmountPaid'] ?? 0.0;
 
     final transactions = (json['transactions'] as List<dynamic>)
         .whereType<Map<String, dynamic>>()
-        .map((transaction) => Transaction.fromJson(
-            transaction, _categoryRepository))
+        .map((transaction) =>
+            Transaction.fromJson(transaction, _categoryRepository))
         .toList();
 
     for (final transaction in transactions) {
@@ -119,7 +119,7 @@ class ReceiptAnalysisCubit extends Cubit<ReceiptAnalysisState> {
     return {
       'transactionName': transactionName,
       'date': date,
-      'totalAmount': totalAmount,
+      'totalAmountPaid': totalAmount,
       'transactions': transactions,
     };
   }

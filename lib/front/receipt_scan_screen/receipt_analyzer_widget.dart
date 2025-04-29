@@ -57,7 +57,7 @@ class ReceiptAnalyzerWidget extends StatelessWidget {
                 builder: (context) => BulkAddTransactionsScreen(
                   transactionName: receiptData['transactionName'],
                   date: receiptData['date'],
-                  totalExpensesFromReceipt: receiptData['totalAmount'],
+                  totalExpensesFromReceipt: receiptData['totalAmountPaid'],
                   transactions: receiptData['transactions'],
                 ),
               ),

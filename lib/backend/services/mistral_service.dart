@@ -86,8 +86,7 @@ class MistralService {
       'model': 'mistral-ocr-latest',
       'document': {
         'type': receiptFormat.documentType,
-        keyForFileURL:
-            'data:${receiptFormat.mimeType};base64,$encodedReceipt',
+        keyForFileURL: 'data:${receiptFormat.mimeType};base64,$encodedReceipt',
       },
     });
 
@@ -114,13 +113,13 @@ class MistralService {
 - transactionName should be the name of the shop or service where the transaction took place.
 - totalName should be the total amount of the receipt.
 - date should be in YYYY-MM-DD format.
-- for totalAmount don't calculate, just extract how much should be paid from the receipt.
+- for totalAmountPaid field just extract how much money was paid from the receipt ORC markdown (don't calculate yourself). The value should be extracted from total paid amount row.
 - for title of transactions try to fix any typos and simplify the name but do it in the original language.
 - Return the data in a JSON format with the following structure:
 {
   "transactionName": "string",
   "date": "string",
-  "totalAmount": "number",
+  "totalAmountPaid": "number",
   "transactions": [
     {
       "title": "string",

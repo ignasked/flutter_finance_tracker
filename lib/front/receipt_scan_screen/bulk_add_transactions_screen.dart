@@ -46,7 +46,7 @@ class _BulkAddTransactionsScreenState extends State<BulkAddTransactionsScreen> {
     // Check if totalExpensesFromReceipt matches calculated totalExpenses
     if (widget.totalExpensesFromReceipt != totalExpenses) {
       warningMessage =
-          'Check the transactions.\n Total expenses should be: ${widget.totalExpensesFromReceipt.toStringAsFixed(2)}';
+          'Check for inconsistencies\nTotal expenses might be: ${widget.totalExpensesFromReceipt.toStringAsFixed(2)}';
     }
   }
 
@@ -56,13 +56,15 @@ class _BulkAddTransactionsScreenState extends State<BulkAddTransactionsScreen> {
       (sum, transaction) => sum + transaction.amount,
     );
 
-    if (totalExpenses != widget.totalExpensesFromReceipt) {
+    final roundedTotal = double.parse(totalExpenses.toStringAsFixed(2));
+
+    if (roundedTotal != widget.totalExpensesFromReceipt) {
       warningMessage =
-          'Check the transactions.\n Total expenses should be: ${widget.totalExpensesFromReceipt.toStringAsFixed(2)}';
+          'Check for inconsistencies\nTotal expenses might be: ${widget.totalExpensesFromReceipt.toStringAsFixed(2)}';
     } else {
       warningMessage = null; // Clear warning if they match
     }
-    return totalExpenses;
+    return roundedTotal;
   }
 
   void _removeTransaction(int index) {
