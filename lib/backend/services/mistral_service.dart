@@ -54,11 +54,21 @@ class MistralService {
 
   Future<String> _performOCR(
       String encodedReceipt, ReceiptFormat receiptFormat) async {
+    String keyForFileURL = '';
+    if (receiptFormat == ReceiptFormat.image) {
+      keyForFileURL = 'image_url';
+    } else if (receiptFormat == ReceiptFormat.pdf) {
+      keyForFileURL = 'document_url';
+    } else {
+      throw Exception('Unsupported receipt format: $receiptFormat');
+    }
+
     final ocrResult = await _postRequest('ocr', {
       'model': 'mistral-ocr-latest',
       'document': {
         'type': receiptFormat.documentType,
-        'document_url': 'data:${receiptFormat.mimeType};base64,$encodedReceipt',
+        '$keyForFileURL':
+            'data:${receiptFormat.mimeType};base64,$encodedReceipt',
       },
     });
 

@@ -123,7 +123,11 @@ class HomeScreen extends StatelessWidget {
                           BorderRadius.vertical(top: Radius.circular(20)),
                     ),
                     builder: (context) {
-                      return const ReceiptAnalyzerWidget();
+                      return Wrap(
+                        children: [
+                          const ReceiptAnalyzerWidget(),
+                        ],
+                      );
                     },
                   );
                 },
