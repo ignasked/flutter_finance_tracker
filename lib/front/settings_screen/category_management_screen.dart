@@ -5,6 +5,8 @@ import 'package:money_owl/backend/repositories/category_repository.dart';
 import 'package:money_owl/front/settings_screen/widgets/add_category_widget.dart';
 
 class CategoryManagementScreen extends StatefulWidget {
+  const CategoryManagementScreen({super.key});
+
   @override
   _CategoryManagementScreenState createState() =>
       _CategoryManagementScreenState();
@@ -44,7 +46,7 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
   void _addCategory() async {
     final newCategory = await showDialog<Category?>(
       context: context,
-      builder: (context) => AddCategoryWidget(),
+      builder: (context) => const AddCategoryWidget(),
     );
 
     if (newCategory != null) {
@@ -78,8 +80,8 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _addCategory,
-        child: const Icon(Icons.add),
         tooltip: 'Add Category',
+        child: const Icon(Icons.add),
       ),
     );
   }

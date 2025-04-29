@@ -118,7 +118,7 @@ class SettingsScreen extends StatelessWidget {
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (context) => CategoryManagementScreen(),
+                        builder: (context) => const CategoryManagementScreen(),
                       ),
                     );
                   },

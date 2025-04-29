@@ -13,8 +13,13 @@ class StatScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final selectedAccount =
+        context.read<AccountTransactionCubit>().state.filters.selectedAccount;
+    final transactions =
+        context.read<AccountTransactionCubit>().state.displayedTransactions;
+
     return BlocProvider(
-      create: (_) => ChartCubit(),
+      create: (_) => ChartCubit(transactions),
       child: Scaffold(
         body: SafeArea(
           child: Padding(
@@ -22,23 +27,13 @@ class StatScreen extends StatelessWidget {
             child:
                 BlocBuilder<AccountTransactionCubit, AccountTransactionState>(
               builder: (context, accountTransactionState) {
-                final selectedAccount =
-                    accountTransactionState.filters.selectedAccount;
-                final transactions =
-                    accountTransactionState.displayedTransactions;
-
-                // Update chart data when transactions change
-                if (transactions != null) {
-                  context.read<ChartCubit>().calculateChartData(transactions);
-                }
-
                 return BlocBuilder<ChartCubit, ChartState>(
                   builder: (context, chartState) {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Transaction Summary
-                        SummaryBarWidget(
+                        const SummaryBarWidget(
                             // onFilterPressed: () => _showFilterOptions(context),
                             // onChangeAccountPressed: () =>
                             //     _showAccountSelectionDialog(context),
@@ -46,7 +41,7 @@ class StatScreen extends StatelessWidget {
                         const SizedBox(height: 10),
 
                         // Date Selector
-                        DateBarWidget(),
+                        const DateBarWidget(),
                         const SizedBox(height: 6),
 
                         // Charts Section
@@ -56,31 +51,33 @@ class StatScreen extends StatelessWidget {
                               children: [
                                 const SizedBox(height: 20),
                                 // Pie Chart
-                                SizedBox(
-                                  height:
-                                      MediaQuery.of(context).size.height * 0.4,
-                                  child: SfCircularChart(
-                                    title:
-                                        ChartTitle(text: 'Transaction Summary'),
-                                    legend: Legend(
-                                      isVisible: true,
-                                      position: LegendPosition.bottom,
-                                    ),
-                                    series: <CircularSeries>[
-                                      PieSeries<ChartData, String>(
-                                        dataSource: chartState.categoryData,
-                                        xValueMapper: (data, _) =>
-                                            data.category,
-                                        yValueMapper: (data, _) => data.amount,
-                                        dataLabelSettings:
-                                            const DataLabelSettings(
-                                          isVisible: true,
-                                          showZeroValue: false,
-                                        ),
+                                if (chartState.categoryData.isNotEmpty)
+                                  SizedBox(
+                                    height: MediaQuery.of(context).size.height *
+                                        0.4,
+                                    child: SfCircularChart(
+                                      title: ChartTitle(
+                                          text: 'Transaction Summary'),
+                                      legend: Legend(
+                                        isVisible: true,
+                                        position: LegendPosition.bottom,
                                       ),
-                                    ],
+                                      series: <CircularSeries>[
+                                        PieSeries<ChartData, String>(
+                                          dataSource: chartState.categoryData,
+                                          xValueMapper: (data, _) =>
+                                              data.category,
+                                          yValueMapper: (data, _) =>
+                                              data.amount,
+                                          dataLabelSettings:
+                                              const DataLabelSettings(
+                                            isVisible: true,
+                                            showZeroValue: false,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ),
                                 const SizedBox(height: 20),
 
                                 // Line Chart

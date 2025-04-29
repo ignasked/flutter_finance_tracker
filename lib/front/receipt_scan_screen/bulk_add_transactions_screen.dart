@@ -3,7 +3,6 @@ import 'package:intl/intl.dart';
 import 'package:money_owl/backend/models/account.dart';
 import 'package:money_owl/backend/models/transaction.dart';
 import 'package:money_owl/backend/models/transaction_result.dart';
-import 'package:money_owl/backend/repositories/transaction_repository.dart';
 import 'package:money_owl/backend/utils/defaults.dart';
 import 'package:money_owl/front/transaction_form_screen/transaction_form_screen.dart';
 import 'package:money_owl/front/transaction_form_screen/widgets/account_dropdown.dart';
@@ -47,7 +46,7 @@ class _BulkAddTransactionsScreenState extends State<BulkAddTransactionsScreen> {
     // Check if totalExpensesFromReceipt matches calculated totalExpenses
     if (widget.totalExpensesFromReceipt != totalExpenses) {
       warningMessage =
-          'Check the transactions.\n Total expenses should be: ${widget.totalExpensesFromReceipt?.toStringAsFixed(2)}';
+          'Check the transactions.\n Total expenses should be: ${widget.totalExpensesFromReceipt.toStringAsFixed(2)}';
     }
   }
 
@@ -59,7 +58,7 @@ class _BulkAddTransactionsScreenState extends State<BulkAddTransactionsScreen> {
 
     if (totalExpenses != widget.totalExpensesFromReceipt) {
       warningMessage =
-          'Check the transactions.\n Total expenses should be: ${widget.totalExpensesFromReceipt?.toStringAsFixed(2)}';
+          'Check the transactions.\n Total expenses should be: ${widget.totalExpensesFromReceipt.toStringAsFixed(2)}';
     } else {
       warningMessage = null; // Clear warning if they match
     }
@@ -252,7 +251,7 @@ class _BulkAddTransactionsScreenState extends State<BulkAddTransactionsScreen> {
                           TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                     Text(
-                      '${totalExpenses.toStringAsFixed(2)}',
+                      totalExpenses.toStringAsFixed(2),
                       style: const TextStyle(
                           fontSize: 16, fontWeight: FontWeight.bold),
                     ),
@@ -265,7 +264,7 @@ class _BulkAddTransactionsScreenState extends State<BulkAddTransactionsScreen> {
                       padding: const EdgeInsets.only(top: 8.0),
                       child: Row(
                         children: [
-                          Icon(
+                          const Icon(
                             Icons.warning,
                             color: Colors.orange,
                           ),

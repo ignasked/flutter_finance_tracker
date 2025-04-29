@@ -3,6 +3,8 @@ import 'package:money_owl/backend/models/category.dart';
 import 'package:money_owl/backend/utils/enums.dart';
 
 class AddCategoryWidget extends StatefulWidget {
+  const AddCategoryWidget({super.key});
+
   @override
   _AddCategoryWidgetState createState() => _AddCategoryWidgetState();
 }

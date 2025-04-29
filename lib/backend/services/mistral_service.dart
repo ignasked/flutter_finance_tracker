@@ -1,13 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
-import 'package:money_owl/backend/models/category.dart';
-import 'package:money_owl/backend/repositories/category_repository.dart';
 import 'package:money_owl/config/env.dart';
-import 'package:money_owl/main.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:money_owl/backend/utils/receipt_format.dart';
-import 'package:money_owl/backend/models/transaction.dart'; // Import your Transaction model
+// Import your Transaction model
 
 class MistralService {
   static const String _baseUrl = 'https://api.mistral.ai/v1';
@@ -89,7 +86,7 @@ class MistralService {
       'model': 'mistral-ocr-latest',
       'document': {
         'type': receiptFormat.documentType,
-        '$keyForFileURL':
+        keyForFileURL:
             'data:${receiptFormat.mimeType};base64,$encodedReceipt',
       },
     });

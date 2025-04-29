@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:intl/intl.dart';
-import 'package:money_owl/backend/models/account.dart';
 import 'package:money_owl/backend/models/transaction_result.dart';
-import 'package:money_owl/backend/repositories/account_repository.dart';
 import 'package:money_owl/front/home_screen/cubit/account_transaction_cubit.dart';
 import 'package:money_owl/front/home_screen/widgets/date_bar_widget.dart';
 import 'package:money_owl/front/transaction_form_screen/transaction_form_screen.dart';
@@ -123,9 +120,9 @@ class HomeScreen extends StatelessWidget {
                           BorderRadius.vertical(top: Radius.circular(20)),
                     ),
                     builder: (context) {
-                      return Wrap(
+                      return const Wrap(
                         children: [
-                          const ReceiptAnalyzerWidget(),
+                          ReceiptAnalyzerWidget(),
                         ],
                       );
                     },

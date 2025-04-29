@@ -1,8 +1,6 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:money_owl/backend/models/transaction.dart';
-import 'package:money_owl/backend/repositories/transaction_repository.dart';
 import 'package:money_owl/backend/services/mistral_service.dart';
 import 'package:money_owl/backend/repositories/category_repository.dart';
 import 'package:money_owl/backend/services/file_picker_service.dart';

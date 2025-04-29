@@ -3,7 +3,9 @@ import 'package:money_owl/backend/models/transaction.dart';
 import 'chart_state.dart';
 
 class ChartCubit extends Cubit<ChartState> {
-  ChartCubit() : super(const ChartState());
+  ChartCubit(List<Transaction> transactions) : super(const ChartState()) {
+    calculateChartData(transactions);
+  }
 
   void calculateChartData(List<Transaction> transactions) {
     emit(state.copyWith(
