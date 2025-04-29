@@ -17,6 +17,28 @@ class MistralService {
 
   static final MistralService instance = MistralService._();
 
+  Future<Map<String, dynamic>> processReceiptAndExtractTransactions(
+      File receiptFile,
+      ReceiptFormat receiptFormat,
+      String categoryMappings) async {
+    final encodedReceipt = await _encodeFileToBase64(receiptFile);
+    final ocrResultText = await _performOCR(encodedReceipt, receiptFormat);
+
+    final parsedOcrResult = jsonDecode(ocrResultText);
+    final extractedPages = parsedOcrResult['pages'] as List;
+    final markdownTexts =
+        extractedPages.map((page) => page['markdown'] as String).join('\n\n');
+
+    final llmResponseText =
+        await _processWithLLM(markdownTexts, categoryMappings);
+    final rawContent =
+        jsonDecode(llmResponseText)['choices'][0]['message']['content'].trim();
+
+    final json = _extractJson(rawContent);
+
+    return _extractJson(rawContent);
+  }
+
   // Helper method to make API calls
   Future<http.Response> _postRequest(
       String endpoint, Map<String, dynamic> body) async {
@@ -30,71 +52,27 @@ class MistralService {
     return await http.post(url, headers: headers, body: jsonEncode(body));
   }
 
-  // OCR Methods
-  Future<String> analyzeImage(File imageFile) async {
-    final base64Image = await _encodeFileToBase64(imageFile);
-    final response = await _postRequest('ocr', {
+  Future<String> _performOCR(
+      String encodedReceipt, ReceiptFormat receiptFormat) async {
+    final ocrResult = await _postRequest('ocr', {
       'model': 'mistral-ocr-latest',
       'document': {
-        'type': 'image_url',
-        'image_url': 'data:image/jpeg;base64,$base64Image',
+        'type': receiptFormat.documentType,
+        'document_url': 'data:${receiptFormat.mimeType};base64,$encodedReceipt',
       },
     });
 
-    if (response.statusCode != 200) {
-      throw Exception(
-          'OCR API request failed: ${response.body} /n Status code: ${response.statusCode}');
+    if (ocrResult.statusCode != 200) {
+      throw Exception('OCR API request failed: ${ocrResult.body}');
     }
 
-    return response.body;
+    return utf8.decode(ocrResult.bodyBytes);
   }
 
-  Future<String> analyzePDF(File pdfFile) async {
-    final base64PDF = await _encodeFileToBase64(pdfFile);
-    final response = await _postRequest('ocr', {
-      'model': 'mistral-ocr-latest',
-      'document': {
-        'type': 'document_url',
-        'document_url': 'data:application/pdf;base64,$base64PDF',
-      },
-    });
-
-    if (response.statusCode != 200) {
-      throw Exception(
-          'OCR API request failed: ${response.body} /n Status code: ${response.statusCode}');
-    }
-
-    return response.body;
-  }
-
-  // Analyze and format data
-  Future<Map<String, dynamic>> analyzeAndFormat(
-      File file, ReceiptFormat format, List<Category> categories) async {
-    final base64File = await _encodeFileToBase64(file);
-    final ocrResponse = await _postRequest('ocr', {
-      'model': 'mistral-ocr-latest',
-      'document': {
-        'type': format.documentType,
-        'document_url': 'data:${format.mimeType};base64,$base64File',
-      },
-    });
-
-    if (ocrResponse.statusCode != 200) {
-      throw Exception('OCR API request failed: ${ocrResponse.body}');
-    }
-
-    final ocrResponseBody = utf8.decode(ocrResponse.bodyBytes);
-    final ocrJsonResponse = jsonDecode(ocrResponseBody);
-    final pages = ocrJsonResponse['pages'] as List;
-    final markdownTexts =
-        pages.map((page) => page['markdown'] as String).join('\n\n');
-
-    final categoryIdNamePairs = categories
-        .map((category) => '${category.id}:${category.title}')
-        .join(', ');
-
+  Future<String> _processWithLLM(
+      String markdownTexts, String categoryMappings) async {
     final llmResponse = await _postRequest('chat/completions', {
-      'model': 'mistral-medium',
+      'model': 'mistral-small-latest',
       'messages': [
         {
           'role': 'user',
@@ -106,6 +84,9 @@ First, apply discounts to the prices of each item in the list. Then,
 convert into a structured JSON response.
 - Don't include any other text or explanations, just the JSON response.
 - Ensure the JSON is valid and well-formatted.
+- Use the following id-categoryName combinations for categories: $categoryMappings
+- Only return categoryId in the response.
+- transactionName should be the name of the shop or service where the transaction took place.
 - Return the data in a JSON format with the following structure:
 {
   "transactionName": "string",
@@ -118,9 +99,7 @@ convert into a structured JSON response.
     }
   ]
 }
-- Use the following id-categoryName combinations for categories: $categoryIdNamePairs
-- Only return categoryId in the response.
-- transactionName should be the name of the shop or service where the transaction took place.
+
 ''',
         }
       ],
@@ -132,23 +111,10 @@ convert into a structured JSON response.
           'LLM API request failed: ${llmResponse.body} /n Status code: ${llmResponse.statusCode}');
     }
 
-    final llmResponseBody = utf8.decode(llmResponse.bodyBytes);
-    final llmJsonResponse = jsonDecode(llmResponseBody);
-    final rawContent =
-        llmJsonResponse['choices'][0]['message']['content'].trim();
-
-    final json = _extractJson(rawContent);
-    final parsedData = _validateAndExtractData(json, categoryRepository);
-    //await saveApiOutput(parsedData);
-
-    return parsedData;
+    return utf8.decode(llmResponse.bodyBytes);
   }
 
   // Utility Methods
-  Future<String> _encodeFileToBase64(File file) async {
-    final bytes = await file.readAsBytes();
-    return base64Encode(bytes);
-  }
 
   // TODO: Remove. Just for testing purposes
   Future<void> saveApiOutput(Map<String, dynamic> data) async {
@@ -173,7 +139,12 @@ convert into a structured JSON response.
     return null;
   }
 
-  String _extractJson(String rawContent) {
+  Future<String> _encodeFileToBase64(File file) async {
+    final bytes = await file.readAsBytes();
+    return base64Encode(bytes);
+  }
+
+  Map<String, dynamic> _extractJson(String rawContent) {
     // Extract only the JSON part
     final jsonStartIndex = rawContent.indexOf('{');
     final jsonEndIndex = rawContent.lastIndexOf('}');
@@ -183,28 +154,11 @@ convert into a structured JSON response.
 
     final jsonString = rawContent.substring(jsonStartIndex, jsonEndIndex + 1);
 
-    // Validate and parse the JSON
-    return jsonString;
-  }
-
-  // Validate and extract data from the JSON response
-  Map<String, dynamic> _validateAndExtractData(
-      String jsonString, CategoryRepository categoryRepository) {
-    final parsedData = jsonDecode(jsonString);
-
-    // Extract transactionName
-    final transactionName =
-        parsedData['transactionName'] ?? 'Unnamed Transaction';
-
-    // Extract and validate transactions
-    final transactions = (parsedData['transactions'] as List<dynamic>)
-        .map((transaction) =>
-            Transaction.fromJson(transaction, categoryRepository))
-        .toList();
-
-    return {
-      'transactionName': transactionName,
-      'transactions': transactions,
-    };
+    // Parse and return the JSON
+    try {
+      return jsonDecode(jsonString) as Map<String, dynamic>;
+    } catch (e) {
+      throw Exception('Failed to parse JSON: $e');
+    }
   }
 }

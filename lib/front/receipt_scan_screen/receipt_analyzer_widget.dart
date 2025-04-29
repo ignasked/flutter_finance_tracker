@@ -24,34 +24,50 @@ class _ReceiptAnalyzerWidgetState extends State<ReceiptAnalyzerWidget> {
   String _analysisResult = '';
   File? _imageFile;
 
-  Future<void> _analyzeFile(File file, ReceiptFormat format) async {
+//TODO: remove loadSavedResponse parameter from _analyzeFile method
+  Future<void> _analyzeFile(File file, ReceiptFormat format,
+      {bool? loadSavedResponse}) async {
     showLoadingPopup(context, message: 'Analyzing receipt. Please wait...');
 
     try {
-      final userCategories = context
-          .read<CategoryRepository>()
-          .getEnabledCategories(); // Load categories
+      final categoryRepository = context.read<CategoryRepository>();
+      final availableCategories = categoryRepository.getEnabledCategories();
+      final categoryIdNamePairs = availableCategories
+          .map((category) => '${category.id}:${category.title}')
+          .join(', ');
 
-      final receiptJson =
-          await _mistralService.analyzeAndFormat(file, format, userCategories);
+      Map<String, dynamic>? receiptJson;
 
+      //TODO: remove loadSavedResponse parameter from _analyzeFile method
+      if (loadSavedResponse == true) {
+        // Load saved data from the Mistral service
+        receiptJson = await _mistralService.loadSavedApiOutput();
+        if (receiptJson == null) {
+          setState(() {
+            _analysisResult = 'No saved data found';
+          });
+          return;
+        }
+        // Process the saved data as needed
+      } else {
+        receiptJson =
+            await _mistralService.processReceiptAndExtractTransactions(
+                file, format, categoryIdNamePairs);
+      }
       if (!mounted) return; // Check if the widget is still mounted
 
-      // setState(() {
-      //   _analysisResult = const JsonEncoder.withIndent('  ').convert({
-      //     'transactionName': receiptJson['transactionName'],
-      //     'transactions': (receiptJson['transactions'] as List<Transaction>)
-      //         .map((t) => t.toJson())
-      //         .toList(),
-      //   });
-      // });
+      final receiptData =
+          _validateJSONAndExtractData(receiptJson, categoryRepository);
+
+      final transactionName = receiptData['transactionName'];
+      final transactions = receiptData['transactions'] as List<Transaction>;
 
       final newTransactions = await Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => BulkAddTransactionsScreen(
-            transactionName: receiptJson['transactionName'],
-            transactions: receiptJson['transactions'] as List<Transaction>,
+            transactionName: transactionName,
+            transactions: transactions,
           ),
         ),
       );
@@ -71,6 +87,25 @@ class _ReceiptAnalyzerWidgetState extends State<ReceiptAnalyzerWidget> {
     } finally {
       hideLoadingPopup(context);
     }
+  }
+
+  // Validate and extract data from the JSON response
+  Map<String, dynamic> _validateJSONAndExtractData(
+      Map<String, dynamic> json, CategoryRepository categoryRepository) {
+    // Extract transactionName
+    final transactionName = json['transactionName'] ?? 'Unnamed Transaction';
+
+    // Extract and validate transactions
+    final transactions = (json['transactions'] as List<dynamic>)
+        .where((transaction) => transaction is Map<String, dynamic>)
+        .map((transaction) => Transaction.fromJson(
+            transaction as Map<String, dynamic>, categoryRepository))
+        .toList();
+
+    return {
+      'transactionName': transactionName,
+      'transactions': transactions,
+    };
   }
 
   Future<void> _pickAndAnalyzeImage(bool fromGallery) async {

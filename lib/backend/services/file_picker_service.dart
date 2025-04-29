@@ -13,18 +13,16 @@ class FilePickerService {
   Future<File?> pickImage({bool fromGallery = false}) async {
     final picker = ImagePicker();
     final XFile? image = await picker.pickImage(
-      source: fromGallery ? ImageSource.gallery : ImageSource.camera,
-      imageQuality: 85,
-      maxWidth: 1280,
-      maxHeight: 1280,
-    );
+        source: fromGallery ? ImageSource.gallery : ImageSource.camera,
+        imageQuality: 100,
+        preferredCameraDevice: CameraDevice.rear);
 
     if (image == null) return null;
 
     final bytes = await image.readAsBytes();
     final compressedBytes = await FlutterImageCompress.compressWithList(
       bytes,
-      quality: 85,
+      quality: 95,
       format: CompressFormat.jpeg,
     );
 
@@ -38,6 +36,8 @@ class FilePickerService {
   // Pick a PDF file
   Future<File?> pickPDF() async {
     final result = await FilePicker.platform.pickFiles(
+      dialogTitle: 'Select a PDF file',
+      allowMultiple: false,
       type: FileType.custom,
       allowedExtensions: ['pdf'],
     );
