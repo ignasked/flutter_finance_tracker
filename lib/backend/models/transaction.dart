@@ -24,6 +24,15 @@ class Transaction extends Equatable {
   @Property(type: PropertyType.date)
   final DateTime date;
 
+  String get amountAndCurrencyString {
+    return '${amount.toStringAsFixed(2)} ${account.target?.currencySymbolOrCurrency}';
+  }
+
+  /// Getter to determine if the transaction is income or expense based on the category
+  bool get isIncome {
+    return category.target?.type == TransactionType.income;
+  }
+
   Transaction({
     this.id = 0,
     required this.title,
@@ -39,11 +48,6 @@ class Transaction extends Equatable {
     if (account != null) {
       this.account.target = account;
     }
-  }
-
-  /// Getter to determine if the transaction is income or expense based on the category
-  bool get isIncome {
-    return category.target?.type == TransactionType.income;
   }
 
   @override

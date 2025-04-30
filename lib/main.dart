@@ -61,6 +61,7 @@ class MyApp extends StatelessWidget {
             create: (context) => AccountTransactionCubit(
                 context.read<TransactionRepository>(),
                 context.read<AccountRepository>(),
+                context.read<CategoryRepository>(),
                 context.read<DateCubit>()),
           ),
           BlocProvider<CsvCubit>(

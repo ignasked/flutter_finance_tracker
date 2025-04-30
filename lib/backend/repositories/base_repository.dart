@@ -60,6 +60,22 @@ abstract class BaseRepository<T> {
     }
   }
 
+  /// Add or update an entity by ID
+  void putById(int id, T entity) {
+    try {
+      final existingEntity = box.get(id);
+      if (existingEntity != null) {
+        // Update the existing entity
+        box.put(entity);
+      } else {
+        // Add the new entity
+        box.put(entity);
+      }
+    } catch (e) {
+      print('Error adding/updating entity by ID: $e');
+    }
+  }
+
   /// Add or update multiple entities
   void putMany(List<T> entities) {
     try {

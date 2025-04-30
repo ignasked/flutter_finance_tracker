@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:money_owl/backend/utils/defaults.dart';
 import 'package:objectbox/objectbox.dart';
 import 'transaction.dart';
 import 'package:money_owl/backend/utils/enums.dart';
@@ -11,6 +12,7 @@ class Account extends Equatable {
 
   final String name;
   final String currency;
+  final String? currencySymbol;
   final double balance; // Optional: Current balance of the account
   @Property(type: PropertyType.int)
   final int typeValue; // Store AccountType as an int
@@ -25,6 +27,9 @@ class Account extends Equatable {
 
   // Getter to convert the stored integer back to the enum
   AccountType get type => AccountType.values[typeValue];
+  String get currencySymbolOrCurrency {
+    return currencySymbol ?? currency;
+  }
 
   // Constructor
   Account({
@@ -32,6 +37,7 @@ class Account extends Equatable {
     required this.name,
     required this.typeValue, // Pass AccountType as an int
     required this.currency,
+    this.currencySymbol,
     this.balance = 0.0,
     required this.iconCodePoint,
     required this.colorValue,

@@ -118,7 +118,12 @@ class SettingsScreen extends StatelessWidget {
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (context) => const CategoryManagementScreen(),
+                        builder: (context) => BlocProvider(
+                          create: (context) => CategoryCubit(
+                              context.read<CategoryRepository>(),
+                              context.read<AccountTransactionCubit>()),
+                          child: const CategoryManagementScreen(),
+                        ),
                       ),
                     );
                   },

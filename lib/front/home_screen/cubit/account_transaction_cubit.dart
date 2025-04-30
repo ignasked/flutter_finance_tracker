@@ -7,6 +7,7 @@ import 'package:money_owl/backend/models/category.dart';
 import 'package:money_owl/backend/models/transaction.dart';
 import 'package:money_owl/backend/models/transaction_result.dart';
 import 'package:money_owl/backend/repositories/account_repository.dart';
+import 'package:money_owl/backend/repositories/category_repository.dart';
 import 'package:money_owl/backend/repositories/transaction_repository.dart';
 import 'package:money_owl/backend/models/transaction_filter_decorator.dart';
 import 'package:money_owl/front/home_screen/cubit/date_cubit.dart';
@@ -20,10 +21,12 @@ class AccountTransactionCubit extends Cubit<AccountTransactionState> {
   late final StreamSubscription<DateState> _dateSubscription;
   final TransactionRepository txRepo;
   final AccountRepository accRepo;
+  final CategoryRepository catRepo;
   // Private field for tracking all transactions
   List<Transaction> _allTransactions = [];
 
-  AccountTransactionCubit(this.txRepo, this.accRepo, DateCubit dateCubit)
+  AccountTransactionCubit(
+      this.txRepo, this.accRepo, this.catRepo, DateCubit dateCubit)
       : super(const AccountTransactionState(
           displayedTransactions: [],
           allAccounts: [],
@@ -31,7 +34,7 @@ class AccountTransactionCubit extends Cubit<AccountTransactionState> {
           txSummary: TransactionSummaryState(),
         )) {
     _loadAccounts();
-    _loadAllTransactions();
+    loadAllTransactions();
 
     _dateSubscription = dateCubit.stream.listen((dateState) {
       if (dateState.selectedEndDate == null) {
@@ -49,7 +52,7 @@ class AccountTransactionCubit extends Cubit<AccountTransactionState> {
   }
 
   /// Load all transactions from the repository
-  void _loadAllTransactions() {
+  void loadAllTransactions() {
     _allTransactions = txRepo.getAll();
     emit(state.copyWith(
       displayedTransactions: _allTransactions,

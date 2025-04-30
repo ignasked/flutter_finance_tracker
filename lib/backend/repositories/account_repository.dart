@@ -3,6 +3,7 @@ import 'package:money_owl/backend/models/account.dart';
 import 'package:money_owl/backend/repositories/base_repository.dart';
 import 'package:money_owl/backend/utils/defaults.dart';
 import 'package:money_owl/backend/utils/enums.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../objectbox.g.dart'; // ObjectBox generated file
 
 class AccountRepository extends BaseRepository<Account> {
@@ -21,6 +22,9 @@ class AccountRepository extends BaseRepository<Account> {
   }
 
   Future<void> _initializeDefaultAccounts() async {
+    final isFirstLaunch = await _isFirstLaunch();
+    if (!isFirstLaunch) return;
+
     final defaultAccounts = [
       Account(
         name: 'Bank Account',
@@ -42,7 +46,7 @@ class AccountRepository extends BaseRepository<Account> {
       ),
     ];
 
-    // Add only missing categories
+    // Add only missing accounts
     for (final defaultAccount in defaultAccounts) {
       final query =
           box.query(Account_.name.equals(defaultAccount.name)).build();
@@ -63,5 +67,14 @@ class AccountRepository extends BaseRepository<Account> {
     if (defaultAcc != null) {
       Defaults().defaultAccount = defaultAcc; // Set default account
     }
+  }
+
+  Future<bool> _isFirstLaunch() async {
+    final prefs = await SharedPreferences.getInstance();
+    final isFirstLaunch = prefs.getBool('isFirstLaunchAccounts') ?? true;
+    if (isFirstLaunch) {
+      await prefs.setBool('isFirstLaunchAccounts', false);
+    }
+    return isFirstLaunch;
   }
 }

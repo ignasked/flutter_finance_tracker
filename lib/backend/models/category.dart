@@ -96,4 +96,29 @@ class Category extends Equatable {
         typeValue,
         isEnabled,
       ];
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+
+    return other is Category &&
+        other.id == id &&
+        other.title == title &&
+        other.descriptionForAI == descriptionForAI &&
+        other.colorValue == colorValue &&
+        other.iconCodePoint == iconCodePoint &&
+        other.typeValue == typeValue &&
+        other.isEnabled == isEnabled;
+  }
+
+  @override
+  int get hashCode {
+    return id.hashCode ^
+        title.hashCode ^
+        descriptionForAI.hashCode ^
+        colorValue.hashCode ^
+        iconCodePoint.hashCode ^
+        typeValue.hashCode ^
+        isEnabled.hashCode;
+  }
 }

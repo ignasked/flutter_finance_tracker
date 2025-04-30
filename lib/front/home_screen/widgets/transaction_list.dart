@@ -4,7 +4,7 @@ import 'package:money_owl/backend/models/transaction.dart';
 import 'package:money_owl/backend/models/transaction_result.dart';
 import 'package:money_owl/front/home_screen/cubit/account_transaction_cubit.dart';
 import 'package:money_owl/front/transaction_form_screen/transaction_form_screen.dart';
-import 'package:money_owl/backend/utils/AppColors.dart';
+import 'package:money_owl/backend/utils/app_style.dart';
 import 'package:money_owl/front/transaction_item.dart';
 
 class TransactionList extends StatelessWidget {
@@ -105,7 +105,7 @@ class TransactionList extends StatelessWidget {
             '${item.category.target?.title} | ${item.date.toString().split(' ')[0]}',
           ),
           trailing: Text(
-            '${item.isIncome ? '+' : '-'} \$${item.amount.toStringAsFixed(2)}',
+            '${item.isIncome ? '+' : '-'} ${item.amountAndCurrencyString}',
             style: TextStyle(
               color: item.isIncome ? Colors.green : Colors.red,
               fontWeight: FontWeight.bold,

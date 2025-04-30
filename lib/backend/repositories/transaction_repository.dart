@@ -38,4 +38,16 @@ class TransactionRepository extends BaseRepository<Transaction> {
       return [];
     }
   }
+
+  bool hasTransactionsForCategory(int categoryId) {
+    try {
+      // Fetch all transactions and check if any are associated with the category
+      final transactions = box.getAll();
+      return transactions
+          .any((transaction) => transaction.category.targetId == categoryId);
+    } catch (e) {
+      print('Error checking transactions for category $categoryId: $e');
+      return false;
+    }
+  }
 }
