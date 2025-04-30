@@ -4,6 +4,7 @@ import 'package:formz/formz.dart';
 import 'package:money_owl/backend/models/transaction.dart';
 import 'package:money_owl/backend/models/transaction_result.dart'; // Import TransactionResult
 import 'package:money_owl/backend/utils/app_style.dart';
+import 'package:money_owl/backend/utils/enums.dart';
 import 'package:money_owl/front/transaction_form_screen/cubit/transaction_form_cubit.dart';
 import 'package:intl/intl.dart';
 import 'package:money_owl/front/transaction_form_screen/widgets/account_dropdown.dart';
@@ -62,219 +63,297 @@ class _TransactionForm extends StatelessWidget {
         }
       },
       child: Scaffold(
+        // Prevent keyboard from pushing the AppBar up unnecessarily
+        resizeToAvoidBottomInset: true,
         backgroundColor: AppStyle.backgroundColor,
         appBar: AppBar(
           title: BlocBuilder<TransactionFormCubit, TransactionFormState>(
-            // Build only when actionType changes
             buildWhen: (previous, current) =>
                 previous.actionType != current.actionType,
             builder: (context, state) => Text(
               state.actionType == ActionType.addNew
                   ? 'Add Transaction'
                   : 'Edit Transaction',
-              // Style inherits from AppBarTheme usually, but can override
-              // style: AppStyle.heading2.copyWith(color: ColorPalette.onPrimary),
             ),
           ),
           backgroundColor: AppStyle.primaryColor,
-          foregroundColor:
-              ColorPalette.onPrimary, // Ensures icon/text color contrast
-          elevation: AppStyle.elevationSmall, // Add subtle elevation
-          iconTheme: const IconThemeData(
-              color: ColorPalette.onPrimary), // Explicit back arrow color
+          foregroundColor: ColorPalette.onPrimary,
+          elevation: AppStyle.elevationSmall,
+          iconTheme: const IconThemeData(color: ColorPalette.onPrimary),
         ),
-        body: Padding(
-          // Consistent padding
-          padding: const EdgeInsets.all(AppStyle.paddingMedium),
-          child: SingleChildScrollView(
+        // *** New Body Structure for Centering/Reachability ***
+        body: SafeArea(
+          // Ensure content avoids notches/system areas
+          child: Padding(
+            // Apply horizontal padding here
+            padding:
+                const EdgeInsets.symmetric(horizontal: AppStyle.paddingMedium),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch, // Stretch buttons
+              // Outer Column
               children: [
-                // --- Title Field ---
-                BlocBuilder<TransactionFormCubit, TransactionFormState>(
-                  buildWhen: (previous, current) =>
-                      previous.title != current.title ||
-                      previous.status !=
-                          current.status, // Rebuild on status change for error
-                  builder: (context, state) => TextFormField(
-                    key: const Key('transaction_form_title'),
-                    initialValue: state.title.value,
-                    style: AppStyle.bodyText,
-                    decoration: AppStyle.getInputDecoration(
-                      // Use styled decoration
-                      labelText: 'Title',
-                      errorText: (state.title.isNotValid &&
-                              !state.status
-                                  .isInitial) // Show error only if invalid and touched/submitted
-                          ? 'Title cannot be empty'
-                          : null,
-                    ),
-                    onChanged: (value) => context
-                        .read<TransactionFormCubit>()
-                        .titleChanged(value),
-                    textInputAction:
-                        TextInputAction.next, // Improve keyboard navigation
-                  ),
-                ),
-                const SizedBox(height: AppStyle.paddingMedium),
-
-                // --- Amount Field ---
-                BlocBuilder<TransactionFormCubit, TransactionFormState>(
-                  buildWhen: (previous, current) =>
-                      previous.amount != current.amount ||
-                      previous.status !=
-                          current.status, // Rebuild on status change for error
-                  builder: (context, state) => TextFormField(
-                    key: const Key('transaction_form_amount'),
-                    initialValue: state.amount.value,
-                    style: AppStyle.bodyText,
-                    decoration: AppStyle.getInputDecoration(
-                      // Use styled decoration
-                      labelText: 'Amount',
-                      // Consider adding prefix/suffix for currency symbol if needed
-                      // prefixText: Defaults().defaultCurrencySymbol + ' ',
-                      errorText: (state.amount.isNotValid &&
-                              state.status != FormzSubmissionStatus.initial)
-                          ? state.amount.error != null
-                              ? 'Please enter a valid amount' // Generic error message
-                              : null
-                          : null,
-                    ),
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
-                    onChanged: (value) => context
-                        .read<TransactionFormCubit>()
-                        .amountChanged(value),
-                    textInputAction: TextInputAction.next,
-                  ),
-                ),
-                const SizedBox(height: AppStyle.paddingMedium),
-
-                // --- Account Dropdown ---
-                // Assuming AccountDropdown internally uses AppStyle.getInputDecoration
-                AccountDropdown(
-                  selectedAccount:
-                      initialState.account, // Pass initial state value
-                  onAccountChanged: (account) {
-                    if (account != null) {
-                      context
-                          .read<TransactionFormCubit>()
-                          .accountChanged(account);
-                    }
-                  },
-                ),
-                const SizedBox(height: AppStyle.paddingMedium),
-
-                // --- Category Dropdown ---
-                // Assuming CategoryDropdown internally uses AppStyle.getInputDecoration
-                const CategoryDropdown(),
-                const SizedBox(height: AppStyle.paddingMedium),
-
-                // --- Date Picker ---
-                BlocBuilder<TransactionFormCubit, TransactionFormState>(
-                  buildWhen: (previous, current) =>
-                      previous.date != current.date,
-                  builder: (context, state) {
-                    return InkWell(
-                      // Make the whole row tappable
-                      onTap: () => _selectDate(context, state.date),
-                      borderRadius:
-                          BorderRadius.circular(AppStyle.borderRadiusMedium),
-                      child: InputDecorator(
-                        // Wrap in InputDecorator for consistent look
-                        decoration: AppStyle.getInputDecoration(
-                          labelText: 'Date',
-                        ).copyWith(
-                            contentPadding: const EdgeInsets.symmetric(
-                              // Adjust padding for icon
-                              horizontal: AppStyle.paddingMedium,
-                              vertical: AppStyle
-                                  .paddingSmall, // Less vertical padding
+                Expanded(
+                  // Make the scroll view take available vertical space
+                  child: SingleChildScrollView(
+                    // Apply vertical padding inside the scroll view
+                    padding: const EdgeInsets.symmetric(
+                        vertical: AppStyle
+                            .paddingLarge), // Increased vertical padding
+                    child: Column(
+                      // Inner Column (Form content)
+                      // Center content vertically IF space allows
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment
+                          .stretch, // Stretch buttons/fields horizontally
+                      children: [
+                        // --- Title Field ---
+                        BlocBuilder<TransactionFormCubit, TransactionFormState>(
+                          buildWhen: (previous, current) =>
+                              previous.title != current.title ||
+                              previous.status != current.status,
+                          builder: (context, state) => TextFormField(
+                            key: const Key('transaction_form_title'),
+                            initialValue: state.title.value,
+                            style: AppStyle.bodyText,
+                            decoration: AppStyle.getInputDecoration(
+                              labelText: 'Title',
+                              errorText: (state.title.isNotValid &&
+                                      !state.status.isInitial)
+                                  ? 'Title cannot be empty'
+                                  : null,
                             ),
-                            border: InputBorder.none,
-                            focusedBorder: InputBorder.none,
-                            enabledBorder:
-                                InputBorder.none), // Remove internal border
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              DateFormat('yyyy-MM-dd').format(state.date),
-                              style: AppStyle.bodyText,
-                            ),
-                            const Icon(
-                              Icons.calendar_today,
-                              color: AppStyle.primaryColor,
-                              size: 20, // Slightly smaller icon
-                            ),
-                          ],
+                            onChanged: (value) => context
+                                .read<TransactionFormCubit>()
+                                .titleChanged(value),
+                            textInputAction: TextInputAction.next,
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(
-                    height: AppStyle.paddingLarge), // More space before buttons
+                        const SizedBox(height: AppStyle.paddingMedium),
 
-                // --- Save Button ---
-                BlocBuilder<TransactionFormCubit, TransactionFormState>(
-                  // Rebuild only when status changes to avoid unnecessary rebuilds
-                  buildWhen: (previous, current) =>
-                      previous.status != current.status,
-                  builder: (context, state) {
-                    final bool isLoading = state.status.isInProgress;
-                    return ElevatedButton.icon(
-                      icon: isLoading
-                          ? const SizedBox(
-                              // Loading indicator
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: ColorPalette.onPrimary,
+                        // --- Amount Field ---
+                        BlocBuilder<TransactionFormCubit, TransactionFormState>(
+                          buildWhen: (previous, current) =>
+                              previous.amount != current.amount ||
+                              previous.status != current.status ||
+                              previous.selectedType !=
+                                  current
+                                      .selectedType, // Rebuild when type changes
+                          builder: (context, state) => TextFormField(
+                            onChanged: (value) => context
+                                .read<TransactionFormCubit>()
+                                .amountChanged(value),
+                            decoration: AppStyle.getInputDecoration(
+                              labelText: 'Amount',
+                              errorText: (state.status.isFailure &&
+                                      state.amount.isNotValid)
+                                  ? state.amount.error?.toString()
+                                  : null,
+                            ).copyWith(
+                              // Customize based on type
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(
+                                    AppStyle.borderRadiusMedium),
+                                borderSide: BorderSide(
+                                  color: state.selectedType ==
+                                          TransactionType.income
+                                      ? AppStyle.incomeColor
+                                      : AppStyle.expenseColor,
+                                  width: 2.0,
+                                ),
                               ),
-                            )
-                          : const Icon(Icons.save,
-                              color: ColorPalette.onPrimary),
-                      label: Text(isLoading ? 'Saving...' : 'Save'),
-                      style: AppStyle.primaryButtonStyle,
-                      // Disable button and change text when loading
-                      onPressed: isLoading ||
-                              !state.isValid // Also disable if form is invalid
-                          ? null
-                          : () =>
-                              context.read<TransactionFormCubit>().submitForm(),
-                    );
-                  },
-                ),
-                const SizedBox(height: AppStyle.paddingSmall),
+                              prefixIcon: Icon(
+                                state.selectedType == TransactionType.income
+                                    ? Icons.arrow_upward
+                                    : Icons.arrow_downward,
+                                color:
+                                    state.selectedType == TransactionType.income
+                                        ? AppStyle.incomeColor
+                                        : AppStyle.expenseColor,
+                              ),
+                            ),
+                            keyboardType: const TextInputType.numberWithOptions(
+                                decimal: true),
+                            initialValue: state.amount.value,
+                            style: AppStyle.bodyText,
+                          ),
+                        ),
 
-                // --- Delete Button (Conditionally Shown) ---
-                BlocBuilder<TransactionFormCubit, TransactionFormState>(
-                  buildWhen: (previous, current) =>
-                      previous.actionType != current.actionType ||
-                      previous.status != current.status,
-                  builder: (context, state) {
-                    if (state.actionType == ActionType.edit) {
-                      final bool isLoading = state.status.isInProgress;
-                      return ElevatedButton.icon(
-                        icon: const Icon(Icons.delete_forever,
-                            color: ColorPalette.onPrimary),
-                        label: const Text('Delete Transaction'),
-                        style: AppStyle.dangerButtonStyle, // Use danger style
-                        onPressed: isLoading
-                            ? null
-                            : () =>
-                                _confirmDelete(context), // Extract dialog logic
-                      );
-                    } else {
-                      return const SizedBox
-                          .shrink(); // Don't show for new transactions
-                    }
-                  },
+                        const SizedBox(height: AppStyle.paddingMedium),
+
+                        // --- Transaction Type Selector ---
+                        BlocBuilder<TransactionFormCubit, TransactionFormState>(
+                          buildWhen: (prev, curr) =>
+                              prev.selectedType !=
+                              curr.selectedType, // Rebuild when type changes
+                          builder: (context, state) {
+                            return SegmentedButton<TransactionType>(
+                              segments: const <ButtonSegment<TransactionType>>[
+                                ButtonSegment(
+                                    value: TransactionType.expense,
+                                    label: Text('Expense'),
+                                    icon: Icon(Icons.arrow_downward)),
+                                ButtonSegment(
+                                    value: TransactionType.income,
+                                    label: Text('Income'),
+                                    icon: Icon(Icons.arrow_upward)),
+                              ],
+                              selected: <TransactionType>{state.selectedType},
+                              onSelectionChanged:
+                                  (Set<TransactionType> newSelection) {
+                                context
+                                    .read<TransactionFormCubit>()
+                                    .typeChanged(newSelection.first);
+                                // Optionally: Filter categories based on newSelection.first
+                              },
+                              // style: SegmentedButton.styleFrom(
+                              //   // Use AppStyle colors appropriately
+                              //   foregroundColor:
+                              //       MaterialStateProperty.resolveWith<Color?>(
+                              //           (Set<MaterialState> states) {
+                              //     if (states.contains(MaterialState.selected)) {
+                              //       return state.selectedType ==
+                              //               TransactionType.income
+                              //           ? AppStyle.incomeColor
+                              //           : AppStyle.expenseColor;
+                              //     }
+                              //     return AppStyle
+                              //         .textColorSecondary; // Default color
+                              //   }),
+                              //   selectedBackgroundColor: state.selectedType ==
+                              //           TransactionType.income
+                              //       ? AppStyle.incomeColor.withOpacity(0.1)
+                              //       : AppStyle.expenseColor.withOpacity(0.1),
+                              // ),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: AppStyle.paddingMedium),
+
+                        // --- Account Dropdown ---
+                        AccountDropdown(
+                          selectedAccount: initialState.account,
+                          onAccountChanged: (account) {
+                            if (account != null) {
+                              context
+                                  .read<TransactionFormCubit>()
+                                  .accountChanged(account);
+                            }
+                          },
+                        ),
+                        const SizedBox(height: AppStyle.paddingMedium),
+
+                        // --- Category Dropdown ---
+                        const CategoryDropdown(),
+                        const SizedBox(height: AppStyle.paddingMedium),
+
+                        // --- Date Picker ---
+                        BlocBuilder<TransactionFormCubit, TransactionFormState>(
+                          buildWhen: (previous, current) =>
+                              previous.date != current.date,
+                          builder: (context, state) {
+                            return InkWell(
+                              onTap: () => _selectDate(context, state.date),
+                              borderRadius: BorderRadius.circular(
+                                  AppStyle.borderRadiusMedium),
+                              child: InputDecorator(
+                                decoration: AppStyle.getInputDecoration(
+                                  labelText: 'Date',
+                                ).copyWith(
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: AppStyle.paddingMedium,
+                                    vertical: AppStyle.paddingSmall,
+                                  ),
+                                  // Remove internal borders for a cleaner look when wrapping
+                                  border: InputBorder.none,
+                                  focusedBorder: InputBorder.none,
+                                  enabledBorder: InputBorder.none,
+                                  errorBorder: InputBorder.none,
+                                  focusedErrorBorder: InputBorder.none,
+                                  disabledBorder: InputBorder.none,
+                                ),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      DateFormat('yyyy-MM-dd')
+                                          .format(state.date),
+                                      style: AppStyle.bodyText,
+                                    ),
+                                    const Icon(
+                                      Icons.calendar_today,
+                                      color: AppStyle.primaryColor,
+                                      size: 20,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(
+                            height:
+                                AppStyle.paddingLarge), // Space before buttons
+
+                        // --- Save Button ---
+                        BlocBuilder<TransactionFormCubit, TransactionFormState>(
+                          buildWhen: (previous, current) =>
+                              previous.status != current.status ||
+                              previous.isValid !=
+                                  current
+                                      .isValid, // Also rebuild when validity changes
+                          builder: (context, state) {
+                            final bool isLoading = state.status.isInProgress;
+                            return ElevatedButton.icon(
+                              icon: isLoading
+                                  ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: ColorPalette.onPrimary,
+                                      ),
+                                    )
+                                  : const Icon(Icons.save,
+                                      color: ColorPalette.onPrimary),
+                              label: Text(isLoading ? 'Saving...' : 'Save'),
+                              style: AppStyle.primaryButtonStyle,
+                              onPressed: isLoading || !state.isValid
+                                  ? null
+                                  : () => context
+                                      .read<TransactionFormCubit>()
+                                      .submitForm(),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: AppStyle.paddingSmall),
+
+                        // --- Delete Button (Conditionally Shown) ---
+                        BlocBuilder<TransactionFormCubit, TransactionFormState>(
+                          buildWhen: (previous, current) =>
+                              previous.actionType != current.actionType ||
+                              previous.status != current.status,
+                          builder: (context, state) {
+                            if (state.actionType == ActionType.edit) {
+                              final bool isLoading = state.status.isInProgress;
+                              return ElevatedButton.icon(
+                                icon: const Icon(Icons.delete_forever,
+                                    color: ColorPalette.onPrimary),
+                                label: const Text('Delete Transaction'),
+                                style: AppStyle.dangerButtonStyle,
+                                onPressed: isLoading
+                                    ? null
+                                    : () => _confirmDelete(context),
+                              );
+                            } else {
+                              return const SizedBox.shrink();
+                            }
+                          },
+                        ),
+                        // No need for extra SizedBox at the end, padding is handled by SingleChildScrollView
+                      ],
+                    ),
+                  ),
                 ),
-                const SizedBox(
-                    height: AppStyle.paddingMedium), // Padding at the bottom
               ],
             ),
           ),
@@ -283,26 +362,25 @@ class _TransactionForm extends StatelessWidget {
     );
   }
 
-  // Helper function to show Date Picker
+  // Helper function to show Date Picker (no changes needed here)
   Future<void> _selectDate(BuildContext context, DateTime initialDate) async {
     final selectedDate = await showDatePicker(
       context: context,
       initialDate: initialDate,
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
-      // Apply theme for consistency
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: Theme.of(context).colorScheme.copyWith(
-                  primary: AppStyle.primaryColor, // Use AppStyle color
+                  primary: AppStyle.primaryColor,
                   onPrimary: ColorPalette.onPrimary,
-                  surface: AppStyle.cardColor, // Dialog background
-                  onSurface: AppStyle.textColorPrimary, // Dialog text
+                  surface: AppStyle.cardColor,
+                  onSurface: AppStyle.textColorPrimary,
                 ),
             textButtonTheme: TextButtonThemeData(
               style: TextButton.styleFrom(
-                foregroundColor: AppStyle.primaryColor, // Button text color
+                foregroundColor: AppStyle.primaryColor,
               ),
             ),
             dialogBackgroundColor: AppStyle.cardColor,
@@ -311,24 +389,20 @@ class _TransactionForm extends StatelessWidget {
         );
       },
     );
-
-    // Check if the widget is still mounted before calling context dependent methods
     if (!context.mounted) return;
-
     if (selectedDate != null) {
       context.read<TransactionFormCubit>().dateChanged(selectedDate);
     }
   }
 
-  // Helper function to show Delete Confirmation Dialog
+  // Helper function to show Delete Confirmation Dialog (no changes needed here)
   Future<void> _confirmDelete(BuildContext context) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: AppStyle.cardColor, // Use card color
+        backgroundColor: AppStyle.cardColor,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(
-              AppStyle.borderRadiusMedium), // Consistent radius
+          borderRadius: BorderRadius.circular(AppStyle.borderRadiusMedium),
         ),
         title: const Text('Confirm Delete', style: AppStyle.heading2),
         content: const Text('Are you sure you want to delete this transaction?',
@@ -336,28 +410,24 @@ class _TransactionForm extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            style: AppStyle.textButtonStyle, // Use text button style
+            style: AppStyle.textButtonStyle,
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            // Use elevated button for destructive confirmation
             onPressed: () => Navigator.pop(dialogContext, true),
-            style: AppStyle.dangerButtonStyle, // Use danger style
+            style: AppStyle.dangerButtonStyle,
             child: const Text('Delete'),
           ),
         ],
       ),
     );
-
-    // Check if the widget is still mounted before calling context dependent methods
     if (confirm == true && context.mounted) {
       context.read<TransactionFormCubit>().deleteTransaction();
     }
   }
 }
 
-// Add this to your TransactionFormState if it doesn't exist
-// To pop with a result object instead of just the transaction
+// Extensions remain the same
 extension TransactionFormStateResult on TransactionFormState {
   TransactionResult? get submittedTransactionResult {
     if (status.isSuccess) {
@@ -372,21 +442,29 @@ extension TransactionFormStateResult on TransactionFormState {
         return TransactionResult(
           actionType: ActionType.edit,
           transaction: submittedTransaction!.transaction,
-          //index: originalIndex
+          //index: originalIndex // Assuming originalIndex is part of your state for edits
         );
       } else if (actionType == ActionType.delete //&& originalIndex != null
           ) {
-        return TransactionResult(
-            actionType: ActionType.delete, //index: originalIndex
-            transaction: submittedTransaction!.transaction,
-            index: null); // No index for deleted transactions
+        // Ensure submittedTransaction is available or adjust logic if delete clears it
+        if (submittedTransaction != null) {
+          return TransactionResult(
+              actionType: ActionType.delete,
+              transaction: submittedTransaction!
+                  .transaction, // Pass the deleted transaction data if needed
+              index: null); // Or pass originalIndex if needed by listener
+        } else {
+          // Handle case where transaction data isn't available post-delete
+          // Maybe return just the type and index if that's sufficient
+          // return TransactionResult(actionType: ActionType.delete, index: originalIndex);
+          return null; // Or adjust based on what the listener needs
+        }
       }
     }
     return null;
   }
 }
 
-// Define AmountInputError if you haven't already (example)
 enum AmountInputError { empty, invalid }
 
 extension AmountInputErrorExtension on AmountInputError {

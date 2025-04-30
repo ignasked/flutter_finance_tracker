@@ -5,6 +5,7 @@ import 'package:money_owl/backend/models/account.dart';
 import 'package:money_owl/backend/models/category.dart';
 import 'package:money_owl/backend/models/transaction_result.dart';
 import 'package:money_owl/backend/utils/defaults.dart';
+import 'package:money_owl/backend/utils/enums.dart';
 
 import '../../../backend/models/transaction.dart';
 import 'package:money_owl/front/transaction_form_screen/formz/money_input.dart';
@@ -19,6 +20,7 @@ class TransactionFormState extends Equatable {
   final Account? account; // Selected account
   final DateTime date;
   final int id;
+  final TransactionType selectedType; // Default transaction type
 
   final FormzSubmissionStatus status;
 
@@ -47,6 +49,7 @@ class TransactionFormState extends Equatable {
     this.actionType = ActionType.addNew,
     this.submittedTransaction,
     this.editIndex,
+    this.selectedType = TransactionType.expense, // Default to expense
   })  : date = date ?? DateTime.now(),
         category = category ?? Defaults().defaultCategory,
         account = account ?? Defaults().defaultAccount; // Initialize account
@@ -65,7 +68,9 @@ class TransactionFormState extends Equatable {
         isValid = true,
         actionType = ActionType.edit,
         id = transaction.id,
-        date = transaction.date;
+        date = transaction.date,
+        selectedType =
+            transaction.category.target!.type; // Use the transaction type
 
   TransactionFormState copyWith({
     TitleInput? title,
@@ -81,6 +86,7 @@ class TransactionFormState extends Equatable {
     ActionType? actionType,
     TransactionResult? submittedTransaction,
     int? editIndex,
+    TransactionType? selectedType, // Add selectedType to copyWith
   }) {
     return TransactionFormState(
       title: title ?? this.title,
@@ -95,6 +101,7 @@ class TransactionFormState extends Equatable {
       actionType: actionType ?? this.actionType,
       submittedTransaction: submittedTransaction ?? this.submittedTransaction,
       editIndex: editIndex ?? this.editIndex,
+      selectedType: selectedType ?? this.selectedType, // Copy selectedType
     );
   }
 
@@ -112,6 +119,7 @@ class TransactionFormState extends Equatable {
         actionType,
         submittedTransaction,
         editIndex,
+        selectedType, // Include selectedType in props
       ];
 }
 
@@ -142,9 +150,8 @@ class TransactionFormCubit extends Cubit<TransactionFormState> {
     ));
   }
 
-  void typeChanged(String value) {
-    final transactionType = value;
-    emit(state.copyWith(transactionType: transactionType));
+  void typeChanged(TransactionType newType) {
+    emit(state.copyWith(selectedType: newType));
   }
 
   void categoryChanged(Category category) {
