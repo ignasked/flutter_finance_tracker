@@ -89,7 +89,8 @@ class _TransactionForm extends StatelessWidget {
 
                   // Account Dropdown
                   AccountDropdown(
-                    selectedAccount: Defaults().defaultAccount,
+                    selectedAccount:
+                        context.read<TransactionFormCubit>().state.account,
                     onAccountChanged: (account) => {
                       if (account != null)
                         context

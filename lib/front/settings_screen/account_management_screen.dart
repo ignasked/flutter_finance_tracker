@@ -41,9 +41,15 @@ class AccountCubit extends Cubit<List<Account>> {
       state[index] = account; // Directly update the account in the state list
     }
 
-    _accountTransactionCubit.loadAllTransactions(); // force reload
-    _accountTransactionCubit.loadAccounts(); // force reload
+    _accountTransactionCubit.state.allAccounts[_accountTransactionCubit
+            .state.allAccounts
+            .indexWhere((a) => a.id == account.id)] =
+        account; // Update the account in the transaction cubit
+
     Defaults().defaultAccount = account;
+    _accountTransactionCubit.loadAccounts(); // force reload
+    _accountTransactionCubit.loadAllTransactions(); // force reload
+    _accountTransactionCubit.resetFilters();
 
     emit([...state]);
   }

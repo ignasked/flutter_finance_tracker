@@ -3,6 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:money_owl/backend/repositories/account_repository.dart';
 import 'package:money_owl/backend/repositories/category_repository.dart';
 import 'package:money_owl/backend/services/mistral_service.dart';
+import 'package:money_owl/backend/utils/currency_utils.dart';
+import 'package:money_owl/backend/utils/defaults.dart';
 import 'package:money_owl/front/home_screen/cubit/account_transaction_cubit.dart';
 import 'package:money_owl/front/settings_screen/account_management_screen.dart';
 import 'package:money_owl/front/settings_screen/cubit/csv_cubit.dart';
@@ -48,6 +50,8 @@ class SettingsScreen extends StatelessWidget {
                   child: const Text("Delete All Categories"),
                 ),
                 _buildImportButton(),
+                const Divider(height: 32),
+                _buildCurrencySelector(context),
                 const Divider(height: 32),
                 const Text(
                   'Receipt Scanner',
@@ -195,6 +199,31 @@ class SettingsScreen extends StatelessWidget {
               ? const CircularProgressIndicator()
               : const Text("Import CSV"),
         );
+      },
+    );
+  }
+
+  Widget _buildCurrencySelector(BuildContext context) {
+    return DropdownButtonFormField<String>(
+      value: Defaults().defaultCurrency,
+      decoration: const InputDecoration(labelText: 'Default Currency'),
+      items: CurrencyUtils.predefinedCurrencies.entries
+          .map((entry) => DropdownMenuItem(
+                value: entry.key,
+                child: Text('${entry.key} (${entry.value})'),
+              ))
+          .toList(),
+      onChanged: (value) {
+        if (value != null) {
+          Defaults().defaultCurrency = value;
+          Defaults().defaultCurrencySymbol =
+              CurrencyUtils.predefinedCurrencies[value]!;
+          Defaults().saveDefaults();
+          context.read<AccountTransactionCubit>().calculateSummary(context
+              .read<AccountTransactionCubit>()
+              .state
+              .displayedTransactions);
+        }
       },
     );
   }

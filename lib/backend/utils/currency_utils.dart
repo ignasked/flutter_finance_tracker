@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class CurrencyUtils {
   static const Map<String, String> predefinedCurrencies = {
@@ -48,19 +49,6 @@ class CurrencyUtils {
   // Check if a currency is supported
   bool isCurrencySupported(String currency) {
     return exchangeRates.containsKey(currency);
-  }
-
-  static Future<Map<String, double>> fetchExchangeRates(
-      String baseCurrency) async {
-    final url = 'https://api.exchangerate-api.com/v4/latest/$baseCurrency';
-    final response = await http.get(Uri.parse(url));
-
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      return Map<String, double>.from(data['rates']);
-    } else {
-      throw Exception('Failed to fetch exchange rates');
-    }
   }
 
   static double convertAmount(double amount, String fromCurrency,
