@@ -105,7 +105,7 @@ class _TransactionForm extends StatelessWidget {
                       labelText: 'Title',
                       errorText: (state.title.isNotValid &&
                               !state.status
-                                  .isPure) // Show error only if invalid and touched/submitted
+                                  .isInitial) // Show error only if invalid and touched/submitted
                           ? 'Title cannot be empty'
                           : null,
                     ),
@@ -134,9 +134,10 @@ class _TransactionForm extends StatelessWidget {
                       // Consider adding prefix/suffix for currency symbol if needed
                       // prefixText: Defaults().defaultCurrencySymbol + ' ',
                       errorText: (state.amount.isNotValid &&
-                              !state.status.isPure)
-                          ? state.amount.error
-                              ?.message // Use error message from AmountInputError
+                              state.status != FormzSubmissionStatus.initial)
+                          ? state.amount.error != null
+                              ? 'Please enter a valid amount' // Generic error message
+                              : null
                           : null,
                     ),
                     keyboardType:
@@ -183,13 +184,13 @@ class _TransactionForm extends StatelessWidget {
                         // Wrap in InputDecorator for consistent look
                         decoration: AppStyle.getInputDecoration(
                           labelText: 'Date',
-                          contentPadding: const EdgeInsets.symmetric(
-                            // Adjust padding for icon
-                            horizontal: AppStyle.paddingMedium,
-                            vertical:
-                                AppStyle.paddingSmall, // Less vertical padding
-                          ),
                         ).copyWith(
+                            contentPadding: const EdgeInsets.symmetric(
+                              // Adjust padding for icon
+                              horizontal: AppStyle.paddingMedium,
+                              vertical: AppStyle
+                                  .paddingSmall, // Less vertical padding
+                            ),
                             border: InputBorder.none,
                             focusedBorder: InputBorder.none,
                             enabledBorder:
@@ -362,18 +363,23 @@ extension TransactionFormStateResult on TransactionFormState {
     if (status.isSuccess) {
       if (actionType == ActionType.addNew && submittedTransaction != null) {
         return TransactionResult(
-            type: TransactionResultType.added,
-            transaction: submittedTransaction!);
+            actionType: ActionType.addNew,
+            transaction: submittedTransaction!.transaction,
+            index: null); // No index for new transactions
       } else if (actionType == ActionType.edit &&
-          submittedTransaction != null &&
-          originalIndex != null) {
+              submittedTransaction != null // && index: originalIndex
+          ) {
         return TransactionResult(
-            type: TransactionResultType.edited,
-            transaction: submittedTransaction!,
-            index: originalIndex);
-      } else if (actionType == ActionType.delete && originalIndex != null) {
+          actionType: ActionType.edit,
+          transaction: submittedTransaction!.transaction,
+          //index: originalIndex
+        );
+      } else if (actionType == ActionType.delete //&& originalIndex != null
+          ) {
         return TransactionResult(
-            type: TransactionResultType.deleted, index: originalIndex);
+            actionType: ActionType.delete, //index: originalIndex
+            transaction: submittedTransaction!.transaction,
+            index: null); // No index for deleted transactions
       }
     }
     return null;
