@@ -114,6 +114,7 @@ class _TransactionForm extends StatelessWidget {
                             key: const Key('transaction_form_title'),
                             initialValue: state.title.value,
                             style: AppStyle.bodyText,
+                            autofocus: true,
                             decoration: AppStyle.getInputDecoration(
                               labelText: 'Title',
                               errorText: (state.title.isNotValid &&
@@ -182,8 +183,10 @@ class _TransactionForm extends StatelessWidget {
                         // --- Transaction Type Selector ---
                         BlocBuilder<TransactionFormCubit, TransactionFormState>(
                           buildWhen: (prev, curr) =>
-                              prev.selectedType !=
-                              curr.selectedType, // Rebuild when type changes
+                              prev.selectedType != curr.selectedType ||
+                              prev.category?.type !=
+                                  curr.category
+                                      ?.type, // Rebuild when type changes
                           builder: (context, state) {
                             return SegmentedButton<TransactionType>(
                               segments: const <ButtonSegment<TransactionType>>[
@@ -274,6 +277,17 @@ class _TransactionForm extends StatelessWidget {
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceBetween,
                                   children: [
+                                    _buildQuickDateButton(
+                                        context, 'Today', DateTime.now()),
+                                    const SizedBox(
+                                        width: AppStyle.paddingXSmall),
+                                    _buildQuickDateButton(
+                                        context,
+                                        'Yesterday',
+                                        DateTime.now()
+                                            .subtract(const Duration(days: 1))),
+                                    const SizedBox(
+                                        width: AppStyle.paddingXSmall),
                                     Text(
                                       DateFormat('yyyy-MM-dd')
                                           .format(state.date),
@@ -425,6 +439,22 @@ class _TransactionForm extends StatelessWidget {
       context.read<TransactionFormCubit>().deleteTransaction();
     }
   }
+}
+
+// Helper method in _TransactionForm:
+Widget _buildQuickDateButton(
+    BuildContext context, String label, DateTime date) {
+  return TextButton(
+    onPressed: () => context.read<TransactionFormCubit>().dateChanged(date),
+    style: TextButton.styleFrom(
+      padding:
+          const EdgeInsets.symmetric(horizontal: AppStyle.paddingSmall / 2),
+      minimumSize: Size.zero, // Remove extra padding
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      textStyle: AppStyle.captionStyle.copyWith(color: AppStyle.primaryColor),
+    ),
+    child: Text(label),
+  );
 }
 
 // Extensions remain the same
