@@ -14,20 +14,17 @@ class AccountDropdown extends StatelessWidget {
     required this.onAccountChanged,
   }) : super(key: key);
 
+  // In AccountDropdown:
   @override
   Widget build(BuildContext context) {
-    // Reintroduce FutureBuilder to handle potential async loading
     return FutureBuilder<List<Account>>(
-      // Assuming getAllEnabled might still be async or needs time
       future: Future.value(context.read<AccountRepository>().getAllEnabled()),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          // Show a loading indicator while waiting
           return const Center(child: CircularProgressIndicator());
         }
 
         if (snapshot.hasError) {
-          // Show an error message if loading failed
           return Text('Error loading accounts: ${snapshot.error}',
               style: AppStyle.bodyText.copyWith(color: AppStyle.expenseColor));
         }
@@ -40,20 +37,10 @@ class AccountDropdown extends StatelessWidget {
               style: AppStyle.bodyText);
         }
 
-        // Ensure the selectedAccount is actually in the list of items
         Account? validSelectedAccount = selectedAccount != null &&
                 accounts.any((a) => a.id == selectedAccount!.id)
             ? selectedAccount
             : null;
-        // If the previously selected account is no longer enabled/available,
-        // potentially default to the first account or null
-        if (selectedAccount != null &&
-            validSelectedAccount == null &&
-            accounts.isNotEmpty) {
-          // Optionally call onAccountChanged(null) or onAccountChanged(accounts.first) here
-          // depending on desired behavior when the selected item disappears.
-          // For now, we just ensure the Dropdown doesn't crash by setting value to null.
-        }
 
         return DropdownButtonFormField<Account>(
           value: validSelectedAccount, // Use the validated selected account
@@ -90,14 +77,8 @@ class AccountDropdown extends StatelessWidget {
             );
           }).toList(),
           onChanged: onAccountChanged,
-          decoration: const InputDecoration(
+          decoration: AppStyle.getInputDecoration(
             labelText: 'Account',
-            labelStyle: AppStyle.bodyText, // Use AppStyle
-            border: OutlineInputBorder(),
-            // Add focused border style for consistency
-            focusedBorder: OutlineInputBorder(
-              borderSide: BorderSide(color: AppStyle.primaryColor, width: 2.0),
-            ),
           ),
           isExpanded: true, // Ensure dropdown takes full width
           selectedItemBuilder: (BuildContext context) {

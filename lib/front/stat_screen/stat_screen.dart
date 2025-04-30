@@ -196,7 +196,7 @@ class StatScreen extends StatelessWidget {
           // Add trackball for better interaction
           enable: true,
           lineWidth: 1.5,
-          lineColor: AppStyle.accentColor,
+          lineColor: AppStyle.secondaryColor,
           activationMode: ActivationMode.singleTap,
           tooltipSettings: const InteractiveTooltip(
             enable: true,

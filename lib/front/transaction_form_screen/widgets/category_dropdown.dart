@@ -11,31 +11,19 @@ import 'package:money_owl/front/transactions_screen/cubit/transactions_cubit.dar
 class CategoryDropdown extends StatelessWidget {
   const CategoryDropdown({Key? key}) : super(key: key);
 
+  // In CategoryDropdown:
   @override
   Widget build(BuildContext context) {
-    // Get categories once during build and cache them
-    final categories = context.read<TransactionsCubit>().getEnabledCategories();
-    final defaultCategory = Defaults().defaultCategory;
-
-    // Add default category if needed and not already in list
-    if (!categories.any((c) => c.id == defaultCategory.id) &&
-        defaultCategory.isEnabled) {
-      categories.insert(0, defaultCategory);
-    }
-
-    // If categories are empty (even after adding default), show a message
-    if (categories.isEmpty) {
-      return const Text('No categories available. Please add a category first.',
-          style: AppStyle.bodyText);
-    }
-
-    // Use BlocSelector for more efficient rebuilds - only when category changes
+    // ... (rest of the code)
+    List<Category> categories =
+        context.read<TransactionsCubit>().state.allCategories;
     return BlocSelector<TransactionFormCubit, TransactionFormState, Category?>(
       selector: (state) => state.category,
       builder: (context, selectedCategory) {
-        // Ensure the selected category is valid or use default
         final validCategory = selectedCategory ??
-            (categories.isNotEmpty ? categories[0] : defaultCategory);
+            (categories.isNotEmpty
+                ? categories[0]
+                : Defaults().defaultCategory);
 
         return DropdownButtonFormField<Category>(
           value: validCategory,
@@ -77,13 +65,8 @@ class CategoryDropdown extends StatelessWidget {
               context.read<TransactionFormCubit>().categoryChanged(value);
             }
           },
-          decoration: const InputDecoration(
+          decoration: AppStyle.getInputDecoration(
             labelText: 'Category',
-            labelStyle: AppStyle.bodyText,
-            border: OutlineInputBorder(),
-            focusedBorder: OutlineInputBorder(
-              borderSide: BorderSide(color: AppStyle.primaryColor, width: 2.0),
-            ),
           ),
           isExpanded: true,
           selectedItemBuilder: (BuildContext context) {
