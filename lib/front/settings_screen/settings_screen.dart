@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:money_owl/backend/repositories/account_repository.dart';
 import 'package:money_owl/backend/repositories/category_repository.dart';
 import 'package:money_owl/backend/services/mistral_service.dart';
 import 'package:money_owl/front/home_screen/cubit/account_transaction_cubit.dart';
+import 'package:money_owl/front/settings_screen/account_management_screen.dart';
 import 'package:money_owl/front/settings_screen/cubit/csv_cubit.dart';
 import 'package:money_owl/front/receipt_scan_screen/receipt_analyzer_widget.dart';
 import 'package:money_owl/front/settings_screen/category_management_screen.dart';
@@ -123,6 +125,22 @@ class SettingsScreen extends StatelessWidget {
                               context.read<CategoryRepository>(),
                               context.read<AccountTransactionCubit>()),
                           child: const CategoryManagementScreen(),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                ListTile(
+                  title: const Text('Manage Accounts'),
+                  trailing: const Icon(Icons.arrow_forward),
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => BlocProvider(
+                          create: (context) => AccountCubit(
+                              context.read<AccountRepository>(),
+                              context.read<AccountTransactionCubit>()),
+                          child: const AccountManagementScreen(),
                         ),
                       ),
                     );

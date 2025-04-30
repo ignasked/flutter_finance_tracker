@@ -47,5 +47,7 @@ class AppStyle {
     Icons.business_center,
     Icons.local_offer,
     Icons.more_horiz,
+    Icons.account_balance,
+    Icons.account_balance_wallet,
   ];
 }

@@ -50,4 +50,16 @@ class TransactionRepository extends BaseRepository<Transaction> {
       return false;
     }
   }
+
+  bool hasTransactionsForAccount(int accountId) {
+    try {
+      // Fetch all transactions and check if any are associated with the account
+      final transactions = box.getAll();
+      return transactions
+          .any((transaction) => transaction.account.targetId == accountId);
+    } catch (e) {
+      print('Error checking transactions for account $accountId: $e');
+      return false;
+    }
+  }
 }

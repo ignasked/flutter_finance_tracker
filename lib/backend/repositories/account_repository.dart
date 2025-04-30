@@ -23,13 +23,19 @@ class AccountRepository extends BaseRepository<Account> {
 
   Future<void> _initializeDefaultAccounts() async {
     final isFirstLaunch = await _isFirstLaunch();
-    if (!isFirstLaunch) return;
-
+    if (!isFirstLaunch) {
+      final defaultAcc = getById(1);
+      if (defaultAcc != null) {
+        Defaults().defaultAccount = defaultAcc; // Set default account
+      }
+      return;
+    }
     final defaultAccounts = [
       Account(
         name: 'Bank Account',
-        typeValue: AccountType.bank.index, // Convert enum to int
+        typeValue: AccountType.bank.index,
         currency: 'USD',
+        currencySymbol: '\$',
         balance: 0.0,
         colorValue: Colors.blue.value, // Convert Color to int
         iconCodePoint:
@@ -39,6 +45,7 @@ class AccountRepository extends BaseRepository<Account> {
         name: 'Cash',
         typeValue: AccountType.cash.index, // Convert enum to int
         currency: 'USD',
+        currencySymbol: '\$',
         balance: 0.0,
         colorValue: Colors.green.value, // Convert Color to int
         iconCodePoint:

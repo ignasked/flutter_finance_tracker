@@ -33,7 +33,7 @@ class AccountTransactionCubit extends Cubit<AccountTransactionState> {
           filters: TransactionFiltersState(),
           txSummary: TransactionSummaryState(),
         )) {
-    _loadAccounts();
+    loadAccounts();
     loadAllTransactions();
 
     _dateSubscription = dateCubit.stream.listen((dateState) {
@@ -61,7 +61,7 @@ class AccountTransactionCubit extends Cubit<AccountTransactionState> {
   }
 
   /// Load all accounts from the repository
-  void _loadAccounts() {
+  void loadAccounts() {
     final accounts = accRepo.getAll();
     emit(state.copyWith(allAccounts: accounts));
   }

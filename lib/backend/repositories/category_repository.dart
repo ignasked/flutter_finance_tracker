@@ -80,7 +80,14 @@ class CategoryRepository extends BaseRepository<Category> {
   /// Initialize default categories
   Future<void> _initializeDefaultCategories() async {
     final isFirstLaunch = await _isFirstLaunch();
-    if (!isFirstLaunch) return;
+    if (!isFirstLaunch) {
+      final defaultCategory = getById(1);
+      if (defaultCategory != null) {
+        Defaults().defaultCategory = defaultCategory; // Set default account
+      }
+
+      return;
+    }
 
     final defaultCategories = [
       Category(

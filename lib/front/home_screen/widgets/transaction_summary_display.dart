@@ -14,7 +14,14 @@ class TransactionSummaryDisplay extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Text(
-              '${state.txSummary.balanceString} ${Defaults().defaultCurrencySymbol}',
+              context
+                          .read<AccountTransactionCubit>()
+                          .state
+                          .filters
+                          .selectedAccount !=
+                      null
+                  ? '${state.txSummary.balanceString} ${context.read<AccountTransactionCubit>().state.filters.selectedAccount!.currencySymbolOrCurrency}'
+                  : '${state.txSummary.balanceString} ${Defaults().defaultCurrencySymbol}',
               style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -26,7 +33,14 @@ class TransactionSummaryDisplay extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  '${state.txSummary.totalIncomeString} ${Defaults().defaultCurrencySymbol}',
+                  context
+                              .read<AccountTransactionCubit>()
+                              .state
+                              .filters
+                              .selectedAccount !=
+                          null
+                      ? '${state.txSummary.totalIncomeString} ${context.read<AccountTransactionCubit>().state.filters.selectedAccount!.currencySymbolOrCurrency}'
+                      : '${state.txSummary.totalIncomeString} ${Defaults().defaultCurrencySymbol}',
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
@@ -35,7 +49,14 @@ class TransactionSummaryDisplay extends StatelessWidget {
                 ),
                 const SizedBox(width: 16),
                 Text(
-                  '${state.txSummary.totalExpensesString} ${Defaults().defaultCurrencySymbol}',
+                  context
+                              .read<AccountTransactionCubit>()
+                              .state
+                              .filters
+                              .selectedAccount !=
+                          null
+                      ? '${state.txSummary.totalExpensesString} ${context.read<AccountTransactionCubit>().state.filters.selectedAccount!.currencySymbolOrCurrency}'
+                      : '${state.txSummary.totalExpensesString} ${Defaults().defaultCurrencySymbol}',
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
