@@ -3,15 +3,16 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart'; // Import intl for date formatting
 import 'package:money_owl/backend/models/transaction.dart';
 import 'package:money_owl/backend/models/transaction_result.dart';
-import 'package:money_owl/front/home_screen/cubit/account_transaction_cubit.dart';
+import 'package:money_owl/backend/repositories/transaction_repository.dart';
+import 'package:money_owl/front/transactions_screen/cubit/transactions_cubit.dart';
 import 'package:money_owl/front/transaction_form_screen/transaction_form_screen.dart';
 import 'package:money_owl/backend/utils/app_style.dart';
 
-class TransactionList extends StatelessWidget {
+class TransactionListWidget extends StatelessWidget {
   final List<Transaction> transactions;
   final bool groupByMonth; // Add a flag to control grouping
 
-  const TransactionList({
+  const TransactionListWidget({
     Key? key,
     required this.transactions,
     this.groupByMonth = false, // Default to no grouping
@@ -71,7 +72,7 @@ class TransactionList extends StatelessWidget {
     return Dismissible(
       key: UniqueKey(),
       confirmDismiss: (direction) async {
-        final txCubit = context.read<AccountTransactionCubit>();
+        final txCubit = context.read<TransactionsCubit>();
         // No need for itemIndex here as we pass the item directly
 
         final result = await showDialog<bool>(
@@ -109,7 +110,7 @@ class TransactionList extends StatelessWidget {
         if (!context.mounted) return false;
 
         if (result == true) {
-          txCubit.deleteTransaction(item);
+          context.read<TransactionRepository>().remove(item.id);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('${item.title} deleted.',
@@ -158,7 +159,7 @@ class TransactionList extends StatelessWidget {
                 : AppStyle.amountExpenseStyle, // Use AppStyle amount styles
           ),
           onTap: () async {
-            final txCubit = context.read<AccountTransactionCubit>();
+            final txCubit = context.read<TransactionsCubit>();
             final itemIndex = transactions
                 .indexOf(item); // Still need index for editing result
 

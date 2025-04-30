@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:money_owl/front/home_screen/home_screen.dart';
+import 'package:money_owl/front/transactions_screen/transactions_screen.dart';
 import 'package:money_owl/front/settings_screen/settings_screen.dart';
 import 'package:money_owl/front/stat_screen/stat_screen.dart';
 import 'package:money_owl/backend/utils/app_style.dart'; // Import AppStyle
@@ -56,7 +56,7 @@ class _NavigationState extends State<Navigation> {
         ],
       ),
       body: <Widget>[
-        const HomeScreen(),
+        const TransactionsScreen(),
         const StatScreen(),
         const SettingsScreen(),
       ][currentPageIndex],

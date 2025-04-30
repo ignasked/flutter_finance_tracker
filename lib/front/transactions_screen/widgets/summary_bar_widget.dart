@@ -1,19 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:money_owl/backend/models/account.dart'; // Import Account model
+import 'package:money_owl/backend/repositories/account_repository.dart';
 import 'package:money_owl/backend/utils/app_style.dart'; // Import AppStyle
-import 'package:money_owl/front/home_screen/cubit/account_transaction_cubit.dart';
-import 'package:money_owl/front/home_screen/widgets/transaction_filter_widget.dart';
-import 'package:money_owl/front/home_screen/widgets/transaction_summary_display.dart';
+import 'package:money_owl/front/transactions_screen/cubit/transactions_cubit.dart';
+import 'package:money_owl/front/transactions_screen/widgets/transaction_filter_widget.dart';
+import 'package:money_owl/front/transactions_screen/widgets/transaction_summary_display.dart';
+import 'package:money_owl/front/shared/filter_cubit/filter_cubit.dart'; // Import FilterCubit
+import 'package:money_owl/front/shared/filter_cubit/filter_state.dart'; // Import FilterState
 
 class SummaryBarWidget extends StatelessWidget {
   const SummaryBarWidget({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<AccountTransactionCubit, AccountTransactionState>(
-      builder: (context, state) {
-        final selectedAccount = state.filters.selectedAccount;
+    // Listen to FilterCubit for filter state changes (selected account)
+    return BlocBuilder<FilterCubit, FilterState>(
+      builder: (context, filterState) {
+        final selectedAccount = filterState.selectedAccount;
 
         return Container(
           padding: const EdgeInsets.all(
@@ -34,6 +38,7 @@ class SummaryBarWidget extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // Centered Stats Section: Balance, Income, Expenses
+              // This still reads from AccountTransactionCubit for the summary values
               const TransactionSummaryDisplay(),
               const SizedBox(
                   height: AppStyle.paddingSmall), // Use AppStyle padding
@@ -106,9 +111,10 @@ class SummaryBarWidget extends StatelessWidget {
   }
 
   /// Show a dialog to select an account
-  void _showAccountSelectionDialog(BuildContext context) {
-    final accountTransactionCubit = context.read<AccountTransactionCubit>();
-    final accounts = accountTransactionCubit.state.allAccounts;
+  void _showAccountSelectionDialog(BuildContext context) async {
+    // Read FilterCubit and AccountTransactionCubit
+    final filterCubit = context.read<FilterCubit>();
+    final accounts = await context.read<AccountRepository>().getAllEnabled();
 
     showDialog(
       context: context,
@@ -136,7 +142,8 @@ class SummaryBarWidget extends StatelessWidget {
                     title: const Text('All Accounts',
                         style: AppStyle.bodyText), // Use AppStyle
                     onTap: () {
-                      accountTransactionCubit.changeSelectedAccount(null);
+                      // Call FilterCubit to change the account
+                      filterCubit.changeSelectedAccount(null);
                       Navigator.pop(dialogContext); // Close the dialog
                     },
                   );
@@ -153,7 +160,8 @@ class SummaryBarWidget extends StatelessWidget {
                   title: Text(account.name,
                       style: AppStyle.bodyText), // Use AppStyle
                   onTap: () {
-                    accountTransactionCubit.changeSelectedAccount(account);
+                    // Call FilterCubit to change the account
+                    filterCubit.changeSelectedAccount(account);
                     Navigator.pop(dialogContext); // Close the dialog
                   },
                 );

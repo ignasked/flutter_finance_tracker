@@ -22,8 +22,11 @@ class ReceiptAnalysisCubit extends Cubit<ReceiptAnalysisState> {
     emit(ReceiptAnalysisLoading());
 
     try {
-      final categoryNames = _categoryRepository.getEnabledCategoryTitles();
-      final availableCategories = _categoryRepository.getEnabledCategories();
+      //final categoryNames = await _categoryRepository.getEnabledCategoryTitles();
+      final availableCategories =
+          await _categoryRepository.getEnabledCategories();
+      final categoryNames =
+          availableCategories.map((category) => category.title).toString();
 
       final receiptJson = await _mistralService
           .processReceiptAndExtractTransactions(file, format, categoryNames);
@@ -50,8 +53,8 @@ class ReceiptAnalysisCubit extends Cubit<ReceiptAnalysisState> {
     emit(ReceiptAnalysisLoading());
 
     try {
-      final categoryNames = _categoryRepository.getEnabledCategoryTitles();
-      final availableCategories = _categoryRepository.getEnabledCategories();
+      final availableCategories =
+          await _categoryRepository.getEnabledCategories();
 
       final receiptJson = await _mistralService.loadSavedApiOutput();
       if (receiptJson == null) {

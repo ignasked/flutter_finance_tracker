@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:money_owl/backend/repositories/account_repository.dart';
 import 'package:money_owl/backend/repositories/category_repository.dart';
+import 'package:money_owl/backend/repositories/transaction_repository.dart';
 import 'package:money_owl/backend/services/mistral_service.dart';
 import 'package:money_owl/backend/utils/currency_utils.dart';
 import 'package:money_owl/backend/utils/defaults.dart';
 import 'package:money_owl/front/auth/auth_bloc/auth_bloc.dart';
-import 'package:money_owl/front/home_screen/cubit/account_transaction_cubit.dart';
+import 'package:money_owl/front/transactions_screen/cubit/transactions_cubit.dart';
 import 'package:money_owl/front/settings_screen/account_management_screen.dart';
 import 'package:money_owl/front/settings_screen/cubit/csv_cubit.dart';
 import 'package:money_owl/front/receipt_scan_screen/receipt_analyzer_widget.dart';
@@ -76,15 +77,6 @@ class SettingsScreen extends StatelessWidget {
                     height: AppStyle.paddingLarge,
                     color: AppStyle.dividerColor),
                 const Text(
-                  'Receipt Scanner',
-                  style: AppStyle.heading2,
-                ),
-                const SizedBox(height: AppStyle.paddingMedium),
-                const ReceiptAnalyzerWidget(),
-                const Divider(
-                    height: AppStyle.paddingLarge,
-                    color: AppStyle.dividerColor),
-                const Text(
                   'AI Financial Advisor',
                   style: AppStyle.heading2,
                 ),
@@ -98,7 +90,7 @@ class SettingsScreen extends StatelessWidget {
                         message: 'Analyzing your data...');
 
                     final transactions = context
-                        .read<AccountTransactionCubit>()
+                        .read<TransactionsCubit>()
                         .state
                         .displayedTransactions;
                     final csvCubit = context.read<CsvCubit>();
@@ -172,7 +164,7 @@ class SettingsScreen extends StatelessWidget {
                         builder: (context) => BlocProvider(
                           create: (context) => CategoryCubit(
                               context.read<CategoryRepository>(),
-                              context.read<AccountTransactionCubit>()),
+                              context.read<TransactionsCubit>()),
                           child: const CategoryManagementScreen(),
                         ),
                       ),
@@ -190,7 +182,8 @@ class SettingsScreen extends StatelessWidget {
                         builder: (context) => BlocProvider(
                           create: (context) => AccountCubit(
                               context.read<AccountRepository>(),
-                              context.read<AccountTransactionCubit>()),
+                              context.read<TransactionsCubit>(),
+                              context.read<TransactionRepository>()),
                           child: const AccountManagementScreen(),
                         ),
                       ),
@@ -233,7 +226,7 @@ class SettingsScreen extends StatelessWidget {
               ? null
               : () {
                   final transactions = context
-                      .read<AccountTransactionCubit>()
+                      .read<TransactionsCubit>()
                       .state
                       .displayedTransactions;
                   context.read<CsvCubit>().exportTransactions(transactions);
@@ -315,17 +308,15 @@ class SettingsScreen extends StatelessWidget {
           Defaults().defaultCurrencySymbol =
               CurrencyUtils.predefinedCurrencies[value]!;
           Defaults().saveDefaults();
-          context.read<AccountTransactionCubit>().calculateSummary(context
-              .read<AccountTransactionCubit>()
-              .state
-              .displayedTransactions);
+          context.read<TransactionsCubit>().calculateSummary(
+              context.read<TransactionsCubit>().state.displayedTransactions);
         }
       },
     );
   }
 
   Future<void> _handleImport(BuildContext context) async {
-    final txCubit = context.read<AccountTransactionCubit>();
+    final txCubit = context.read<TransactionsCubit>();
     final csvCubit = context.read<CsvCubit>();
 
     final existingTransactions = txCubit.state.displayedTransactions;
@@ -342,7 +333,7 @@ class SettingsScreen extends StatelessWidget {
   }
 
   Future<void> _showDuplicatesDialog(BuildContext context) async {
-    final txCubit = context.read<AccountTransactionCubit>();
+    final txCubit = context.read<TransactionsCubit>();
     final csvCubit = context.read<CsvCubit>();
     final duplicatesCount = csvCubit.state.duplicates.length;
 
@@ -406,7 +397,7 @@ class SettingsScreen extends StatelessWidget {
 
   Future<void> _showDeleteAllTransactionsConfirmation(
       BuildContext context) async {
-    final txCubit = context.read<AccountTransactionCubit>();
+    final txCubit = context.read<TransactionsCubit>();
 
     final confirm = await showDialog<bool>(
       context: context,

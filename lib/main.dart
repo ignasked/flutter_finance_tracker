@@ -8,16 +8,17 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:money_owl/backend/services/auth_service.dart'; // Import AuthService
 import 'package:money_owl/front/auth/auth_bloc/auth_bloc.dart'
     as auth_bloc; // Use a prefix for your local auth bloc to avoid name collision
-import 'package:money_owl/front/home_screen/cubit/account_transaction_cubit.dart';
-import 'package:money_owl/front/home_screen/widgets/navbar.dart';
+import 'package:money_owl/front/transactions_screen/cubit/transactions_cubit.dart';
+import 'package:money_owl/front/transactions_screen/widgets/navbar.dart';
 import 'package:money_owl/front/settings_screen/cubit/csv_cubit.dart';
+import 'package:money_owl/front/shared/filter_cubit/filter_cubit.dart';
 import 'package:supabase_auth_ui/supabase_auth_ui.dart';
 import 'backend/services/sync_service.dart';
-import 'front/home_screen/cubit/date_cubit.dart';
+import 'front/transactions_screen/cubit/date_cubit.dart';
 import 'config/env.dart';
 
 /// Repository providers
-late TransactionRepository transactionRepository;
+late TransactionRepository txRepository;
 late CategoryRepository categoryRepository;
 late AccountRepository accountRepository;
 late SyncService syncService;
@@ -39,13 +40,13 @@ Future<void> main() async {
   // Initialize Repositories
   accountRepository = AccountRepository(store);
   categoryRepository = CategoryRepository(store);
-  transactionRepository = TransactionRepository(store);
+  txRepository = TransactionRepository(store);
 
   // Initialize Services
   authService = AuthService(supabase); // Instantiate AuthService
   syncService = SyncService(
     supabaseClient: supabase,
-    transactionRepository: transactionRepository,
+    transactionRepository: txRepository,
     accountRepository: accountRepository,
     categoryRepository: categoryRepository,
   );
@@ -73,8 +74,7 @@ class MyApp extends StatelessWidget {
             value: authService), // Provide AuthService
         RepositoryProvider<AccountRepository>.value(value: accountRepository),
         RepositoryProvider<CategoryRepository>.value(value: categoryRepository),
-        RepositoryProvider<TransactionRepository>.value(
-            value: transactionRepository),
+        RepositoryProvider<TransactionRepository>.value(value: txRepository),
         RepositoryProvider<SyncService>.value(value: syncService),
       ],
       child: MultiBlocProvider(
@@ -88,12 +88,16 @@ class MyApp extends StatelessWidget {
           BlocProvider<DateCubit>(
             create: (context) => DateCubit(),
           ),
-          BlocProvider<AccountTransactionCubit>(
-            create: (context) => AccountTransactionCubit(
-                context.read<TransactionRepository>(),
-                context.read<AccountRepository>(),
-                context.read<CategoryRepository>(),
-                context.read<DateCubit>()),
+          BlocProvider<FilterCubit>(
+            create: (context) => FilterCubit(context.read<DateCubit>()),
+          ),
+          BlocProvider<TransactionsCubit>(
+            create: (context) => TransactionsCubit(
+              context.read<TransactionRepository>(),
+              context.read<AccountRepository>(),
+              context.read<CategoryRepository>(),
+              context.read<FilterCubit>(), // Provide FilterCubit
+            ),
           ),
           BlocProvider<CsvCubit>(
             create: (context) => CsvCubit(),

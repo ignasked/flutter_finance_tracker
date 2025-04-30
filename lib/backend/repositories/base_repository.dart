@@ -32,12 +32,12 @@ abstract class BaseRepository<T> {
     _store.close();
   }
 
-  /// Get all entities
-  List<T> getAll() {
+  /// Get all entities asynchronously
+  Future<List<T>> getAll() async {
     try {
-      return box.getAll();
+      return await box.getAllAsync();
     } catch (e) {
-      print('Error fetching all entities: $e');
+      print('Error fetching all entities asynchronously: $e');
       return [];
     }
   }
@@ -47,7 +47,7 @@ abstract class BaseRepository<T> {
     try {
       return await box.getAsync(id);
     } catch (e) {
-      print('Error fetching entity with ID $id: $e');
+      print('Error fetching entity with ID $id asynchronously: $e');
       return null;
     }
   }
@@ -58,7 +58,7 @@ abstract class BaseRepository<T> {
     try {
       return await box.putAsync(entity);
     } catch (e) {
-      print('Error adding/updating entity: $e');
+      print('Error adding/updating entity asynchronously: $e');
       rethrow;
     }
   }
@@ -68,7 +68,7 @@ abstract class BaseRepository<T> {
     try {
       return await box.putManyAsync(entities);
     } catch (e) {
-      print('Error adding/updating multiple entities: $e');
+      print('Error adding/updating multiple entities asynchronously: $e');
       rethrow;
     }
   }
@@ -78,7 +78,7 @@ abstract class BaseRepository<T> {
     try {
       return await box.removeAsync(id);
     } catch (e) {
-      print('Error removing entity with ID $id: $e');
+      print('Error removing entity with ID $id asynchronously: $e');
       return false;
     }
   }
@@ -88,7 +88,7 @@ abstract class BaseRepository<T> {
     try {
       return await box.removeAllAsync();
     } catch (e) {
-      print('Error removing all entities: $e');
+      print('Error removing all entities asynchronously: $e');
       return 0;
     }
   }

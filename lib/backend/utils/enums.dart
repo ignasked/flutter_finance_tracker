@@ -1,3 +1,5 @@
+enum LoadingStatus { initial, loading, success, failure }
+
 enum TransactionType { expense, income }
 
 enum AccountType {

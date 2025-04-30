@@ -2,26 +2,26 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:money_owl/backend/models/category.dart';
 import 'package:money_owl/backend/repositories/category_repository.dart';
+import 'package:money_owl/backend/repositories/transaction_repository.dart';
 import 'package:money_owl/backend/utils/defaults.dart';
-import 'package:money_owl/front/home_screen/cubit/account_transaction_cubit.dart';
+import 'package:money_owl/front/transactions_screen/cubit/transactions_cubit.dart';
 import 'package:money_owl/front/settings_screen/widgets/category_form_widget.dart';
 import 'package:money_owl/main.dart';
 
 class CategoryCubit extends Cubit<List<Category>> {
   final CategoryRepository _categoryRepository;
-  final AccountTransactionCubit _accountTransactionCubit;
+  final TransactionsCubit _transactionsCubit;
 
-  CategoryCubit(this._categoryRepository, this._accountTransactionCubit)
-      : super([]) {
+  CategoryCubit(this._categoryRepository, this._transactionsCubit) : super([]) {
     loadCategories();
   }
 
-  void loadCategories() {
-    final categories = _categoryRepository.getAll();
+  Future loadCategories() async {
+    final categories = await _categoryRepository.getAll();
     emit(categories);
   }
 
-  void toggleCategory(Category category, bool isEnabled) {
+  Future toggleCategory(Category category, bool isEnabled) async {
     final updatedCategory = category.copyWith(isEnabled: isEnabled);
     _categoryRepository.put(updatedCategory);
     final updatedCategories =
@@ -30,7 +30,7 @@ class CategoryCubit extends Cubit<List<Category>> {
   }
 
   void addCategory(Category category) {
-    _categoryRepository.putById(category.id, category);
+    _categoryRepository.put(category);
     emit([...state, category]);
   }
 
@@ -42,7 +42,7 @@ class CategoryCubit extends Cubit<List<Category>> {
       state[index] = category; // Directly update the category in the state list
     }
 
-    _accountTransactionCubit.loadAllTransactions(); // force reload
+    //_transactionsCubit.load(); // force reload
     Defaults().defaultCategory = category;
 
     emit([...state]);
@@ -53,10 +53,10 @@ class CategoryCubit extends Cubit<List<Category>> {
     emit(state.where((c) => c.id != category.id).toList());
   }
 
-  bool isTransactionRemovable(Category category) {
+  Future<bool> isTransactionRemovable(
+      Category category, TransactionRepository txRepo) async {
     // Check if the category has related transactions
-    return _accountTransactionCubit.txRepo
-            .hasTransactionsForCategory(category.id) ||
+    return await txRepo.hasTransactionsForCategory(category.id) ||
         category.id == 13;
   }
 }
@@ -68,7 +68,7 @@ class CategoryManagementScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (context) => CategoryCubit(context.read<CategoryRepository>(),
-          context.read<AccountTransactionCubit>()),
+          context.read<TransactionsCubit>()),
       child: BlocBuilder<CategoryCubit, List<Category>>(
         builder: (context, categories) {
           return Scaffold(
@@ -79,9 +79,6 @@ class CategoryManagementScreen extends StatelessWidget {
               itemCount: categories.length,
               itemBuilder: (context, index) {
                 final category = categories[index];
-                final hasTransactions = context
-                    .read<CategoryCubit>()
-                    .isTransactionRemovable(category);
 
                 return ListTile(
                   leading: Icon(category.icon, color: category.color),
@@ -108,38 +105,63 @@ class CategoryManagementScreen extends StatelessWidget {
                         },
                       ),
                       // Delete button
-                      IconButton(
-                        icon: const Icon(Icons.delete),
-                        onPressed: hasTransactions
-                            ? null // Disable the button if the category has transactions
-                            : () async {
-                                final confirm = await showDialog<bool>(
-                                  context: context,
-                                  builder: (context) => AlertDialog(
-                                    title: const Text('Delete Category'),
-                                    content: Text(
-                                        'Are you sure you want to delete the category "${category.title}"?'),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () =>
-                                            Navigator.pop(context, false),
-                                        child: const Text('Cancel'),
-                                      ),
-                                      TextButton(
-                                        onPressed: () =>
-                                            Navigator.pop(context, true),
-                                        child: const Text('Delete'),
-                                      ),
-                                    ],
-                                  ),
-                                );
+                      FutureBuilder<bool>(
+                        future: context
+                            .read<CategoryCubit>()
+                            .isTransactionRemovable(category,
+                                context.read<TransactionRepository>()),
+                        builder: (context, snapshot) {
+                          // If future not complete, show disabled button with loading indicator
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return const IconButton(
+                              icon: SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2)),
+                              onPressed: null, // Disabled while loading
+                            );
+                          }
 
-                                if (confirm == true) {
-                                  context
-                                      .read<CategoryCubit>()
-                                      .deleteCategory(category);
-                                }
-                              },
+                          // Future completed, check result
+                          final canDelete =
+                              snapshot.hasData && snapshot.data == false;
+
+                          return IconButton(
+                            icon: const Icon(Icons.delete),
+                            onPressed: canDelete
+                                ? () async {
+                                    final confirm = await showDialog<bool>(
+                                      context: context,
+                                      builder: (context) => AlertDialog(
+                                        title: const Text('Delete Category'),
+                                        content: Text(
+                                            'Are you sure you want to delete the category "${category.title}"?'),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.pop(context, false),
+                                            child: const Text('Cancel'),
+                                          ),
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.pop(context, true),
+                                            child: const Text('Delete'),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+
+                                    if (confirm == true) {
+                                      context
+                                          .read<CategoryCubit>()
+                                          .deleteCategory(category);
+                                    }
+                                  }
+                                : null, // Disabled if can't delete
+                          );
+                        },
                       ),
                       Switch(
                         value: category.isEnabled,

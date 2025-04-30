@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:money_owl/backend/models/transaction.dart';
+import 'package:money_owl/backend/repositories/transaction_repository.dart';
 import 'package:money_owl/backend/services/mistral_service.dart';
 import 'package:money_owl/backend/repositories/category_repository.dart';
 import 'package:money_owl/backend/services/file_picker_service.dart';
 import 'package:money_owl/backend/utils/receipt_format.dart';
-import 'package:money_owl/front/home_screen/cubit/account_transaction_cubit.dart';
+import 'package:money_owl/front/transactions_screen/cubit/transactions_cubit.dart';
 import 'package:money_owl/front/receipt_scan_screen/bulk_add_transactions_screen.dart';
 import 'package:money_owl/front/receipt_scan_screen/receipt_analysis_cubit.dart';
 import 'package:money_owl/front/common/loading_widget.dart';
@@ -64,8 +65,8 @@ class ReceiptAnalyzerWidget extends StatelessWidget {
             );
             if (transactions != null) {
               context
-                  .read<AccountTransactionCubit>()
-                  .addTransactions(transactions as List<Transaction>);
+                  .read<TransactionRepository>()
+                  .putMany(transactions as List<Transaction>);
             }
           }
         },

@@ -70,7 +70,7 @@ class AccountRepository extends BaseRepository<Account> {
 
       if (!exists) {
         try {
-          box.put(defaultAccount);
+          await put(defaultAccount);
           print('Added default account: ${defaultAccount.name}');
         } catch (e) {
           print('Error adding default account ${defaultAccount.name}: $e');
@@ -105,7 +105,7 @@ class AccountRepository extends BaseRepository<Account> {
 
   Future<List<Account>> getAllEnabled() async {
     final query = box.query(Account_.isEnabled.equals(true)).build();
-    final results = query.find();
+    final results = await query.findAsync();
     query.close();
     return results;
   }

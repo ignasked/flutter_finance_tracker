@@ -20,6 +20,8 @@ class AppStyle {
   static const Color backgroundColor =
       Color(0xFFF5F5F5); // Light grey background
   static const Color cardColor = Colors.white; // Card background
+  static const Color chipBackgroundColor =
+      Color(0xFFE0E0E0); // Added chip background
   static const Color textColorPrimary =
       Color(0xFF333333); // Dark grey for main text
   static const Color textColorSecondary =
@@ -27,6 +29,7 @@ class AppStyle {
   static const Color incomeColor = Colors.green; // Color for income amounts
   static const Color expenseColor = Colors.red; // Color for expense amounts
   static const Color dividerColor = Color(0xFFE0E0E0); // Light divider color
+  static const Color warningColor = Colors.orangeAccent; // Added warning color
 
   // --- Padding & Spacing ---
   static const double paddingSmall = 8.0;
@@ -80,9 +83,9 @@ class AppStyle {
   );
 
   static const TextStyle buttonTextStyle = TextStyle(
-    fontSize: 16.0,
+    fontSize: 18.0,
     fontWeight: FontWeight.w500,
-    color: Colors.white, // Assuming buttons have dark background
+    color: Colors.black, // Assuming buttons have dark background
   );
 
   // --- Button Styles ---

@@ -41,48 +41,26 @@ class CategoryRepository extends BaseRepository<Category> {
     }
   }
 
-  /// Fetch only enabled categories
-  List<Category> getEnabledCategories() {
+  /// Fetch only enabled categories asynchronously
+  Future<List<Category>> getEnabledCategories() async {
     try {
       final query = box.query(Category_.isEnabled.equals(true)).build();
-      final enabledCategories = query.find();
+      final enabledCategories = await query.findAsync();
       query.close();
       return enabledCategories;
     } catch (e) {
-      print('Error fetching enabled categories: $e');
+      print('Error fetching enabled categories asynchronously: $e');
       return [];
     }
   }
 
-  /// Fetch enabled category titles as a comma-separated string
-  String getEnabledCategoryTitles() {
-    final enabledCategories = getEnabledCategories();
+  /// Fetch enabled category titles as a comma-separated string (now async)
+  Future<String> getEnabledCategoryTitles() async {
+    final enabledCategories = await getEnabledCategories();
     if (enabledCategories.isEmpty) {
       return 'No enabled categories';
     }
     return enabledCategories.map((category) => category.title).join(', ');
-  }
-
-  void putById(int id, Category entity) {
-    try {
-      final existingEntity = box.get(id);
-      if (existingEntity != null) {
-        // Update the existing entity
-        box.put(existingEntity.copyWith(
-          title: entity.title,
-          descriptionForAI: entity.descriptionForAI,
-          colorValue: entity.colorValue,
-          iconCodePoint: entity.iconCodePoint,
-          typeValue: entity.typeValue,
-          isEnabled: entity.isEnabled,
-        ));
-      } else {
-        // Add the new entity
-        box.put(entity);
-      }
-    } catch (e) {
-      print('Error adding/updating entity by ID: $e');
-    }
   }
 
   /// Initialize default categories
@@ -251,7 +229,7 @@ class CategoryRepository extends BaseRepository<Category> {
 
       if (!exists) {
         try {
-          box.put(defaultCategory);
+          await put(defaultCategory);
           print('Added default category: ${defaultCategory.title}');
         } catch (e) {
           print('Error adding default category ${defaultCategory.title}: $e');
