@@ -183,49 +183,111 @@ class _TransactionForm extends StatelessWidget {
                         // --- Transaction Type Selector ---
                         BlocBuilder<TransactionFormCubit, TransactionFormState>(
                           buildWhen: (prev, curr) =>
-                              prev.selectedType != curr.selectedType ||
-                              prev.category?.type !=
-                                  curr.category
-                                      ?.type, // Rebuild when type changes
+                              prev.selectedType !=
+                              curr.selectedType, // Rebuild when type changes
                           builder: (context, state) {
+                            // Determine colors based on the selected state
+                            final selectedColor =
+                                state.selectedType == TransactionType.income
+                                    ? AppStyle.incomeColor
+                                    : AppStyle.expenseColor;
+
+                            // Use a contrasting color for text/icon on the selected segment
+                            const selectedForegroundColor = Colors.white;
+
+                            // Color for the unselected segment's text/icon
+                            final unselectedForegroundColor =
+                                AppStyle.textColorSecondary;
+
+                            // Background for the unselected segment (can be subtle)
+                            final unselectedBackgroundColor =
+                                AppStyle.cardColor;
+
+                            // Border color for the unselected segment
+                            final unselectedBorderColor = AppStyle.dividerColor;
+
                             return SegmentedButton<TransactionType>(
                               segments: const <ButtonSegment<TransactionType>>[
                                 ButtonSegment(
                                     value: TransactionType.expense,
                                     label: Text('Expense'),
-                                    icon: Icon(Icons.arrow_downward)),
+                                    icon: Icon(Icons.arrow_downward, size: 18)),
                                 ButtonSegment(
                                     value: TransactionType.income,
                                     label: Text('Income'),
-                                    icon: Icon(Icons.arrow_upward)),
+                                    icon: Icon(Icons.arrow_upward, size: 18)),
                               ],
                               selected: <TransactionType>{state.selectedType},
                               onSelectionChanged:
                                   (Set<TransactionType> newSelection) {
-                                context
-                                    .read<TransactionFormCubit>()
-                                    .typeChanged(newSelection.first);
-                                // Optionally: Filter categories based on newSelection.first
+                                // Ensure only one selection remains (SegmentedButton handles this)
+                                if (newSelection.isNotEmpty) {
+                                  context
+                                      .read<TransactionFormCubit>()
+                                      .typeChanged(newSelection.first);
+                                  // Optionally trigger category filtering here if needed
+                                }
                               },
-                              // style: SegmentedButton.styleFrom(
-                              //   // Use AppStyle colors appropriately
-                              //   foregroundColor:
-                              //       MaterialStateProperty.resolveWith<Color?>(
-                              //           (Set<MaterialState> states) {
-                              //     if (states.contains(MaterialState.selected)) {
-                              //       return state.selectedType ==
-                              //               TransactionType.income
-                              //           ? AppStyle.incomeColor
-                              //           : AppStyle.expenseColor;
-                              //     }
-                              //     return AppStyle
-                              //         .textColorSecondary; // Default color
-                              //   }),
-                              //   selectedBackgroundColor: state.selectedType ==
-                              //           TransactionType.income
-                              //       ? AppStyle.incomeColor.withOpacity(0.1)
-                              //       : AppStyle.expenseColor.withOpacity(0.1),
-                              // ),
+                              // --- Styling ---
+                              // --- Styling using ButtonStyle directly ---
+                              style: ButtonStyle(
+                                // --- Foreground Color (Controls BOTH Text and Icon) ---
+                                foregroundColor:
+                                    WidgetStateProperty.resolveWith<Color?>(
+                                        (Set<WidgetState> states) {
+                                  if (states.contains(WidgetState.selected)) {
+                                    // This color applies to text AND icon when selected
+                                    return selectedForegroundColor; // Should be ColorPalette.onPrimary (white)
+                                  }
+                                  // This color applies to text AND icon when NOT selected
+                                  return unselectedForegroundColor; // Should be AppStyle.textColorSecondary
+                                }),
+                                // --- Shape requires WidgetStateProperty wrapper here ---
+                                shape: WidgetStateProperty.all<OutlinedBorder>(
+                                  // Use .all for constant shape
+                                  RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(
+                                        AppStyle.borderRadiusMedium),
+                                    side: BorderSide(
+                                        color: unselectedBorderColor,
+                                        width: 1.0),
+                                  ),
+                                ),
+
+                                // --- Background Color (Still uses WidgetStateProperty) ---
+                                backgroundColor:
+                                    WidgetStateProperty.resolveWith<Color?>(
+                                        (Set<WidgetState> states) {
+                                  if (states.contains(WidgetState.selected)) {
+                                    return selectedColor;
+                                  }
+                                  return unselectedBackgroundColor;
+                                }),
+
+                                // --- Text Style requires WidgetStateProperty wrapper ---
+                                textStyle: WidgetStateProperty.all<TextStyle?>(
+                                    // Use .all for constant text style
+                                    AppStyle.captionStyle
+                                        .copyWith(fontWeight: FontWeight.w500)),
+
+                                // --- Padding requires WidgetStateProperty wrapper ---
+                                padding:
+                                    WidgetStateProperty.all<EdgeInsetsGeometry>(
+                                        // Use .all for constant padding
+                                        const EdgeInsets.symmetric(
+                                            horizontal: AppStyle.paddingMedium,
+                                            vertical:
+                                                AppStyle.paddingSmall / 1.5)),
+
+                                // Add elevation, mouse cursor etc. wrapped in WidgetStateProperty if needed
+                                // elevation: WidgetStateProperty.all<double>(0), // Example
+
+                                // Side property might be applicable here if shape doesn't handle it fully,
+                                // but ButtonStyle's side also expects WidgetStateProperty<BorderSide?>?
+                                // side: WidgetStateProperty.resolveWith<BorderSide?>((states) { ... })
+                              ),
+                              showSelectedIcon: true,
+                              multiSelectionEnabled: false,
                             );
                           },
                         ),

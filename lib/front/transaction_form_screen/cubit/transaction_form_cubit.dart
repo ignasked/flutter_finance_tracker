@@ -88,6 +88,9 @@ class TransactionFormState extends Equatable {
     int? editIndex,
     TransactionType? selectedType, // Add selectedType to copyWith
   }) {
+    if (category != null) {
+      selectedType = category.type; // Update selectedType based on category
+    }
     return TransactionFormState(
       title: title ?? this.title,
       amount: amount ?? this.amount,
