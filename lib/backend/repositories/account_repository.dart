@@ -4,14 +4,21 @@ import 'package:money_owl/backend/repositories/base_repository.dart';
 import 'package:money_owl/backend/utils/defaults.dart';
 import 'package:money_owl/backend/utils/enums.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../objectbox.g.dart'; // ObjectBox generated file
+import 'package:money_owl/objectbox.g.dart';
+import 'package:objectbox/objectbox.dart';
+import 'package:money_owl/backend/services/sync_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AccountRepository extends BaseRepository<Account> {
   AccountRepository(Store store) : super(store) {
     _initializeDefaultAccounts();
-    final defaultAcc = getById(1);
+    _setDefaultAccount();
+  }
+
+  Future<void> _setDefaultAccount() async {
+    final defaultAcc = await getById(1);
     if (defaultAcc != null) {
-      Defaults().defaultAccount = defaultAcc; // Set default account
+      Defaults().defaultAccount = defaultAcc;
     }
   }
 
@@ -24,9 +31,9 @@ class AccountRepository extends BaseRepository<Account> {
   Future<void> _initializeDefaultAccounts() async {
     final isFirstLaunch = await _isFirstLaunch();
     if (!isFirstLaunch) {
-      final defaultAcc = getById(1);
+      final defaultAcc = await getById(1);
       if (defaultAcc != null) {
-        Defaults().defaultAccount = defaultAcc; // Set default account
+        Defaults().defaultAccount = defaultAcc;
       }
       return;
     }
@@ -37,24 +44,25 @@ class AccountRepository extends BaseRepository<Account> {
         currency: 'USD',
         currencySymbol: '\$',
         balance: 0.0,
-        colorValue: Colors.blue.value, // Convert Color to int
-        iconCodePoint:
-            Icons.account_balance.codePoint, // Convert IconData to int
+        colorValue: Colors.blue.value,
+        iconCodePoint: Icons.account_balance.codePoint,
       ),
       Account(
         name: 'Cash',
-        typeValue: AccountType.cash.index, // Convert enum to int
+        typeValue: AccountType.cash.index,
         currency: 'USD',
         currencySymbol: '\$',
         balance: 0.0,
-        colorValue: Colors.green.value, // Convert Color to int
-        iconCodePoint:
-            Icons.account_balance_wallet.codePoint, // Convert IconData to int
+        colorValue: Colors.green.value,
+        iconCodePoint: Icons.account_balance_wallet.codePoint,
       ),
     ];
 
-    // Add only missing accounts
-    for (final defaultAccount in defaultAccounts) {
+    for (Account defaultAccount in defaultAccounts) {
+      final supabase = Supabase.instance.client;
+      defaultAccount =
+          defaultAccount.copyWith(userId: supabase.auth.currentUser?.id);
+
       final query =
           box.query(Account_.name.equals(defaultAccount.name)).build();
       final exists = query.find().isNotEmpty;
@@ -70,9 +78,9 @@ class AccountRepository extends BaseRepository<Account> {
       }
     }
 
-    final defaultAcc = getById(1);
+    final defaultAcc = await getById(1);
     if (defaultAcc != null) {
-      Defaults().defaultAccount = defaultAcc; // Set default account
+      Defaults().defaultAccount = defaultAcc;
     }
   }
 
@@ -83,5 +91,41 @@ class AccountRepository extends BaseRepository<Account> {
       await prefs.setBool('isFirstLaunchAccounts', false);
     }
     return isFirstLaunch;
+  }
+
+  /// Get accounts modified after a specific time (UTC).
+  Future<List<Account>> getAllModifiedSince(DateTime time) async {
+    final query = box
+        .query(Account_.updatedAt > time.toUtc().millisecondsSinceEpoch)
+        .build();
+    final results = await query.findAsync();
+    query.close();
+    return results;
+  }
+
+  Future<List<Account>> getAllEnabled() async {
+    final query = box.query(Account_.isEnabled.equals(true)).build();
+    final results = query.find();
+    query.close();
+    return results;
+  }
+
+  /// Override put to update timestamps before saving.
+  @override
+  Future<int> put(Account account,
+      {SyncSource syncSource = SyncSource.local}) async {
+    if (syncSource == SyncSource.local) {
+      final now = DateTime.now();
+      Account accountToSave;
+      if (account.id == 0) {
+        accountToSave = account.copyWith(createdAt: now, updatedAt: now);
+      } else {
+        accountToSave = account.copyWith(updatedAt: now);
+      }
+      final savedId = await super.put(accountToSave, syncSource: syncSource);
+      return savedId;
+    } else {
+      return await super.put(account, syncSource: syncSource);
+    }
   }
 }

@@ -1,17 +1,15 @@
 import 'package:equatable/equatable.dart';
 import 'package:money_owl/backend/models/account.dart';
-import 'package:money_owl/backend/repositories/category_repository.dart';
 import 'package:money_owl/backend/utils/enums.dart';
 import 'package:objectbox/objectbox.dart';
 import 'category.dart'; // Import the Category model
 
 @Entity()
-
+// ignore: must_be_immutable
 /// Represents a financial transaction with details such as title, amount, type (income/expense), category, and date.
-// ignore: must-be-immutable
 class Transaction extends Equatable {
   @Id()
-  int id;
+  int id; // Remove 'final'
 
   final String title;
   final double amount;
@@ -19,13 +17,24 @@ class Transaction extends Equatable {
 
   // Define a relation to the Category model
   final ToOne<Category> category = ToOne<Category>();
-  final ToOne<Account> account = ToOne<Account>(); // Relation to Account
+  final ToOne<Account> fromAccount = ToOne<Account>(); // Source Account
+  final ToOne<Account> toAccount =
+      ToOne<Account>(); // Destination Account (for transfers)
 
   @Property(type: PropertyType.date)
   final DateTime date;
 
+  @Property(type: PropertyType.date)
+  final DateTime createdAt;
+
+  @Property(type: PropertyType.date)
+  final DateTime updatedAt;
+
+  // Add userId field
+  final String? userId;
+
   String get amountAndCurrencyString {
-    return '${amount.toStringAsFixed(2)} ${account.target?.currencySymbolOrCurrency}';
+    return '${amount.toStringAsFixed(2)} ${fromAccount.target?.currencySymbolOrCurrency ?? ''}';
   }
 
   /// Getter to determine if the transaction is income or expense based on the category
@@ -34,19 +43,29 @@ class Transaction extends Equatable {
   }
 
   Transaction({
-    this.id = 0,
+    int? id,
     required this.title,
     required this.amount,
     this.description,
     required this.date,
     Category? category,
-    Account? account,
-  }) {
+    Account? fromAccount, // Renamed parameter
+    Account? toAccount, // Added parameter
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    this.userId, // Add userId parameter
+  })  : this.id = id ?? 0,
+        this.createdAt = createdAt ?? DateTime.now(),
+        this.updatedAt = updatedAt ?? (createdAt ?? DateTime.now()) {
     if (category != null) {
       this.category.target = category;
     }
-    if (account != null) {
-      this.account.target = account;
+    if (fromAccount != null) {
+      this.fromAccount.target = fromAccount;
+    }
+    if (toAccount != null) {
+      // Assign target directly to the non-nullable ToOne
+      this.toAccount.target = toAccount;
     }
   }
 
@@ -55,11 +74,14 @@ class Transaction extends Equatable {
         id,
         title,
         amount,
-        isIncome,
-        category.target,
-        account.target,
+        category.targetId,
+        fromAccount.targetId,
+        toAccount.targetId, // Use non-nullable targetId
         date,
-        description
+        description,
+        createdAt,
+        updatedAt,
+        userId, // Add userId to props
       ];
 
   /// Creates a copy of this transaction with updated fields.
@@ -68,9 +90,13 @@ class Transaction extends Equatable {
     String? title,
     double? amount,
     Category? category,
-    Account? account,
+    Account? fromAccount, // Renamed parameter
+    Account? toAccount,
     DateTime? date,
     String? description,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    String? userId, // Add userId parameter
   }) {
     final updatedTransaction = Transaction(
       id: id ?? this.id,
@@ -78,34 +104,43 @@ class Transaction extends Equatable {
       amount: amount ?? this.amount,
       date: date ?? this.date,
       description: description ?? this.description,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? DateTime.now(),
+      fromAccount: fromAccount, // Pass fromAccount object
+      toAccount: toAccount, // Pass toAccount object
+      userId: userId ?? this.userId, // Copy userId
     );
     updatedTransaction.category.target = category ?? this.category.target;
-    updatedTransaction.account.target = account ?? this.account.target;
+    updatedTransaction.fromAccount.target =
+        fromAccount ?? this.fromAccount.target;
+    updatedTransaction.toAccount.target = toAccount ?? this.toAccount.target;
     return updatedTransaction;
   }
 
   static String toCSVHeader() {
-    return 'id,title,description,amount,categoryId,categoryName,accountId,accountName,date';
+    return 'id,title,description,amount,categoryId,categoryName,accountId,accountName,date,createdAt,updatedAt';
   }
 
   String toCSV() {
     return [
       id,
-      title.replaceAll(',', ';'), // Escape commas in text fields
+      title.replaceAll(',', ';'),
       (description ?? '').replaceAll(',', ';'),
       amount,
       category.target?.id ?? '',
       (category.target?.title ?? '').replaceAll(',', ';'),
-      account.target?.id ?? '',
-      (account.target?.name ?? '').replaceAll(',', ';'),
-      date.toIso8601String()
+      fromAccount.target?.id ?? '',
+      (fromAccount.target?.name ?? '').replaceAll(',', ';'),
+      date.toIso8601String(),
+      createdAt.toIso8601String(),
+      updatedAt.toIso8601String(),
     ].join(',');
   }
 
   static Transaction fromCSV(String csv) {
     List<String> fields = csv.split(',');
-    if (fields.length != 9) {
-      throw Exception('Invalid CSV format');
+    if (fields.length < 9) {
+      throw Exception('Invalid CSV format for Transaction');
     }
 
     return Transaction(
@@ -114,65 +149,43 @@ class Transaction extends Equatable {
       description: fields[2].isNotEmpty ? fields[2].replaceAll(';', ',') : null,
       amount: double.parse(fields[3]),
       date: DateTime.parse(fields[8]),
-      // Category and Account will need to be set separately using the repository
-      // as they require access to the ObjectBox store
+      createdAt: fields.length > 9 ? DateTime.tryParse(fields[9]) : null,
+      updatedAt: fields.length > 10 ? DateTime.tryParse(fields[10]) : null,
     );
   }
 
-  // Factory method to create a Transaction from JSON
-  factory Transaction.fromJson(
-      Map<String, dynamic> json, CategoryRepository categoryRepository) {
-    Category? category;
-    if (json['categoryId'] != null) {
-      category = categoryRepository.box.get(json['categoryId']);
-      // if (category != null) {
-      //   transaction.category.target = category;
-      // }
-    }
-
-    if (json['accountId'] != null) {
-      // transaction.account.target = Account(
-      //   id: json['accountId'],
-      //   name: json['accountName'] ?? 'Unknown Account',
-      //   currency: json['accountCurrency'] ?? 'USD',
-      //   iconCodePoint: json['accountIconCodePoint'] ?? 0,
-      //   colorValue: json['accountColorValue'] ?? 0xFF000000,
-      //   typeValue: json['accountTypeValue'] ?? 0,
-      //   balance: json['accountBalance'] ?? 0.0,
-      // );
-    }
-
+  factory Transaction.fromJson(Map<String, dynamic> json) {
     final transaction = Transaction(
-      id: json['id'] as int? ?? 0,
-      title: json['title'] as String? ?? 'Unknown',
-      amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
-      date: _parseDate(json['date']),
-      category: category,
+      id: json['id'] as int,
+      title: json['title'] as String,
+      amount: (json['amount'] as num).toDouble(),
+      description: json['description'] as String?,
+      date: DateTime.parse(json['date'] as String).toLocal(),
+      createdAt: DateTime.parse(json['created_at'] as String).toLocal(),
+      updatedAt: DateTime.parse(json['updated_at'] as String).toLocal(),
+      userId: json['user_id'] as String?, // Read userId from JSON
     );
-
+    transaction.fromAccount.targetId = json['from_account_id'] as int?;
+    transaction.category.targetId = json['category_id'] as int?;
+    transaction.toAccount.targetId =
+        json['to_account_id'] as int?; // Read to_account_id
     return transaction;
   }
 
-  // Helper method for safe date parsing
-  static DateTime _parseDate(dynamic date) {
-    try {
-      return date != null ? DateTime.parse(date.toString()) : DateTime.now();
-    } catch (e) {
-      return DateTime.now(); // Fallback to current date if parsing fails
-    }
-  }
-
-  // Convert a Transaction object to a JSON-compatible map
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
+      'id': id == 0 ? null : id,
       'title': title,
       'description': description,
       'amount': amount,
-      'isIncome': isIncome, // Derived from the category
-      'categoryId': category.targetId, // Save the category ID
-      'accountId': account.targetId, // Save the account ID
-      'date': date.toIso8601String(),
+      'category_id': category.targetId,
+      'from_account_id': fromAccount.targetId,
+      'to_account_id':
+          toAccount.targetId, // Add to_account_id (will be null if not set)
+      'date': date.toUtc().toIso8601String(),
+      'created_at': createdAt.toUtc().toIso8601String(),
+      'updated_at': updatedAt.toUtc().toIso8601String(),
+      'user_id': userId, // Include userId in JSON
     };
   }
 }

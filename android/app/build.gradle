@@ -23,11 +23,11 @@ if (flutterVersionName == null) {
 }
 
 android {
-    namespace "com.example.pvp_projektas"
+    namespace "com.games_from_garage.money_owl"
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.example.pvp_projektas"
+        applicationId "com.games_from_garage.money_owl"
         minSdkVersion 21
         targetSdk 34
         multiDexEnabled true

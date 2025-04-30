@@ -17,6 +17,15 @@ class Category extends Equatable {
   final bool isEnabled; // To allow enabling/disabling categories
   final int colorValue; // Store Color as an int
 
+  // Add userId field
+  final String? userId;
+
+  @Property(type: PropertyType.date)
+  final DateTime createdAt;
+
+  @Property(type: PropertyType.date)
+  final DateTime updatedAt;
+
   @Backlink('category')
   final ToMany<Transaction> transactions = ToMany<Transaction>();
 
@@ -33,35 +42,46 @@ class Category extends Equatable {
     required this.iconCodePoint, // Pass icon as int
     required this.typeValue, // Pass TransactionType as int
     this.isEnabled = true,
-  });
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    this.userId, // Add userId parameter
+  })  : this.createdAt = createdAt ?? DateTime.now(),
+        this.updatedAt = updatedAt ?? (createdAt ?? DateTime.now());
 
-  // Convert to JSON for saving preferences
+  // Convert to JSON for Supabase
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
+      'id': id == 0 ? null : id,
       'title': title,
-      'descriptionForAI': descriptionForAI,
-      'colorValue': colorValue,
-      'iconCodePoint': iconCodePoint,
-      'type': type.toString().split('.').last,
-      'isEnabled': isEnabled,
+      'description_for_ai':
+          descriptionForAI, // Use snake_case for Supabase columns
+      'color_value': colorValue,
+      'icon_code_point': iconCodePoint,
+      'type': type.toString().split('.').last, // Store enum as string
+      'is_enabled': isEnabled,
+      'created_at': createdAt.toUtc().toIso8601String(),
+      'updated_at': updatedAt.toUtc().toIso8601String(),
+      'user_id': userId, // Include userId in JSON
     };
   }
 
-  // Create a Category from JSON
+  // Create a Category from Supabase JSON
   factory Category.fromJson(Map<String, dynamic> json) {
     return Category(
-      id: json['id'] ?? 0,
-      title: json['title'],
-      descriptionForAI: json['descriptionForAI'],
-      colorValue: json['colorValue'], // Pass color as int
-      iconCodePoint: json['iconCodePoint'], // Pass icon as int
+      id: json['id'] as int,
+      title: json['title'] as String,
+      descriptionForAI: json['description_for_ai'] as String,
+      colorValue: json['color_value'] as int,
+      iconCodePoint: json['icon_code_point'] as int,
       typeValue: TransactionType.values
           .firstWhere(
-            (e) => e.toString().split('.').last == json['type'],
+            (e) => e.toString().split('.').last == (json['type'] as String),
           )
-          .index, // Pass TransactionType as int
-      isEnabled: json['isEnabled'] ?? true,
+          .index,
+      isEnabled: json['is_enabled'] as bool? ?? true,
+      createdAt: DateTime.parse(json['created_at'] as String).toLocal(),
+      updatedAt: DateTime.parse(json['updated_at'] as String).toLocal(),
+      userId: json['user_id'] as String?, // Read userId from JSON
     );
   }
 
@@ -74,6 +94,9 @@ class Category extends Equatable {
     int? iconCodePoint,
     int? typeValue,
     bool? isEnabled,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    String? userId, // Add userId parameter
   }) {
     return Category(
       id: id ?? this.id,
@@ -83,6 +106,9 @@ class Category extends Equatable {
       iconCodePoint: iconCodePoint ?? this.iconCodePoint,
       typeValue: typeValue ?? this.typeValue,
       isEnabled: isEnabled ?? this.isEnabled,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? DateTime.now(), // Update timestamp on copy
+      userId: userId ?? this.userId, // Copy userId
     );
   }
 
@@ -95,30 +121,15 @@ class Category extends Equatable {
         iconCodePoint,
         typeValue,
         isEnabled,
+        createdAt,
+        updatedAt,
+        userId, // Add userId to props
       ];
 
-  @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
+  // Keep custom == and hashCode if needed, otherwise Equatable handles it
+  // @override
+  // bool operator ==(Object other) { ... }
 
-    return other is Category &&
-        other.id == id &&
-        other.title == title &&
-        other.descriptionForAI == descriptionForAI &&
-        other.colorValue == colorValue &&
-        other.iconCodePoint == iconCodePoint &&
-        other.typeValue == typeValue &&
-        other.isEnabled == isEnabled;
-  }
-
-  @override
-  int get hashCode {
-    return id.hashCode ^
-        title.hashCode ^
-        descriptionForAI.hashCode ^
-        colorValue.hashCode ^
-        iconCodePoint.hashCode ^
-        typeValue.hashCode ^
-        isEnabled.hashCode;
-  }
+  // @override
+  // int get hashCode { ... }
 }

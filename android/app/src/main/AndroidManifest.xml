@@ -38,6 +38,12 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                android:scheme="owlandroid://com.games_from_garage.money_owl"
+                android:host="com.games_from_garage.money_owl" />
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.

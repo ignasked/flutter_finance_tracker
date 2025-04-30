@@ -1,3 +1,4 @@
+import 'package:money_owl/backend/services/sync_service.dart'; // Import SyncSource
 import 'package:money_owl/objectbox.g.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -41,65 +42,54 @@ abstract class BaseRepository<T> {
     }
   }
 
-  /// Get an entity by ID
-  T? getById(int id) {
+  /// Get an entity by ID asynchronously
+  Future<T?> getById(int id) async {
     try {
-      return box.get(id);
+      return await box.getAsync(id);
     } catch (e) {
       print('Error fetching entity with ID $id: $e');
       return null;
     }
   }
 
-  /// Add or update an entity
-  void put(T entity) {
+  /// Add or update an entity asynchronously.
+  /// [syncSource] indicates whether the change comes from Supabase to prevent loops.
+  Future<int> put(T entity, {SyncSource syncSource = SyncSource.local}) async {
     try {
-      box.put(entity);
+      return await box.putAsync(entity);
     } catch (e) {
       print('Error adding/updating entity: $e');
+      rethrow;
     }
   }
 
-  /// Add or update an entity by ID
-  void putById(int id, T entity) {
+  /// Add or update multiple entities asynchronously
+  Future<List<int>> putMany(List<T> entities) async {
     try {
-      final existingEntity = box.get(id);
-      if (existingEntity != null) {
-        // Update the existing entity
-        box.put(entity);
-      } else {
-        // Add the new entity
-        box.put(entity);
-      }
-    } catch (e) {
-      print('Error adding/updating entity by ID: $e');
-    }
-  }
-
-  /// Add or update multiple entities
-  void putMany(List<T> entities) {
-    try {
-      box.putMany(entities);
+      return await box.putManyAsync(entities);
     } catch (e) {
       print('Error adding/updating multiple entities: $e');
+      rethrow;
     }
   }
 
-  /// Remove an entity by ID
-  void remove(int id) {
+  /// Remove an entity by ID asynchronously
+  Future<bool> remove(int id) async {
     try {
-      box.remove(id);
+      return await box.removeAsync(id);
     } catch (e) {
       print('Error removing entity with ID $id: $e');
+      return false;
     }
   }
 
-  /// Remove all entities
-  void removeAll() {
+  /// Remove all entities asynchronously
+  Future<int> removeAll() async {
     try {
-      box.removeAll();
+      return await box.removeAllAsync();
     } catch (e) {
       print('Error removing all entities: $e');
+      return 0;
     }
   }
 }

@@ -60,7 +60,7 @@ class TransactionFormState extends Equatable {
   })  : title = TitleInput.dirty(transaction.title),
         amount = MoneyInput.dirty(transaction.amount.toString()),
         category = transaction.category.target, // Use the target Category
-        account = transaction.account.target, // Use the target Account
+        account = transaction.fromAccount.target, // Use the target Account
         status = FormzSubmissionStatus.initial,
         isValid = true,
         actionType = ActionType.edit,
@@ -176,7 +176,7 @@ class TransactionFormCubit extends Cubit<TransactionFormState> {
         title: state.title.value,
         amount: double.parse(state.amount.value),
         category: state.category, // Use the selected Category
-        account: state.account, // Use the selected Account
+        fromAccount: state.account, // Use the selected Account
         date: state.date,
       );
 
@@ -202,7 +202,7 @@ class TransactionFormCubit extends Cubit<TransactionFormState> {
         title: state.title.value,
         amount: double.parse(state.amount.value),
         category: state.category, // Use the selected Category
-        account: state.account, // Use the selected Account
+        fromAccount: state.account, // Use the selected Account
         date: DateTime.now(),
       );
 

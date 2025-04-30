@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import 'package:money_owl/backend/utils/app_style.dart'; // Import AppStyle
 import 'package:money_owl/front/home_screen/cubit/date_cubit.dart';
 
 /// A widget that displays a date bar with navigation buttons and a calendar button.
@@ -15,18 +16,20 @@ class DateBarWidget extends StatelessWidget {
     return BlocBuilder<DateCubit, DateState>(
       builder: (context, state) {
         final dateCubit = context.read<DateCubit>();
-        // Format the selected date or date range
 
         return Container(
-          padding: const EdgeInsets.symmetric(vertical: 1.0, horizontal: 16.0),
+          padding: const EdgeInsets.symmetric(
+              vertical: AppStyle.paddingSmall / 2,
+              horizontal: AppStyle.paddingMedium), // Use AppStyle padding
           decoration: BoxDecoration(
-            color: Colors.grey[200],
-            borderRadius: BorderRadius.circular(8.0),
+            color: AppStyle.cardColor, // Use AppStyle card color
+            borderRadius: BorderRadius.circular(
+                AppStyle.paddingSmall), // Use AppStyle padding
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withAlpha(40),
-                blurRadius: 3,
-                offset: const Offset(0, 3),
+                color: Colors.black.withAlpha(30), // Softer shadow
+                blurRadius: 4,
+                offset: const Offset(0, 2),
               ),
             ],
           ),
@@ -35,7 +38,8 @@ class DateBarWidget extends StatelessWidget {
             children: [
               // Previous Button
               IconButton(
-                  icon: const Icon(Icons.arrow_left, color: Colors.blue),
+                  icon: const Icon(Icons.arrow_left,
+                      color: AppStyle.primaryColor), // Use AppStyle color
                   onPressed: dateCubit.moveToPrevious),
 
               // Date Range Display
@@ -43,19 +47,24 @@ class DateBarWidget extends StatelessWidget {
 
               // Next Button
               IconButton(
-                  icon: const Icon(Icons.arrow_right, color: Colors.blue),
+                  icon: const Icon(Icons.arrow_right,
+                      color: AppStyle.primaryColor), // Use AppStyle color
                   onPressed: dateCubit.moveToNext),
 
               // Calendar Button
               IconButton(
-                icon: const Icon(Icons.calendar_today, color: Colors.blue),
+                icon: const Icon(Icons.calendar_today,
+                    color: AppStyle.primaryColor), // Use AppStyle color
                 onPressed: () {
                   showModalBottomSheet(
                     context: context,
                     isScrollControlled: true,
+                    backgroundColor:
+                        AppStyle.backgroundColor, // Use AppStyle background
                     shape: const RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.vertical(top: Radius.circular(16)),
+                      borderRadius: BorderRadius.vertical(
+                          top: Radius.circular(
+                              AppStyle.paddingMedium)), // Use AppStyle padding
                     ),
                     builder: (context) => const DateSelectionOptionsSheet(),
                   );
@@ -83,10 +92,7 @@ class DateRangeDisplay extends StatelessWidget {
           child: Text(
             _formatDateRange(state.selectedStartDate, state.selectedEndDate),
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-            ),
+            style: AppStyle.titleStyle, // Use AppStyle title style
           ),
         );
       },
@@ -102,6 +108,12 @@ class DateRangeDisplay extends StatelessWidget {
     if (endDate == null) {
       return dateFormat.format(startDate); // Single day
     } else {
+      // Check if start and end date are the same day
+      if (startDate.year == endDate.year &&
+          startDate.month == endDate.month &&
+          startDate.day == endDate.day) {
+        return dateFormat.format(startDate);
+      }
       return '${dateFormat.format(startDate)} - ${dateFormat.format(endDate)}'; // Date range
     }
   }
@@ -116,25 +128,32 @@ class DateSelectionOptionsSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(16.0),
+      padding:
+          const EdgeInsets.all(AppStyle.paddingLarge), // Use AppStyle padding
       child: Column(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch, // Stretch buttons
         children: [
           Text(
             'Date Filter',
-            style: Theme.of(context).textTheme.headlineLarge,
+            style: AppStyle.heading2, // Use AppStyle heading
+            textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 16.0),
+          const SizedBox(height: AppStyle.paddingLarge), // Use AppStyle padding
           const SelectDayButton(),
-          const SizedBox(height: 8.0),
+          const SizedBox(
+              height: AppStyle.paddingMedium), // Use AppStyle padding
           const SelectMonthButton(),
-          const SizedBox(height: 8.0),
+          const SizedBox(
+              height: AppStyle.paddingMedium), // Use AppStyle padding
           const SelectDateRangeButton(),
-          const SizedBox(height: 16.0),
+          const SizedBox(height: AppStyle.paddingLarge), // Use AppStyle padding
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context); // Close the sheet
             },
+            style: AppStyle
+                .secondaryButtonStyle, // Use AppStyle secondary button style
             child: const Text('Done'),
           ),
         ],
@@ -152,6 +171,7 @@ class SelectDayButton extends StatelessWidget {
     final dateCubit = context.read<DateCubit>();
 
     return ElevatedButton(
+      style: AppStyle.primaryButtonStyle, // Use AppStyle primary button style
       onPressed: () async {
         final selectedDay = await showDatePicker(
           context: context,
@@ -182,6 +202,7 @@ class SelectMonthButton extends StatelessWidget {
     final dateCubit = context.read<DateCubit>();
 
     return ElevatedButton(
+      style: AppStyle.primaryButtonStyle, // Use AppStyle primary button style
       onPressed: () async {
         final selectedDay = await showDatePicker(
           context: context,
@@ -217,6 +238,7 @@ class SelectDateRangeButton extends StatelessWidget {
     final dateCubit = context.read<DateCubit>();
 
     return ElevatedButton(
+      style: AppStyle.primaryButtonStyle, // Use AppStyle primary button style
       onPressed: () async {
         final selectedDateRange = await showDateRangePicker(
           context: context,

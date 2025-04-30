@@ -29,7 +29,7 @@ class AccountCubit extends Cubit<List<Account>> {
   }
 
   void addAccount(Account account) {
-    _accountRepository.putById(account.id, account);
+    _accountRepository.put(account);
     emit([...state, account]);
   }
 

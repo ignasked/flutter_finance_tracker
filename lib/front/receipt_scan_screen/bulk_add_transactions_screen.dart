@@ -120,7 +120,7 @@ class _BulkAddTransactionsScreenState extends State<BulkAddTransactionsScreen> {
   void _applyAccountToAllTransactions(Account account) {
     setState(() {
       for (var transaction in widget.transactions) {
-        transaction.account.target =
+        transaction.fromAccount.target =
             account; // Assuming Transaction has an 'account' field
       }
     });

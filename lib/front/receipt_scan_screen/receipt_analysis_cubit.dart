@@ -108,8 +108,7 @@ class ReceiptAnalysisCubit extends Cubit<ReceiptAnalysisState> {
 
     final transactions = (json['transactions'] as List<dynamic>)
         .whereType<Map<String, dynamic>>()
-        .map((transaction) =>
-            Transaction.fromJson(transaction, _categoryRepository))
+        .map((transaction) => Transaction.fromJson(transaction))
         .toList();
 
     for (final transaction in transactions) {

@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import 'package:money_owl/backend/utils/defaults.dart';
+// Remove unused import
 import 'package:objectbox/objectbox.dart';
 import 'transaction.dart';
 import 'package:money_owl/backend/utils/enums.dart';
@@ -16,14 +16,28 @@ class Account extends Equatable {
   final double balance; // Optional: Current balance of the account
   @Property(type: PropertyType.int)
   final int typeValue; // Store AccountType as an int
-  @Backlink('account')
-  final ToMany<Transaction> transactions = ToMany<Transaction>();
+
+  // Update the Backlink to point to 'fromAccount' in Transaction model
+  @Backlink('fromAccount')
+  final ToMany<Transaction> transactionsFrom = ToMany<Transaction>();
+
+  @Backlink('toAccount')
+  final ToMany<Transaction> transactionsTo = ToMany<Transaction>();
 
 // Visual representation of the account
   final int iconCodePoint; // IconData code point
   final int colorValue; // Color value as an integer
   final bool isEnabled; // Is the account enabled or archived.
   final bool excludeFromTotalBalance; // Exclude from total balance calculation
+
+  @Property(type: PropertyType.date) // Store as millisecond timestamp
+  final DateTime createdAt;
+
+  @Property(type: PropertyType.date) // Store as millisecond timestamp
+  final DateTime updatedAt;
+
+  // Add userId field
+  final String? userId;
 
   // Getter to convert the stored integer back to the enum
   AccountType get type => AccountType.values[typeValue];
@@ -43,10 +57,15 @@ class Account extends Equatable {
     required this.colorValue,
     this.isEnabled = true,
     this.excludeFromTotalBalance = false,
-  }) : assert(
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    this.userId, // Add userId parameter
+  })  : assert(
           typeValue >= 0 && typeValue < AccountType.values.length,
           'Invalid AccountType value: $typeValue',
-        );
+        ),
+        this.createdAt = createdAt ?? DateTime.now(),
+        this.updatedAt = updatedAt ?? (createdAt ?? DateTime.now());
 
   // Convert to JSON for saving preferences
   Map<String, dynamic> toJson() {
@@ -54,13 +73,17 @@ class Account extends Equatable {
       'id': id,
       'name': name,
       'currency': currency,
-      'typeValue': typeValue,
+      'currency_symbol': currencySymbol,
+      'type_value': typeValue,
       'balance': balance,
       'type': type.toString().split('.').last, // Save enum as string
-      'iconCodePoint': iconCodePoint,
-      'colorValue': colorValue,
-      'isEnabled': isEnabled,
-      'excludeFromTotalBalance': excludeFromTotalBalance,
+      'icon_code_point': iconCodePoint,
+      'color_value': colorValue,
+      'is_enabled': isEnabled,
+      'exclude_from_total_balance': excludeFromTotalBalance,
+      'created_at': createdAt.toUtc().toIso8601String(),
+      'updated_at': updatedAt.toUtc().toIso8601String(),
+      'user_id': userId, // Include userId in JSON
     };
   }
 
@@ -70,17 +93,20 @@ class Account extends Equatable {
       id: json['id'] ?? 0,
       name: json['name'],
       currency: json['currency'] ?? 'USD',
-
-      iconCodePoint: json['iconCodePoint'],
-      colorValue: json['colorValue'],
+      currencySymbol: json['currency_symbol'] ?? '\$',
+      iconCodePoint: json['icon_code_point'] ?? 0,
+      colorValue: json['color_value'],
       typeValue: AccountType.values
           .firstWhere(
             (e) => e.toString().split('.').last == json['type'],
           )
           .index, // Convert string back to enum index
       balance: json['balance'] ?? 0.0,
-      isEnabled: json['isEnabled'] ?? true,
-      excludeFromTotalBalance: json['excludeFromTotalBalance'] ?? false,
+      isEnabled: json['is_enabled'] ?? true,
+      excludeFromTotalBalance: json['exclude_from_total_balance'] ?? false,
+      createdAt: DateTime.parse(json['created_at'] as String).toLocal(),
+      updatedAt: DateTime.parse(json['updated_at'] as String).toLocal(),
+      userId: json['user_id'] as String?, // Read userId from JSON
     );
   }
 
@@ -95,6 +121,9 @@ class Account extends Equatable {
     double? balance,
     bool? isEnabled,
     bool? excludeFromTotalBalance,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    String? userId, // Add userId parameter
   }) {
     return Account(
       id: id ?? this.id,
@@ -107,6 +136,9 @@ class Account extends Equatable {
       isEnabled: isEnabled ?? this.isEnabled,
       excludeFromTotalBalance:
           excludeFromTotalBalance ?? this.excludeFromTotalBalance,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? DateTime.now(),
+      userId: userId ?? this.userId, // Copy userId
     );
   }
 
@@ -121,5 +153,8 @@ class Account extends Equatable {
         balance,
         isEnabled,
         excludeFromTotalBalance,
+        createdAt,
+        updatedAt,
+        userId, // Add userId to props
       ];
 }

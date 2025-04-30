@@ -46,7 +46,7 @@ class AccountFilterDecorator extends TransactionFilter {
   @override
   List<Transaction> filter(List<Transaction> transactions) {
     final filtered = transactions
-        .where((transaction) => transaction.account.targetId == account.id)
+        .where((transaction) => transaction.fromAccount.targetId == account.id)
         .toList();
     return super.filter(filtered);
   }

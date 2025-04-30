@@ -1,22 +1,31 @@
+import 'package:money_owl/backend/models/category.dart';
 import 'package:money_owl/backend/repositories/base_repository.dart';
 import 'package:money_owl/backend/utils/app_style.dart';
 import 'package:money_owl/backend/utils/defaults.dart';
 import 'package:money_owl/backend/utils/enums.dart';
-import '../../objectbox.g.dart'; // ObjectBox generated file
-import 'package:money_owl/backend/models/category.dart';
-import 'package:money_owl/backend/models/transaction.dart';
-import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:money_owl/objectbox.g.dart';
+import 'package:objectbox/objectbox.dart';
+import 'package:money_owl/backend/services/sync_service.dart';
 
 class CategoryRepository extends BaseRepository<Category> {
   CategoryRepository(Store store) : super(store) {
     _initializeDefaultCategories();
+    _setDefaultCategory();
   }
 
   /// Factory method for asynchronous initialization
   static Future<CategoryRepository> create([Store? store]) async {
     final newStore = store ?? await BaseRepository.createStore();
     return CategoryRepository(newStore);
+  }
+
+  /// Helper method to set default category asynchronously
+  Future<void> _setDefaultCategory() async {
+    final defaultCategory = await getById(1);
+    if (defaultCategory != null) {
+      Defaults().defaultCategory = defaultCategory;
+    }
   }
 
   /// Check if a category title is unique
@@ -54,7 +63,6 @@ class CategoryRepository extends BaseRepository<Category> {
     return enabledCategories.map((category) => category.title).join(', ');
   }
 
-  @override
   void putById(int id, Category entity) {
     try {
       final existingEntity = box.get(id);
@@ -81,11 +89,10 @@ class CategoryRepository extends BaseRepository<Category> {
   Future<void> _initializeDefaultCategories() async {
     final isFirstLaunch = await _isFirstLaunch();
     if (!isFirstLaunch) {
-      final defaultCategory = getById(1);
+      final defaultCategory = await getById(1);
       if (defaultCategory != null) {
-        Defaults().defaultCategory = defaultCategory; // Set default account
+        Defaults().defaultCategory = defaultCategory;
       }
-
       return;
     }
 
@@ -252,18 +259,47 @@ class CategoryRepository extends BaseRepository<Category> {
       }
     }
 
-    final defaultCategory = getById(1);
+    final defaultCategory = await getById(1);
     if (defaultCategory != null) {
-      Defaults().defaultCategory = defaultCategory; // Set default account
+      Defaults().defaultCategory = defaultCategory;
     }
   }
 
   Future<bool> _isFirstLaunch() async {
     final prefs = await SharedPreferences.getInstance();
-    final isFirstLaunch = prefs.getBool('isFirstLaunch') ?? true;
+    final isFirstLaunch = prefs.getBool('isFirstLaunchCategories') ?? true;
     if (isFirstLaunch) {
-      await prefs.setBool('isFirstLaunch', false);
+      await prefs.setBool('isFirstLaunchCategories', false);
     }
     return isFirstLaunch;
+  }
+
+  /// Get categories modified after a specific time (UTC).
+  Future<List<Category>> getAllModifiedSince(DateTime time) async {
+    final query = box
+        .query(Category_.updatedAt > time.toUtc().millisecondsSinceEpoch)
+        .build();
+    final results = await query.findAsync();
+    query.close();
+    return results;
+  }
+
+  /// Override put to update timestamps before saving.
+  @override
+  Future<int> put(Category category,
+      {SyncSource syncSource = SyncSource.local}) async {
+    if (syncSource == SyncSource.local) {
+      final now = DateTime.now();
+      Category categoryToSave;
+      if (category.id == 0) {
+        categoryToSave = category.copyWith(createdAt: now, updatedAt: now);
+      } else {
+        categoryToSave = category.copyWith(updatedAt: now);
+      }
+      final savedId = await super.put(categoryToSave, syncSource: syncSource);
+      return savedId;
+    } else {
+      return await super.put(category, syncSource: syncSource);
+    }
   }
 }

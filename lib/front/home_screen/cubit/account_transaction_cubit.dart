@@ -345,7 +345,7 @@ class _CalculateBalances {
     final Map<int, double> accountBalances = {};
 
     for (final transaction in transactions) {
-      final accountId = transaction.account.targetId;
+      final accountId = transaction.fromAccount.targetId;
       final amount = transaction.amount;
 
       if (accountId != null) {
@@ -362,8 +362,8 @@ class _CalculateBalances {
 
     for (final transaction in transactions) {
       if (transaction.isIncome) {
-        final currency =
-            transaction.account.target?.currency ?? Defaults().defaultCurrency;
+        final currency = transaction.fromAccount.target?.currency ??
+            Defaults().defaultCurrency;
         incomeByCurrency[currency] =
             (incomeByCurrency[currency] ?? 0.0) + transaction.amount;
       }
@@ -377,8 +377,8 @@ class _CalculateBalances {
 
     for (final transaction in transactions) {
       if (!transaction.isIncome) {
-        final currency =
-            transaction.account.target?.currency ?? Defaults().defaultCurrency;
+        final currency = transaction.fromAccount.target?.currency ??
+            Defaults().defaultCurrency;
         expensesByCurrency[currency] =
             (expensesByCurrency[currency] ?? 0.0) + transaction.amount;
       }

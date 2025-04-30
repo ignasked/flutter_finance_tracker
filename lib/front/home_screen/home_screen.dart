@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:money_owl/backend/models/transaction_result.dart';
+import 'package:money_owl/backend/utils/app_style.dart'; // Import AppStyle
+import 'package:money_owl/front/auth/auth_bloc/auth_bloc.dart'; // Add this import
 import 'package:money_owl/front/home_screen/cubit/account_transaction_cubit.dart';
 import 'package:money_owl/front/home_screen/widgets/date_bar_widget.dart';
+import 'package:money_owl/front/transaction_form_screen/cubit/transaction_form_cubit.dart';
 import 'package:money_owl/front/transaction_form_screen/transaction_form_screen.dart';
 import 'package:money_owl/front/home_screen/widgets/transaction_list.dart';
 import 'package:money_owl/front/home_screen/widgets/summary_bar_widget.dart';
@@ -14,44 +17,41 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppStyle.backgroundColor, // Use AppStyle background
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(18.0),
+          padding: const EdgeInsets.all(
+              AppStyle.paddingMedium), // Use AppStyle padding
           child: BlocBuilder<AccountTransactionCubit, AccountTransactionState>(
             builder: (context, state) {
-              if (state.displayedTransactions.isEmpty) {
-                return const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Transaction Summary
-                    SummaryBarWidget(),
-                    SizedBox(height: 10),
-
-                    // Date Selector
-                    DateBarWidget(),
-                    SizedBox(height: 6),
-
-                    // No Transactions Message
-                    Expanded(
-                      child: Center(child: Text('No transactions.')),
-                    ),
-                  ],
-                );
-              }
+              // Use a common structure and conditionally show the list or empty message
               return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment:
+                    CrossAxisAlignment.stretch, // Stretch children horizontally
                 children: [
                   // Transaction Summary
                   const SummaryBarWidget(),
-                  const SizedBox(height: 10),
+                  const SizedBox(
+                      height: AppStyle.paddingMedium), // Use AppStyle padding
+
                   // Date Selector
                   const DateBarWidget(),
-                  const SizedBox(height: 6),
+                  const SizedBox(
+                      height: AppStyle.paddingMedium), // Use AppStyle padding
 
-                  // Transaction List
+                  // Transaction List or Empty Message
                   Expanded(
-                    child: TransactionList(
-                        transactions: state.displayedTransactions),
+                    child: state.displayedTransactions.isEmpty
+                        ? const Center(
+                            child: Text(
+                              'No transactions for this period.',
+                              style: AppStyle.bodyText, // Use AppStyle
+                            ),
+                          )
+                        : TransactionList(
+                            transactions: state.displayedTransactions,
+                            groupByMonth: true, // Group by month by default
+                          ),
                   ),
                 ],
               );
@@ -63,7 +63,9 @@ class HomeScreen extends StatelessWidget {
         onPressed: () {
           _showBottomSheet(context);
         },
-        child: const Icon(Icons.add),
+        backgroundColor: AppStyle.primaryColor, // Use AppStyle primary color
+        child: const Icon(Icons.add,
+            color: Colors.white), // Ensure icon is visible
       ),
     );
   }
@@ -73,19 +75,27 @@ class HomeScreen extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: AppStyle.backgroundColor, // Use AppStyle background
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(
+            top: Radius.circular(
+                AppStyle.paddingMedium)), // Use AppStyle padding
       ),
-      builder: (context) {
+      builder: (sheetContext) {
+        // Use sheetContext
         return Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(
+              AppStyle.paddingLarge), // Use AppStyle padding
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                leading: const Icon(Icons.add),
-                title: const Text('Add Transaction'),
+                leading: const Icon(Icons.add_circle_outline,
+                    color: AppStyle.primaryColor), // Use AppStyle color
+                title: const Text('Add Transaction',
+                    style: AppStyle.titleStyle), // Use AppStyle
                 onTap: () async {
+                  Navigator.pop(sheetContext); // Close the bottom sheet first
                   final accountTransactionCubit =
                       context.read<AccountTransactionCubit>();
 
@@ -99,31 +109,41 @@ class HomeScreen extends StatelessWidget {
 
                   if (!context.mounted) return;
 
-                  if (transactionFormResult != null) {
+                  if (transactionFormResult != null &&
+                      transactionFormResult.actionType == ActionType.addNew) {
                     accountTransactionCubit
                         .addTransaction(transactionFormResult.transaction);
+                  } else if (transactionFormResult != null) {
+                    // Handle edit/delete results if needed, though typically handled by TransactionList
+                    accountTransactionCubit
+                        .handleTransactionFormResult(transactionFormResult);
                   }
-
-                  Navigator.pop(context);
                 },
               ),
+              const Divider(
+                  color: AppStyle.dividerColor), // Use AppStyle divider
               ListTile(
-                leading: const Icon(Icons.receipt),
-                title: const Text('Read Receipt'),
+                leading: const Icon(Icons.receipt_long_outlined,
+                    color: AppStyle.primaryColor), // Use AppStyle color
+                title: const Text('Scan Receipt',
+                    style: AppStyle.titleStyle), // Use AppStyle
                 onTap: () {
-                  Navigator.pop(context);
+                  Navigator.pop(sheetContext); // Close the first bottom sheet
                   showModalBottomSheet(
                     context: context,
                     isScrollControlled: true,
+                    backgroundColor:
+                        AppStyle.backgroundColor, // Use AppStyle background
                     shape: const RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.vertical(top: Radius.circular(20)),
+                      borderRadius: BorderRadius.vertical(
+                          top: Radius.circular(
+                              AppStyle.paddingMedium)), // Use AppStyle padding
                     ),
                     builder: (context) {
-                      return const Wrap(
-                        children: [
-                          ReceiptAnalyzerWidget(),
-                        ],
+                      // Wrap ReceiptAnalyzerWidget for better layout control if needed
+                      return const Padding(
+                        padding: EdgeInsets.all(AppStyle.paddingMedium),
+                        child: ReceiptAnalyzerWidget(),
                       );
                     },
                   );
