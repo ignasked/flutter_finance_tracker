@@ -49,3 +49,6 @@ app.*.map.json
 .VSCodeCounter/
 .env
 .vscode/launch.json
+
+# Supabase credentials
+lib/config/env.dart
