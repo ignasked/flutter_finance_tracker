@@ -531,25 +531,24 @@ extension TransactionFormStateResult on TransactionFormState {
     if (status.isSuccess) {
       if (actionType == ActionType.addNew && submittedTransaction != null) {
         return TransactionResult(
-            actionType: ActionType.addNew,
-            transaction: submittedTransaction!.transaction,
-            index: null); // No index for new transactions
+          actionType: ActionType.addNew,
+          transaction: submittedTransaction!.transaction,
+        ); // No index for new transactions
       } else if (actionType == ActionType.edit &&
           submittedTransaction != null) {
         return TransactionResult(
           actionType: ActionType.edit,
           transaction: submittedTransaction!.transaction,
-          //index: originalIndex // Assuming originalIndex is part of your state for edits
         );
       } else if (actionType == ActionType.delete //&& originalIndex != null
           ) {
         // Ensure submittedTransaction is available or adjust logic if delete clears it
         if (submittedTransaction != null) {
           return TransactionResult(
-              actionType: ActionType.delete,
-              transaction: submittedTransaction!
-                  .transaction, // Pass the deleted transaction data if needed
-              index: null); // Or pass originalIndex if needed by listener
+            actionType: ActionType.delete,
+            transaction: submittedTransaction!
+                .transaction, // Pass the deleted transaction data if needed
+          ); // Or pass originalIndex if needed by listener
         } else {
           // Handle case where transaction data isn't available post-delete
           // Maybe return just the type and index if that's sufficient

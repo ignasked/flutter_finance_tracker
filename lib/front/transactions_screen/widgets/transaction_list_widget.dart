@@ -36,11 +36,6 @@ class TransactionListWidget extends StatelessWidget {
       );
     }
 
-    // Always sort transactions first (most recent first)
-    // Do this preferably in the Cubit/State before passing to the widget
-    // If not, uncomment the line below. But it's better to sort higher up.
-    // transactions.sort((a, b) => b.date.compareTo(a.date));
-
     if (groupByMonth) {
       return _buildGroupedList(context);
     } else {
@@ -241,28 +236,22 @@ class TransactionListWidget extends StatelessWidget {
             AppStyle.textColorSecondary
                 .withOpacity(0.1), // Use category color or a default
         child: Icon(
-          category?.icon ?? Icons.question_mark, // Use a placeholder icon
-          size: 20,
-          color: category?.color != null
-              ? (ThemeData.estimateBrightnessForColor(category!.color) ==
-                      Brightness.dark
-                  ? Colors.white
-                  : Colors.black) // Auto contrast icon color
-              : AppStyle.textColorSecondary,
-        ),
+            category?.icon ?? Icons.question_mark, // Use a placeholder icon
+            size: 20,
+            color: Colors.black),
       ),
       title: Text(item.title,
           style: AppStyle.titleStyle,
           maxLines: 1,
           overflow: TextOverflow.ellipsis),
       subtitle: Text(
-        '${category?.title ?? 'Uncategorized'} • ${dateFormat.format(item.date)}', // Separator & friendly date
+        '${category?.title ?? 'Uncategorized'} • ${dateFormat.format(item.date)}',
         style: AppStyle.captionStyle,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
       trailing: Text(
-        '${item.isIncome ? '+' : '-'}${item.amountAndCurrencyString}', // Assuming amountAndCurrencyString includes currency symbol
+        '${item.isIncome ? '+' : '-'}${item.amountAndCurrencyString}',
         style: item.isIncome
             ? AppStyle.amountIncomeStyle
             : AppStyle.amountExpenseStyle,

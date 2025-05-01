@@ -131,10 +131,9 @@ class TransactionFormCubit extends Cubit<TransactionFormState> {
   TransactionFormCubit() : super(TransactionFormState());
 
   // Edit transaction cubit
-  TransactionFormCubit.edit(Transaction editTransaction) //, int editIndex
+  TransactionFormCubit.edit(Transaction editTransaction)
       : super(TransactionFormState.edit(
           transaction: editTransaction,
-          //editIndex: editIndex,
         ));
 
   void titleChanged(String value) {
@@ -218,6 +217,7 @@ class TransactionFormCubit extends Cubit<TransactionFormState> {
 
       emit(state.copyWith(
           status: FormzSubmissionStatus.success,
+          actionType: ActionType.delete,
           submittedTransaction: TransactionResult(
             transaction: transaction,
             actionType: ActionType.delete,
