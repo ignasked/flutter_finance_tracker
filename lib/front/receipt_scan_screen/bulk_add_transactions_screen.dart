@@ -212,9 +212,9 @@ class _BulkAddTransactionsScreenState extends State<BulkAddTransactionsScreen> {
                             await Navigator.push<TransactionResult?>(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => TransactionFromScreen(
+                            builder: (context) => TransactionFormScreen(
                               transaction: transaction,
-                              index: index,
+                              // index: index,
                             ),
                           ),
                         );

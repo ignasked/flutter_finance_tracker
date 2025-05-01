@@ -10,18 +10,18 @@ import 'package:intl/intl.dart';
 import 'package:money_owl/front/transaction_form_screen/widgets/account_dropdown.dart';
 import 'package:money_owl/front/transaction_form_screen/widgets/category_dropdown.dart';
 
-class TransactionFromScreen extends StatelessWidget {
+class TransactionFormScreen extends StatelessWidget {
   final Transaction? transaction; // Nullable for adding vs editing
-  final int? index; // Transaction index in transactionList
+  //final int? index; // Transaction index in transactionList
 
-  const TransactionFromScreen({super.key, this.transaction, this.index});
+  const TransactionFormScreen({super.key, this.transaction});
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => transaction == null // Use _ for unused context
           ? TransactionFormCubit()
-          : TransactionFormCubit.edit(transaction!, index!),
+          : TransactionFormCubit.edit(transaction!),
       child: const _TransactionForm(),
     );
   }
@@ -32,8 +32,8 @@ class _TransactionForm extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Get the initial state once - needed for dropdowns if they aren't rebuilt by BlocBuilder
-    final initialState = context.read<TransactionFormCubit>().state;
+    // Don't access state directly here, as it might not be initialized yet
+    // Instead, use BlocBuilder for all state-dependent widgets
 
     return BlocListener<TransactionFormCubit, TransactionFormState>(
       listener: (context, state) {
@@ -196,11 +196,11 @@ class _TransactionForm extends StatelessWidget {
                             const selectedForegroundColor = Colors.white;
 
                             // Color for the unselected segment's text/icon
-                            final unselectedForegroundColor =
+                            const unselectedForegroundColor =
                                 AppStyle.textColorSecondary;
 
                             // Background for the unselected segment (can be subtle)
-                            final unselectedBackgroundColor =
+                            const unselectedBackgroundColor =
                                 AppStyle.cardColor;
 
                             // Border color for the unselected segment
@@ -294,14 +294,20 @@ class _TransactionForm extends StatelessWidget {
                         const SizedBox(height: AppStyle.paddingMedium),
 
                         // --- Account Dropdown ---
-                        AccountDropdown(
-                          selectedAccount: initialState.account,
-                          onAccountChanged: (account) {
-                            if (account != null) {
-                              context
-                                  .read<TransactionFormCubit>()
-                                  .accountChanged(account);
-                            }
+                        BlocBuilder<TransactionFormCubit, TransactionFormState>(
+                          buildWhen: (previous, current) =>
+                              previous.account != current.account,
+                          builder: (context, state) {
+                            return AccountDropdown(
+                              selectedAccount: state.account,
+                              onAccountChanged: (account) {
+                                if (account != null) {
+                                  context
+                                      .read<TransactionFormCubit>()
+                                      .accountChanged(account);
+                                }
+                              },
+                            );
                           },
                         ),
                         const SizedBox(height: AppStyle.paddingMedium),
@@ -529,8 +535,7 @@ extension TransactionFormStateResult on TransactionFormState {
             transaction: submittedTransaction!.transaction,
             index: null); // No index for new transactions
       } else if (actionType == ActionType.edit &&
-              submittedTransaction != null // && index: originalIndex
-          ) {
+          submittedTransaction != null) {
         return TransactionResult(
           actionType: ActionType.edit,
           transaction: submittedTransaction!.transaction,

@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:money_owl/backend/models/account.dart'; // Import Account model
 import 'package:money_owl/backend/repositories/account_repository.dart';
 import 'package:money_owl/backend/utils/app_style.dart'; // Import AppStyle
-import 'package:money_owl/front/transactions_screen/cubit/transactions_cubit.dart';
 import 'package:money_owl/front/transactions_screen/widgets/transaction_filter_widget.dart';
 import 'package:money_owl/front/transactions_screen/widgets/transaction_summary_display.dart';
 import 'package:money_owl/front/shared/filter_cubit/filter_cubit.dart'; // Import FilterCubit

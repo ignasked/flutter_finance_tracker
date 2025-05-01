@@ -25,7 +25,7 @@ class TransactionFormState extends Equatable {
   final FormzSubmissionStatus status;
 
   // Index in original transactionList (for editing only)
-  final int? editIndex;
+  // final int? editIndex;
 
   // Transaction that is validated and has been submitted
   final TransactionResult? submittedTransaction;
@@ -48,7 +48,7 @@ class TransactionFormState extends Equatable {
     this.id = 0,
     this.actionType = ActionType.addNew,
     this.submittedTransaction,
-    this.editIndex,
+    // this.editIndex,
     this.selectedType = TransactionType.expense, // Default to expense
   })  : date = date ?? DateTime.now(),
         category = category ?? Defaults().defaultCategory,
@@ -59,7 +59,7 @@ class TransactionFormState extends Equatable {
     required Transaction transaction,
     this.errorMessage,
     this.submittedTransaction,
-    required this.editIndex,
+    // required this.editIndex,
   })  : title = TitleInput.dirty(transaction.title),
         amount = MoneyInput.dirty(transaction.amount.toString()),
         category = transaction.category.target, // Use the target Category
@@ -103,7 +103,7 @@ class TransactionFormState extends Equatable {
       id: id ?? this.id,
       actionType: actionType ?? this.actionType,
       submittedTransaction: submittedTransaction ?? this.submittedTransaction,
-      editIndex: editIndex ?? this.editIndex,
+      // editIndex: editIndex ?? this.editIndex,
       selectedType: selectedType ?? this.selectedType, // Copy selectedType
     );
   }
@@ -121,7 +121,7 @@ class TransactionFormState extends Equatable {
         id,
         actionType,
         submittedTransaction,
-        editIndex,
+        // editIndex,
         selectedType, // Include selectedType in props
       ];
 }
@@ -131,10 +131,10 @@ class TransactionFormCubit extends Cubit<TransactionFormState> {
   TransactionFormCubit() : super(TransactionFormState());
 
   // Edit transaction cubit
-  TransactionFormCubit.edit(Transaction editTransaction, int editIndex)
+  TransactionFormCubit.edit(Transaction editTransaction) //, int editIndex
       : super(TransactionFormState.edit(
           transaction: editTransaction,
-          editIndex: editIndex,
+          //editIndex: editIndex,
         ));
 
   void titleChanged(String value) {
@@ -193,9 +193,9 @@ class TransactionFormCubit extends Cubit<TransactionFormState> {
       emit(state.copyWith(
           status: FormzSubmissionStatus.success,
           submittedTransaction: TransactionResult(
-              transaction: transaction,
-              actionType: state.actionType,
-              index: state.editIndex)));
+            transaction: transaction,
+            actionType: state.actionType,
+          ))); //index: state.editIndex
     } on Exception {
       emit(state.copyWith(status: FormzSubmissionStatus.failure));
     } catch (_) {
@@ -219,9 +219,9 @@ class TransactionFormCubit extends Cubit<TransactionFormState> {
       emit(state.copyWith(
           status: FormzSubmissionStatus.success,
           submittedTransaction: TransactionResult(
-              transaction: transaction,
-              actionType: ActionType.delete,
-              index: state.editIndex)));
+            transaction: transaction,
+            actionType: ActionType.delete,
+          ))); //index: state.editIndex
     }
   }
 }

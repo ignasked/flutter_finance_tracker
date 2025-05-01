@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/date_symbol_data_local.dart'; // Import for date formatting initialization
 import 'package:money_owl/backend/repositories/account_repository.dart';
 import 'package:money_owl/backend/repositories/base_repository.dart';
 import 'package:money_owl/backend/repositories/category_repository.dart';
@@ -8,6 +9,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:money_owl/backend/services/auth_service.dart'; // Import AuthService
 import 'package:money_owl/front/auth/auth_bloc/auth_bloc.dart'
     as auth_bloc; // Use a prefix for your local auth bloc to avoid name collision
+import 'package:money_owl/front/transaction_form_screen/cubit/transaction_form_cubit.dart';
+import 'package:money_owl/front/transaction_form_screen/transaction_form_screen.dart';
 import 'package:money_owl/front/transactions_screen/cubit/transactions_cubit.dart';
 import 'package:money_owl/front/transactions_screen/widgets/navbar.dart';
 import 'package:money_owl/front/settings_screen/cubit/csv_cubit.dart';
@@ -26,6 +29,9 @@ late AuthService authService; // Add AuthService instance
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize date formatting - this fixes the LocaleDataException
+  await initializeDateFormatting();
 
   // Initialize Supabase
   await Supabase.initialize(
@@ -70,8 +76,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiRepositoryProvider(
       providers: [
-        RepositoryProvider<AuthService>.value(
-            value: authService), // Provide AuthService
+        RepositoryProvider<AuthService>.value(value: authService),
         RepositoryProvider<AccountRepository>.value(value: accountRepository),
         RepositoryProvider<CategoryRepository>.value(value: categoryRepository),
         RepositoryProvider<TransactionRepository>.value(value: txRepository),
@@ -99,6 +104,9 @@ class MyApp extends StatelessWidget {
               context.read<FilterCubit>(), // Provide FilterCubit
             ),
           ),
+          // BlocProvider<TransactionFormCubit>(
+          //   create: (context) => TransactionFormCubit(),
+          // ),
           BlocProvider<CsvCubit>(
             create: (context) => CsvCubit(),
           ),

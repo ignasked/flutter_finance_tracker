@@ -38,7 +38,7 @@ class TransactionsCubit extends Cubit<TransactionsState> {
 
     // Listen to filter changes
     _filterSubscription = _filterCubit.stream.listen((filterState) {
-      _applyFiltersQuery(filterState); // Apply filters when FilterCubit updates
+      _applyFiltersCache(filterState); // Apply filters when FilterCubit updates
     });
   }
 
@@ -56,28 +56,114 @@ class TransactionsCubit extends Cubit<TransactionsState> {
         status: LoadingStatus.success, // Set status before applying filters
       ));
       // Apply initial filters from FilterCubit
-      _applyFiltersQuery(_filterCubit.state);
+      _applyFiltersCache(_filterCubit.state);
+      _applySortByDateCache();
     } catch (e) {
       emit(state.copyWith(
           status: LoadingStatus.failure, errorMessage: e.toString()));
     }
   }
 
-  List<Category> getEnabledCategories() {
+  List<Category> getEnabledCategoriesCache() {
     return state.allCategories.where((category) => category.isEnabled).toList();
   }
 
-  Future _applyFiltersQuery(FilterState filterState) async {
-    emit(state.copyWith(status: LoadingStatus.loading));
+  // Future _applyFiltersQuery(FilterState filterState) async {
+  //   emit(state.copyWith(status: LoadingStatus.loading));
 
-    List<Transaction> filteredTx =
-        await _transactionRepository.getFiltered(filterState);
+  //   List<Transaction> filteredTx =
+  //       await _transactionRepository.getFiltered(filterState);
+
+  //   emit(state.copyWith(
+  //     displayedTransactions: filteredTx,
+  //     summary: calculateSummary(filteredTx),
+  //     status: LoadingStatus.success, // Ensure status is success after filtering
+  //   ));
+  // }
+
+  void _applyFiltersCache(FilterState filterState) {
+    emit(state.copyWith(status: LoadingStatus.loading));
+    List<Transaction> filtered = List.from(state.allTransactions);
+
+    // Apply Account Filter
+    if (filterState.selectedAccount != null) {
+      filtered = filtered
+          .where((t) =>
+              t.fromAccount.target?.id == filterState.selectedAccount!.id)
+          .toList();
+    }
+
+    // Apply Category Filter
+    if (filterState.selectedCategories.isNotEmpty) {
+      final categoryIds =
+          filterState.selectedCategories.map((c) => c.id).toSet();
+      filtered = filtered
+          .where((t) => categoryIds.contains(t.category.target?.id))
+          .toList();
+    }
+
+    // Apply Date Filter
+    if (filterState.startDate != null) {
+      if (filterState.singleDay) {
+        // Filter for a single day (ignore time part)
+        final startOfDay = DateTime(filterState.startDate!.year,
+            filterState.startDate!.month, filterState.startDate!.day);
+        final endOfDay = startOfDay.add(const Duration(days: 1));
+        filtered = filtered
+            .where((t) =>
+                t.date.isAtSameMomentAs(startOfDay) ||
+                (t.date.isAfter(startOfDay) && t.date.isBefore(endOfDay)))
+            .toList();
+      } else {
+        // Filter for a date range (inclusive start, exclusive end for end date)
+        final rangeStart = filterState.startDate!;
+        final rangeEnd = filterState.endDate?.add(const Duration(
+            days:
+                1)); // Add 1 day to make endDate inclusive for filtering purposes
+
+        filtered = filtered.where((t) {
+          final transactionDate = t.date;
+          bool afterStart = transactionDate.isAtSameMomentAs(rangeStart) ||
+              transactionDate.isAfter(rangeStart);
+          bool beforeEnd =
+              rangeEnd == null || transactionDate.isBefore(rangeEnd);
+          return afterStart && beforeEnd;
+        }).toList();
+      }
+    }
+
+    // Apply Amount Filter (Optional)
+    if (filterState.minAmount != null) {
+      filtered = filtered
+          .where((t) => t.amount.abs() >= filterState.minAmount!)
+          .toList();
+    }
+
+    // Apply Income/Expense Filter (Optional)
+    if (filterState.isIncome != null) {
+      filtered =
+          filtered.where((t) => t.isIncome == filterState.isIncome).toList();
+    }
+
+    // Sort by Date (Newest First)
+    filtered.sort((a, b) => b.date.compareTo(a.date));
+
+    // Calculate Summary
+    final summary = calculateSummary(filtered);
 
     emit(state.copyWith(
-      displayedTransactions: filteredTx,
-      summary: calculateSummary(filteredTx),
+      displayedTransactions: filtered,
+      summary: summary,
       status: LoadingStatus.success, // Ensure status is success after filtering
     ));
+  }
+
+  void _applySortByDateCache() {
+    emit(state.copyWith(status: LoadingStatus.loading));
+    List<Transaction> sorted = List.from(state.displayedTransactions);
+    sorted.sort((a, b) => b.date.compareTo(a.date)); // Sort by date descending
+    emit(state.copyWith(
+        displayedTransactions: sorted, status: LoadingStatus.success));
   }
 
   // void _applyFiltersAndSort(FilterState filterState) {
@@ -176,60 +262,72 @@ class TransactionsCubit extends Cubit<TransactionsState> {
   // Add a new transaction
   Future addTransaction(Transaction transaction) async {
     emit(state.copyWith(status: LoadingStatus.loading));
-    await txRepository.put(transaction); // Add to repository
-    // final updatedAllTransactions = List<Transaction>.from(state.allTransactions)
-    //   ..add(transaction);
-    // emit(state.copyWith(allTransactions: updatedAllTransactions));
-    await _applyFiltersQuery(_filterCubit.state); // Re-apply filters
+    txRepository.put(transaction); // Add to repository
+    final updatedAllTransactions = List<Transaction>.from(state.allTransactions)
+      ..add(transaction);
+    emit(state.copyWith(allTransactions: updatedAllTransactions));
+    _applyFiltersCache(_filterCubit.state); // Re-apply filters
+    _applySortByDateCache(); // Re-apply sorting
     emit(state.copyWith(status: LoadingStatus.success));
   }
 
   Future addTransactions(List<Transaction> transactions) async {
     emit(state.copyWith(status: LoadingStatus.loading));
-    await txRepository.putMany(transactions); // Add to repository
-    // final updatedAllTransactions = List<Transaction>.from(state.allTransactions)
-    //   ..add(transaction);
-    // emit(state.copyWith(allTransactions: updatedAllTransactions));
-    await _applyFiltersQuery(_filterCubit.state); // Re-apply filters
+    txRepository.putMany(transactions); // Add to repository
+    final updatedAllTransactions = List<Transaction>.from(state.allTransactions)
+      ..addAll(transactions);
+    emit(state.copyWith(allTransactions: updatedAllTransactions));
+    _applyFiltersCache(_filterCubit.state); // Re-apply filters
+    _applySortByDateCache(); // Re-apply sorting
     emit(state.copyWith(status: LoadingStatus.success));
   }
 
   // Update an existing transaction
   Future updateTransaction(Transaction transaction) async {
-    // Make async
-    await _transactionRepository.put(transaction); // Update in repository
-    // final index =
-    //     state.allTransactions.indexWhere((t) => t.id == transaction.id);
-    // if (index != -1) {
-    //   final updatedAllTransactions =
-    //       List<Transaction>.from(state.allTransactions);
-    //   updatedAllTransactions[index] = transaction;
-    //   emit(state.copyWith(allTransactions: updatedAllTransactions));
-    await _applyFiltersQuery(_filterCubit.state); // Re-apply filters
+    emit(state.copyWith(status: LoadingStatus.loading));
+
+    _transactionRepository.put(transaction); // Update in repository
+    final index =
+        state.allTransactions.indexWhere((t) => t.id == transaction.id);
+    if (index != -1) {
+      final updatedAllTransactions =
+          List<Transaction>.from(state.allTransactions);
+      updatedAllTransactions[index] = transaction;
+      emit(state.copyWith(allTransactions: updatedAllTransactions));
+    }
+    _applyFiltersCache(_filterCubit.state); // Re-apply filters
+    _applySortByDateCache(); // Re-apply sorting
+
+    emit(state.copyWith(status: LoadingStatus.success));
   }
 
   // Delete a transaction
   Future deleteTransaction(int transactionId) async {
-    // Make async
-    await txRepository.remove(transactionId); // Remove from repository
-    // final updatedAllTransactions = List<Transaction>.from(state.allTransactions)
-    //   ..removeWhere((t) => t.id == transactionId);
-    //emit(state.copyWith(allTransactions: updatedAllTransactions));
+    emit(state.copyWith(status: LoadingStatus.loading));
 
-    await _applyFiltersQuery(_filterCubit.state); // Re-apply filters
+    txRepository.remove(transactionId); // Remove from repository
+    final updatedAllTransactions = List<Transaction>.from(state.allTransactions)
+      ..removeWhere((t) => t.id == transactionId);
+    emit(state.copyWith(allTransactions: updatedAllTransactions));
+    _applyFiltersCache(_filterCubit.state); // Re-apply filters
+    _applySortByDateCache();
+
+    emit(state.copyWith(status: LoadingStatus.success));
   }
 
   Future deleteAllTransactions() async {
-    // Make async
-    await txRepository.removeAll(); // Remove from repository
-    // final updatedAllTransactions = List<Transaction>.from(state.allTransactions)
-    //   ..removeWhere((t) => t.id == transactionId);
-    //emit(state.copyWith(allTransactions: updatedAllTransactions));
+    emit(state.copyWith(status: LoadingStatus.loading));
 
-    await _applyFiltersQuery(_filterCubit.state); // Re-apply filters
+    // Make async
+    txRepository.removeAll(); // Remove from repository
+    emit(state.copyWith(allTransactions: []));
+    _applyFiltersCache(_filterCubit.state);
+    _applySortByDateCache();
+
+    emit(state.copyWith(status: LoadingStatus.success));
   }
 
-  Future handleTransactionFormResult(TransactionResult result) async {
+  void handleTransactionFormResult(TransactionResult result) async {
     // Make async
     switch (result.actionType) {
       case ActionType.addNew:

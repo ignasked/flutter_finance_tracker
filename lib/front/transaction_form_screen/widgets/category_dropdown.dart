@@ -19,6 +19,7 @@ class _CategoryDropdownState extends State<CategoryDropdown> {
   // Flags to prevent update cycles
   bool _handlingTypeChange = false;
   bool _handlingCategoryChange = false;
+  List<Category> _allCategories = [];
 
   @override
   void initState() {
@@ -31,18 +32,30 @@ class _CategoryDropdownState extends State<CategoryDropdown> {
   void _syncCategoryWithTransactionType() {
     if (!mounted) return;
 
+    // Safely get form cubit if available
     final formCubit = context.read<TransactionFormCubit>();
+    if (formCubit.state == null) return; // Guard against null state
+
     final state = formCubit.state;
     final defaultCategory = Defaults().defaultCategory;
-    final List<Category> allCategories =
-        context.read<TransactionsCubit>().getEnabledCategories();
+
+    // Safely get categories
+    try {
+      _allCategories =
+          context.read<TransactionsCubit>().getEnabledCategoriesCache();
+    } catch (e) {
+      // Handle case when TransactionsCubit is not available
+      _allCategories = [];
+      print('Warning: Could not get categories: $e');
+      return;
+    }
 
     // Only change category if it doesn't match current transaction type
     if (state.category != null &&
         state.category?.type != state.selectedType &&
         state.category?.id != defaultCategory.id) {
       final matchingCategories =
-          allCategories.where((c) => c.type == state.selectedType).toList();
+          _allCategories.where((c) => c.type == state.selectedType).toList();
 
       if (matchingCategories.isNotEmpty) {
         _handlingTypeChange = true;
@@ -57,22 +70,30 @@ class _CategoryDropdownState extends State<CategoryDropdown> {
   @override
   Widget build(BuildContext context) {
     final defaultCategory = Defaults().defaultCategory;
-    final List<Category> allCategories =
-        context.read<TransactionsCubit>().getEnabledCategories();
+
+    // Try to get categories safely
+    try {
+      _allCategories =
+          context.read<TransactionsCubit>().getEnabledCategoriesCache();
+    } catch (e) {
+      // Fallback if TransactionsCubit is not available
+      return const Text('Cannot access categories at this time.',
+          style: AppStyle.bodyText);
+    }
 
     // Empty state handling
-    if (allCategories.isEmpty) {
+    if (_allCategories.isEmpty) {
       return const Text('No categories available. Please add a category first.',
           style: AppStyle.bodyText);
     }
 
-    // Pre-filter categories by type for better performance
-    final incomeCategories = allCategories
+    // Pre-filter categories by type
+    final incomeCategories = _allCategories
         .where((c) =>
             c.type == TransactionType.income && c.id != defaultCategory.id)
         .toList();
 
-    final expenseCategories = allCategories
+    final expenseCategories = _allCategories
         .where((c) =>
             c.type == TransactionType.expense && c.id != defaultCategory.id)
         .toList();
@@ -127,19 +148,28 @@ class _CategoryDropdownState extends State<CategoryDropdown> {
           filteredCategories.add(defaultCategory);
         }
 
-        // Ensure the selected category is in the list
+        // Get selected category safely
         final selectedCategory = state.category;
+
+        // Ensure the selected category is in the list if not null
         if (selectedCategory != null &&
             !filteredCategories.any((c) => c.id == selectedCategory.id)) {
           filteredCategories.insert(0, selectedCategory);
         }
 
-        // Select the best category to show
-        final validCategory = selectedCategory != null &&
-                filteredCategories.any((c) => c.id == selectedCategory.id)
-            ? selectedCategory
-            : filteredCategories.firstWhere((c) => c.id != defaultCategory.id,
-                orElse: () => filteredCategories.first);
+        // Select the best category to show (safely handle null cases)
+        Category validCategory;
+        if (selectedCategory != null &&
+            filteredCategories.any((c) => c.id == selectedCategory.id)) {
+          validCategory = selectedCategory;
+        } else {
+          validCategory = filteredCategories.isNotEmpty
+              ? filteredCategories.firstWhere((c) => c.id != defaultCategory.id,
+                  orElse: () => filteredCategories.isNotEmpty
+                      ? filteredCategories.first
+                      : defaultCategory)
+              : defaultCategory;
+        }
 
         return DropdownButtonFormField<Category>(
           key: ValueKey(
