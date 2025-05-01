@@ -9,6 +9,10 @@ import 'package:money_owl/backend/models/transaction_result.dart';
 import 'package:money_owl/backend/repositories/account_repository.dart';
 import 'package:money_owl/backend/repositories/category_repository.dart';
 import 'package:money_owl/backend/repositories/transaction_repository.dart';
+import 'package:money_owl/backend/services/currency_service.dart';
+import 'package:money_owl/backend/utils/calculate_balances_utils.dart';
+import 'package:money_owl/backend/utils/currency_utils.dart';
+import 'package:money_owl/backend/utils/defaults.dart';
 import 'package:money_owl/backend/utils/enums.dart';
 import 'package:money_owl/front/transactions_screen/cubit/transaction_summary_state.dart';
 import 'package:money_owl/front/shared/filter_cubit/filter_cubit.dart'; // Import FilterCubit
@@ -81,7 +85,7 @@ class TransactionsCubit extends Cubit<TransactionsState> {
   //   ));
   // }
 
-  void _applyFiltersCache(FilterState filterState) {
+  void _applyFiltersCache(FilterState filterState) async {
     emit(state.copyWith(status: LoadingStatus.loading));
     List<Transaction> filtered = List.from(state.allTransactions);
 
@@ -149,7 +153,8 @@ class TransactionsCubit extends Cubit<TransactionsState> {
     filtered.sort((a, b) => b.date.compareTo(a.date));
 
     // Calculate Summary
-    final summary = calculateSummary(filtered);
+    final summary =
+        await _calculateSummary(filtered, filterState.selectedAccount);
 
     emit(state.copyWith(
       displayedTransactions: filtered,
@@ -166,98 +171,60 @@ class TransactionsCubit extends Cubit<TransactionsState> {
         displayedTransactions: sorted, status: LoadingStatus.success));
   }
 
-  // void _applyFiltersAndSort(FilterState filterState) {
-  //   List<Transaction> filtered = List.from(state.allTransactions);
+  void recalculateSummary() async {
+    final summary = await _calculateSummary(
+        state.displayedTransactions, _filterCubit.state.selectedAccount);
+    emit(state.copyWith(summary: summary));
+  }
 
-  //   // Apply Account Filter
-  //   if (filterState.selectedAccount != null) {
-  //     filtered = filtered
-  //         .where((t) =>
-  //             t.fromAccount.target?.id == filterState.selectedAccount!.id)
-  //         .toList();
-  //   }
+  Future<TransactionSummaryState> _calculateSummary(
+      List<Transaction> transactions, Account? selectedAccount) async {
+    // Group transactions by currency
+    final incomeByCurrency =
+        CalculateBalancesUtils.calculateIncomeByCurrency(transactions);
+    final expensesByCurrency =
+        CalculateBalancesUtils.calculateExpensesByCurrency(transactions);
 
-  //   // Apply Category Filter
-  //   if (filterState.selectedCategories.isNotEmpty) {
-  //     final categoryIds =
-  //         filterState.selectedCategories.map((c) => c.id).toSet();
-  //     filtered = filtered
-  //         .where((t) => categoryIds.contains(t.category.target?.id))
-  //         .toList();
-  //   }
+    // Fetch exchange rates with Defaults.defaultCurrency as the base currency
+    final exchangeRates =
+        await CurrencyService.fetchExchangeRates(Defaults().defaultCurrency);
 
-  //   // Apply Date Filter
-  //   if (filterState.startDate != null) {
-  //     if (filterState.singleDay) {
-  //       // Filter for a single day (ignore time part)
-  //       final startOfDay = DateTime(filterState.startDate!.year,
-  //           filterState.startDate!.month, filterState.startDate!.day);
-  //       final endOfDay = startOfDay.add(const Duration(days: 1));
-  //       filtered = filtered
-  //           .where((t) =>
-  //               t.date.isAtSameMomentAs(startOfDay) ||
-  //               (t.date.isAfter(startOfDay) && t.date.isBefore(endOfDay)))
-  //           .toList();
-  //     } else {
-  //       // Filter for a date range (inclusive start, exclusive end for end date)
-  //       final rangeStart = filterState.startDate!;
-  //       final rangeEnd = filterState.endDate?.add(const Duration(
-  //           days:
-  //               1)); // Add 1 day to make endDate inclusive for filtering purposes
+    String convertToCurrency =
+        selectedAccount?.currency ?? Defaults().defaultCurrency;
 
-  //       filtered = filtered.where((t) {
-  //         final transactionDate = t.date;
-  //         bool afterStart = transactionDate.isAtSameMomentAs(rangeStart) ||
-  //             transactionDate.isAfter(rangeStart);
-  //         bool beforeEnd =
-  //             rangeEnd == null || transactionDate.isBefore(rangeEnd);
-  //         return afterStart && beforeEnd;
-  //       }).toList();
-  //     }
-  //   }
+    double totalIncome = 0.0;
+    double totalExpenses = 0.0;
+    double totalBalance = 0.0;
 
-  //   // Apply Amount Filter (Optional)
-  //   if (filterState.minAmount != null) {
-  //     filtered = filtered
-  //         .where((t) => t.amount.abs() >= filterState.minAmount!)
-  //         .toList();
-  //   }
-
-  //   // Apply Income/Expense Filter (Optional)
-  //   if (filterState.isIncome != null) {
-  //     filtered =
-  //         filtered.where((t) => t.isIncome == filterState.isIncome).toList();
-  //   }
-
-  //   // Sort by Date (Newest First)
-  //   filtered.sort((a, b) => b.date.compareTo(a.date));
-
-  //   // Calculate Summary
-  //   final summary = _calculateSummary(filtered);
-
-  //   emit(state.copyWith(
-  //     displayedTransactions: filtered,
-  //     summary: summary,
-  //     status: LoadingStatus.success, // Ensure status is success after filtering
-  //   ));
-  // }
-
-  TransactionSummaryState calculateSummary(List<Transaction> transactions) {
-    double income = 0.0;
-    double expenses = 0.0;
-    for (var t in transactions) {
-      if (t.isIncome) {
-        income += t.amount;
-      } else {
-        expenses += t.amount;
-      }
+    // Convert grouped amounts to Defaults.defaultCurrency
+    for (final entry in incomeByCurrency.entries) {
+      totalIncome += CurrencyUtils.convertAmount(
+        entry.value,
+        entry.key,
+        convertToCurrency,
+        exchangeRates,
+      );
     }
+
+    for (final entry in expensesByCurrency.entries) {
+      totalExpenses += CurrencyUtils.convertAmount(
+        entry.value,
+        entry.key,
+        convertToCurrency,
+        exchangeRates,
+      );
+    }
+
+    totalBalance = totalIncome - totalExpenses;
+
     return TransactionSummaryState(
-      totalIncome: income,
-      totalExpenses: expenses,
-      balance: income - expenses,
+      totalIncome: totalIncome,
+      totalExpenses: totalExpenses,
+      balance: totalBalance,
     );
   }
+
+// --- CRUD Operations --- //
 
   // Add a new transaction
   Future addTransaction(Transaction transaction) async {
@@ -289,7 +256,7 @@ class TransactionsCubit extends Cubit<TransactionsState> {
     _transactionRepository.put(transaction); // Update in repository
     final index =
         state.allTransactions.indexWhere((t) => t.id == transaction.id);
-    if (index != -1) {
+    if (index != -1 && index < state.allTransactions.length) {
       final updatedAllTransactions =
           List<Transaction>.from(state.allTransactions);
       updatedAllTransactions[index] = transaction;
@@ -310,7 +277,6 @@ class TransactionsCubit extends Cubit<TransactionsState> {
       ..removeWhere((t) => t.id == transactionId);
     emit(state.copyWith(allTransactions: updatedAllTransactions));
     _applyFiltersCache(_filterCubit.state); // Re-apply filters
-    _applySortByDateCache();
 
     emit(state.copyWith(status: LoadingStatus.success));
   }
@@ -322,13 +288,13 @@ class TransactionsCubit extends Cubit<TransactionsState> {
     txRepository.removeAll(); // Remove from repository
     emit(state.copyWith(allTransactions: []));
     _applyFiltersCache(_filterCubit.state);
-    _applySortByDateCache();
 
     emit(state.copyWith(status: LoadingStatus.success));
   }
 
+// --- Transaction Form Result Handling --- //
+
   void handleTransactionFormResult(TransactionResult result) async {
-    // Make async
     switch (result.actionType) {
       case ActionType.addNew:
         await addTransaction(result.transaction);
@@ -340,7 +306,7 @@ class TransactionsCubit extends Cubit<TransactionsState> {
         await deleteTransaction(result.transaction.id);
         break;
     }
-  } // Add missing closing brace here
+  }
 
   @override
   Future<void> close() {

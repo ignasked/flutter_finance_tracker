@@ -677,7 +677,7 @@ extension TransactionCubitCurrencyUpdate on TransactionsCubit {
     // based on the new default currency from Defaults().
     // This implementation depends on how your cubit manages state.
     // Example:
-    calculateSummary(state.allTransactions); // Recalculate summary
+    recalculateSummary(); // Recalculate summary
     // You might need to re-apply filters if they depend on currency formatting
     //applyFilters();
   }

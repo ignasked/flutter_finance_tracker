@@ -11,8 +11,12 @@ class TransactionSummaryDisplay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<TransactionsCubit, TransactionsState>(
+      buildWhen: (prev, curr) => prev.summary != curr.summary,
       builder: (context, state) {
         FilterState filterState = context.read<FilterCubit>().state;
+        final currencySymbol =
+            filterState.selectedAccount?.currencySymbolOrCurrency ??
+                Defaults().defaultCurrencySymbol;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.center,
