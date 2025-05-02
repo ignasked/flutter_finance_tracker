@@ -6,6 +6,7 @@ import 'package:money_owl/backend/models/transaction.dart';
 import 'package:money_owl/backend/models/transaction_result.dart';
 import 'package:money_owl/backend/utils/app_style.dart';
 import 'package:money_owl/front/receipt_scan_screen/cubit/bulk_transactions_cubit.dart';
+import 'package:money_owl/front/transaction_form_screen/cubit/transaction_form_cubit.dart';
 import 'package:money_owl/front/transaction_form_screen/transaction_form_screen.dart';
 import 'package:money_owl/front/transaction_form_screen/widgets/account_dropdown.dart';
 
@@ -41,155 +42,388 @@ class BulkAddTransactionsScreen extends StatelessWidget {
 }
 
 /// Main view for the BulkAddTransactionsScreen
-/// Separated from the provider to maintain clean architecture
 class _BulkAddTransactionsView extends StatelessWidget {
-  const _BulkAddTransactionsView({Key? key}) : super(key: key);
+  const _BulkAddTransactionsView({super.key});
 
   @override
   Widget build(BuildContext context) {
+    // Get total height and padding for calculations if needed, but often flex handles it
+    // final screenHeight = MediaQuery.of(context).size.height;
+    // final appBarHeight = AppBar().preferredSize.height;
+    // final statusBarHeight = MediaQuery.of(context).padding.top;
+
     return Scaffold(
+      backgroundColor: AppStyle.backgroundColor,
       appBar: AppBar(
         title: const Text('Review Receipt Items'),
-        elevation: 0,
+        backgroundColor: AppStyle.primaryColor,
+        foregroundColor: ColorPalette.onPrimary,
+        elevation: AppStyle.elevationSmall,
+        iconTheme: const IconThemeData(color: ColorPalette.onPrimary),
+        actions: [
+          // Optional: Add item count directly in AppBar?
+          BlocBuilder<BulkTransactionsCubit, BulkTransactionsState>(
+            buildWhen: (p, c) => p.transactions.length != c.transactions.length,
+            builder: (context, state) {
+              if (state.transactions.isNotEmpty) {
+                return Padding(
+                  padding: const EdgeInsets.only(right: AppStyle.paddingMedium),
+                  child: Center(
+                    child: Text(
+                      '${state.transactions.length} Items',
+                      style: AppStyle.captionStyle
+                          .copyWith(color: ColorPalette.onPrimary),
+                    ),
+                  ),
+                );
+              }
+              return const SizedBox.shrink();
+            },
+          )
+        ],
       ),
+      // Body structure: List fills space above the bottom panel
       body: Column(
         children: [
-          // Receipt Info Card
-          const ReceiptInfoCard(),
-
-          // Divider
-          const Divider(height: 1),
-
-          // Transaction List Header
-          const TransactionListHeader(),
-
-          // Transactions List
+          // Transactions List takes all available space
           Expanded(
             child: BlocBuilder<BulkTransactionsCubit, BulkTransactionsState>(
               buildWhen: (previous, current) =>
-                  previous.transactions != current.transactions,
+                  previous.transactions.hashCode !=
+                  current.transactions.hashCode,
               builder: (context, state) {
                 if (state.transactions.isEmpty) {
-                  return const EmptyTransactionsList();
+                  return const _EmptyTransactionsList(); // Styled empty state
                 } else {
-                  return const TransactionsList();
+                  return ListView.separated(
+                    itemCount: state.transactions.length,
+                    // Add padding at the top/bottom of the list itself
+                    padding: const EdgeInsets.symmetric(
+                        vertical: AppStyle.paddingMedium),
+                    itemBuilder: (context, index) {
+                      // Horizontal padding inside item for dismissible background
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: AppStyle.paddingMedium),
+                        child: _TransactionListItem(
+                          transaction: state.transactions[index],
+                          index: index,
+                        ),
+                      );
+                    },
+                    separatorBuilder: (context, index) => Divider(
+                      height: AppStyle.paddingSmall,
+                      thickness: 1,
+                      color: AppStyle.dividerColor.withOpacity(0.5),
+                      indent: AppStyle.paddingLarge,
+                      endIndent: AppStyle.paddingLarge,
+                    ),
+                  );
                 }
               },
             ),
           ),
 
-          // Bottom Actions Bar
-          const BottomActionsBar(),
+          // Single Bottom Control Panel
+          const _BottomControlPanel(),
         ],
       ),
     );
   }
 }
 
-/// Widget that displays receipt information and provides controls
-/// to manipulate the transaction date, account, and discount application
-class ReceiptInfoCard extends StatelessWidget {
-  const ReceiptInfoCard({Key? key}) : super(key: key);
+/// Empty state widget (no changes needed from previous version)
+class _EmptyTransactionsList extends StatelessWidget {
+  const _EmptyTransactionsList();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppStyle.paddingLarge),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.receipt_long_outlined, // Use outlined icon
+              size: 64,
+              color: AppStyle.textColorSecondary
+                  .withOpacity(0.4), // More subtle color
+            ),
+            const SizedBox(height: AppStyle.paddingMedium),
+            Text(
+              'No items found', // Simpler text
+              style: AppStyle.titleStyle.copyWith(
+                // Slightly larger text
+                color: AppStyle.textColorSecondary,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: AppStyle.paddingSmall),
+            Text(
+              'Items parsed from the receipt will appear here for review.',
+              style: AppStyle.bodyText.copyWith(
+                color: AppStyle.textColorSecondary,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Individual transaction list item (no changes needed from previous version)
+class _TransactionListItem extends StatelessWidget {
+  final Transaction transaction;
+  final int index;
+
+  const _TransactionListItem({
+    required this.transaction,
+    required this.index,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final category = transaction.category.target;
+    final categoryColor =
+        Color(category?.colorValue ?? AppStyle.textColorSecondary.value);
+    final categoryIcon = category?.icon ?? Icons.category_outlined;
+
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: AppStyle.paddingXSmall),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppStyle.borderRadiusMedium),
+      ),
+      elevation: AppStyle.elevationSmall / 2,
+      color: AppStyle.cardColor,
+      child: Dismissible(
+        key: ValueKey(transaction.id ?? transaction.hashCode),
+        background: Container(
+          decoration: BoxDecoration(
+            color: AppStyle.expenseColor,
+            borderRadius: BorderRadius.circular(AppStyle.borderRadiusMedium),
+          ),
+          alignment: Alignment.centerRight,
+          padding: const EdgeInsets.only(right: AppStyle.paddingLarge),
+          child: const Icon(Icons.delete_outline, color: Colors.white),
+        ),
+        direction: DismissDirection.endToStart,
+        confirmDismiss: (_) => _confirmDeleteItemDialog(context),
+        onDismissed: (_) =>
+            context.read<BulkTransactionsCubit>().removeTransaction(index),
+        child: ListTile(
+          leading: CircleAvatar(
+            radius: 20,
+            backgroundColor: categoryColor.withOpacity(0.15),
+            child: Icon(
+              categoryIcon,
+              color: categoryColor,
+              size: 20,
+            ),
+          ),
+          title: Text(
+            transaction.title.isEmpty
+                ? (category?.title ?? 'Item')
+                : transaction.title,
+            style: AppStyle.bodyText.copyWith(fontWeight: FontWeight.w500),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          subtitle: Text(
+            category?.title ?? 'Uncategorized',
+            style: AppStyle.captionStyle,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                transaction.amount.toStringAsFixed(2),
+                style: AppStyle.bodyText.copyWith(
+                  fontWeight: FontWeight.w500,
+                  color: transaction.isIncome
+                      ? AppStyle.incomeColor
+                      : AppStyle.expenseColor,
+                ),
+              ),
+              const SizedBox(width: AppStyle.paddingSmall),
+              const Icon(Icons.edit_outlined,
+                  size: 18, color: AppStyle.textColorSecondary),
+            ],
+          ),
+          onTap: () => _editTransaction(context, transaction, index),
+          contentPadding: const EdgeInsets.symmetric(
+              horizontal: AppStyle.paddingMedium,
+              vertical: AppStyle.paddingSmall),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppStyle.borderRadiusMedium),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<bool> _confirmDeleteItemDialog(BuildContext context) async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            backgroundColor: AppStyle.cardColor,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppStyle.borderRadiusMedium),
+            ),
+            title: const Text('Delete Item?', style: AppStyle.titleStyle),
+            content: const Text(
+              'Remove this item from the list?',
+              style: AppStyle.bodyText,
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                style: AppStyle.textButtonStyle,
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                style: AppStyle.dangerButtonStyle,
+                child: const Text('Delete'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
+
+  Future<void> _editTransaction(
+      BuildContext context, Transaction txToEdit, int idx) async {
+    final result = await Navigator.push<TransactionResult>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => TransactionFormScreen(transaction: txToEdit),
+      ),
+    );
+
+    if (result != null && context.mounted) {
+      if (result.actionType == ActionType.edit) {
+        context
+            .read<BulkTransactionsCubit>()
+            .updateTransaction(idx, result.transaction);
+      }
+    }
+  }
+}
+
+/// Consolidated bottom panel for controls, info, and actions.
+class _BottomControlPanel extends StatelessWidget {
+  const _BottomControlPanel();
 
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<BulkTransactionsCubit, BulkTransactionsState>(
-      buildWhen: (previous, current) =>
-          previous.selectedDate != current.selectedDate ||
-          previous.totalExpenses != current.totalExpenses ||
-          previous.warningMessage != current.warningMessage ||
-          previous.selectedAccount != current.selectedAccount ||
-          previous.discountsApplied != current.discountsApplied,
+      // Rebuild frequently as many states affect this panel
       builder: (context, state) {
-        return Container(
-          padding: const EdgeInsets.all(AppStyle.paddingMedium),
-          color: AppStyle.cardColor,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Store name
-              Row(
-                children: [
-                  Icon(Icons.store, color: AppStyle.primaryColor),
-                  SizedBox(width: AppStyle.paddingSmall),
-                  Expanded(
-                    child: Text(
-                      state.storeName,
-                      style: AppStyle.titleStyle,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: AppStyle.paddingSmall),
+        final bool totalsMatch =
+            (state.totalExpenses - state.receiptTotalAmount).abs() < 0.01;
+        final bool listIsEmpty = state.transactions.isEmpty;
+        final bool canMerge =
+            state.transactions.length > 1; // Condition for enabling merge
 
-              // Date picker and total info
-              Row(
-                children: [
-                  // Date picker
-                  Expanded(
-                    child: InkWell(
-                      onTap: () => _selectDate(context, state.selectedDate),
+        return SafeArea(
+          // Keep controls above system intrusions
+          child: Container(
+            padding: const EdgeInsets.all(AppStyle.paddingMedium),
+            decoration: BoxDecoration(
+              color: AppStyle.cardColor, // Use card color
+              boxShadow: [
+                // Consistent shadow
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.08),
+                  blurRadius: 8, // Slightly softer shadow
+                  offset: const Offset(0, -4),
+                ),
+              ],
+              // Add a top border for clear separation from list
+              border: Border(
+                  top: BorderSide(color: AppStyle.dividerColor, width: 1)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min, // Take minimum space
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // --- Row 1: Store, Date, Items Total ---
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // Store Name (Concise)
+                    Flexible(
+                      // Allow shrinking/ellipsis
                       child: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.calendar_today,
+                          const Icon(Icons.store_mall_directory_outlined,
                               size: 16, color: AppStyle.textColorSecondary),
-                          SizedBox(width: AppStyle.paddingSmall),
-                          Text(
-                            DateFormat.yMMMd().format(state.selectedDate),
-                            style: AppStyle.bodyText,
+                          const SizedBox(width: AppStyle.paddingXSmall),
+                          Flexible(
+                            child: Text(
+                              state.storeName,
+                              style: AppStyle.captionStyle,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         ],
                       ),
                     ),
-                  ),
-
-                  // Total amount
-                  Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: AppStyle.paddingMedium,
-                      vertical: AppStyle.paddingSmall / 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppStyle.primaryColor.withOpacity(0.1),
+                    const SizedBox(width: AppStyle.paddingSmall),
+                    // Date (Concise)
+                    InkWell(
+                      onTap: () => _selectDate(context, state.selectedDate),
                       borderRadius:
                           BorderRadius.circular(AppStyle.borderRadiusSmall),
-                    ),
-                    child: Text(
-                      'Total: ${state.totalExpenses.toStringAsFixed(2)}',
-                      style: AppStyle.subtitleStyle.copyWith(
-                        color: AppStyle.primaryColor,
-                        fontWeight: FontWeight.bold,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.calendar_today,
+                              size: 16, color: AppStyle.textColorSecondary),
+                          const SizedBox(width: AppStyle.paddingXSmall),
+                          Text(
+                            DateFormat.yMMMd().format(state.selectedDate),
+                            style: AppStyle.captionStyle,
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-                ],
-              ),
-
-              // Warning message if totals don't match
-              if (state.warningMessage != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: AppStyle.paddingSmall),
-                  child: Row(
-                    children: [
-                      Icon(Icons.warning_amber_rounded,
-                          color: Colors.amber, size: 16),
-                      SizedBox(width: AppStyle.paddingSmall),
-                      Expanded(
-                        child: Text(
-                          state.warningMessage!,
-                          style: AppStyle.captionStyle
-                              .copyWith(color: Colors.amber[800]),
-                        ),
+                    const SizedBox(width: AppStyle.paddingSmall),
+                    // Items Total (with visual match/mismatch indicator)
+                    if (!listIsEmpty)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('Total:', style: AppStyle.captionStyle),
+                          const SizedBox(width: AppStyle.paddingXSmall),
+                          Text(
+                            state.totalExpenses.toStringAsFixed(2),
+                            style: AppStyle.bodyText.copyWith(
+                              // Use body text for amount
+                              fontWeight: FontWeight.w600,
+                              color: totalsMatch
+                                  ? AppStyle.incomeColor
+                                  : (state.warningMessage != null
+                                      ? AppStyle.warningColor
+                                      : AppStyle
+                                          .expenseColor), // Use warning color if warning exists
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                  ],
                 ),
+                const SizedBox(height: AppStyle.paddingSmall),
 
-              // Account dropdown
-              Padding(
-                padding: const EdgeInsets.only(top: AppStyle.paddingMedium),
-                child: AccountDropdown(
+                // --- Row 2: Account Dropdown ---
+                AccountDropdown(
                   selectedAccount: state.selectedAccount,
                   onAccountChanged: (account) {
                     if (account != null) {
@@ -199,337 +433,170 @@ class ReceiptInfoCard extends StatelessWidget {
                     }
                   },
                 ),
-              ),
+                const SizedBox(height: AppStyle.paddingMedium),
 
-              // Discounts button
-              Padding(
-                padding: const EdgeInsets.only(top: AppStyle.paddingMedium),
-                child: ElevatedButton(
-                  onPressed: () {
-                    if (state.discountsApplied) {
-                      context
-                          .read<BulkTransactionsCubit>()
-                          .restoreOriginalTransactions();
-                    } else {
-                      context.read<BulkTransactionsCubit>().processDiscounts();
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppStyle.primaryColor,
-                    foregroundColor: Colors.white,
-                  ),
-                  child: Text(
-                    state.discountsApplied
-                        ? 'Remove Discounts'
-                        : 'Apply Discounts',
-                  ),
+                // --- Row 3: Action Buttons (Merge, Discount) ---
+                Row(
+                  mainAxisAlignment:
+                      MainAxisAlignment.spaceBetween, // Space out buttons
+                  children: [
+                    // Merge Button (Text Button)
+                    TextButton.icon(
+                      onPressed: canMerge
+                          ? () => context
+                              .read<BulkTransactionsCubit>()
+                              .mergeTransactionsByCategory()
+                          : null, // Disable if cannot merge
+                      icon: const Icon(Icons.merge_type, size: 18),
+                      label: const Text('Merge Similar'),
+                      style: AppStyle.textButtonStyle.copyWith(
+                        padding: MaterialStateProperty.all(
+                            const EdgeInsets.symmetric(
+                                horizontal: AppStyle.paddingSmall)),
+                        // Grey out if disabled
+                        foregroundColor:
+                            MaterialStateProperty.resolveWith((states) {
+                          if (states.contains(MaterialState.disabled))
+                            return AppStyle.textColorSecondary.withOpacity(0.5);
+                          return AppStyle.primaryColor;
+                        }),
+                      ),
+                    ),
+
+                    // Apply/Remove Discounts Button (Text Button)
+                    TextButton.icon(
+                      icon: Icon(
+                        state.discountsApplied
+                            ? Icons.refresh
+                            : Icons.local_offer_outlined,
+                        size: 18,
+                      ),
+                      label: Text(state.discountsApplied
+                          ? 'Remove Discounts'
+                          : 'Apply Discounts'),
+                      onPressed: () {
+                        if (state.discountsApplied) {
+                          context
+                              .read<BulkTransactionsCubit>()
+                              .restoreOriginalTransactions();
+                        } else {
+                          context
+                              .read<BulkTransactionsCubit>()
+                              .processDiscounts();
+                        }
+                      },
+                      style: AppStyle.textButtonStyle.copyWith(
+                        padding: MaterialStateProperty.all(
+                            const EdgeInsets.symmetric(
+                                horizontal: AppStyle.paddingSmall)),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
+                const SizedBox(
+                    height:
+                        AppStyle.paddingMedium), // Space before final buttons
 
-  // Helper method to show date picker
-  Future<void> _selectDate(BuildContext context, DateTime initialDate) async {
-    final DateTime? pickedDate = await showDatePicker(
-      context: context,
-      initialDate: initialDate,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-    );
-
-    if (pickedDate != null && context.mounted) {
-      context.read<BulkTransactionsCubit>().setSelectedDate(pickedDate);
-    }
-  }
-}
-
-/// Header section for the transaction list
-class TransactionListHeader extends StatelessWidget {
-  const TransactionListHeader({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return BlocBuilder<BulkTransactionsCubit, BulkTransactionsState>(
-      buildWhen: (previous, current) =>
-          previous.transactions.length != current.transactions.length,
-      builder: (context, state) {
-        return Container(
-          padding: const EdgeInsets.all(AppStyle.paddingMedium),
-          color: AppStyle.backgroundColor,
-          child: Row(
-            children: [
-              Text(
-                'Items (${state.transactions.length})',
-                style: AppStyle.subtitleStyle
-                    .copyWith(fontWeight: FontWeight.bold),
-              ),
-              Spacer(),
-              if (state.transactions.length > 1)
-                TextButton.icon(
-                  onPressed: () => context
-                      .read<BulkTransactionsCubit>()
-                      .mergeTransactionsByCategory(),
-                  icon: Icon(Icons.merge_type, size: 16),
-                  label: Text('Merge Similar'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: AppStyle.primaryColor,
-                    padding: EdgeInsets.symmetric(
-                      horizontal: AppStyle.paddingMedium,
-                      vertical: AppStyle.paddingSmall / 2,
+                // --- Warning Message ---
+                // Display warning more prominently just above save/cancel if it exists
+                if (state.warningMessage != null)
+                  Padding(
+                    padding:
+                        const EdgeInsets.only(bottom: AppStyle.paddingSmall),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: AppStyle.paddingSmall,
+                          vertical: AppStyle.paddingXSmall),
+                      decoration: BoxDecoration(
+                        color: AppStyle.warningColor.withOpacity(0.15),
+                        borderRadius:
+                            BorderRadius.circular(AppStyle.borderRadiusSmall),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.warning_amber_rounded,
+                              color: AppStyle.warningColor, size: 18),
+                          const SizedBox(width: AppStyle.paddingSmall),
+                          Expanded(
+                            child: Text(
+                              state.warningMessage!,
+                              style: AppStyle.captionStyle
+                                  .copyWith(color: AppStyle.warningColor),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
+
+                // --- Row 4: Final Save/Cancel Buttons ---
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: AppStyle.secondaryButtonStyle,
+                        child: const Text('Cancel'),
+                      ),
+                    ),
+                    const SizedBox(width: AppStyle.paddingMedium),
+                    Expanded(
+                      flex: 2,
+                      child: ElevatedButton(
+                        onPressed: listIsEmpty
+                            ? null
+                            : () {
+                                final processedTransactions =
+                                    state.transactions;
+                                Navigator.pop(context, processedTransactions);
+                              },
+                        style: AppStyle.primaryButtonStyle,
+                        child: const Text('Save Items'),
+                      ),
+                    ),
+                  ],
                 ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-/// Widget showing an empty state when no transactions are available
-class EmptyTransactionsList extends StatelessWidget {
-  const EmptyTransactionsList({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.receipt_long,
-            size: 64,
-            color: AppStyle.textColorSecondary.withOpacity(0.5),
-          ),
-          SizedBox(height: AppStyle.paddingMedium),
-          Text(
-            'No items found in this receipt',
-            style: AppStyle.bodyText.copyWith(
-              color: AppStyle.textColorSecondary,
+              ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-/// List showing all transactions from the receipt
-/// Modified to read transactions directly from state
-class TransactionsList extends StatelessWidget {
-  const TransactionsList({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return BlocBuilder<BulkTransactionsCubit, BulkTransactionsState>(
-      buildWhen: (previous, current) =>
-          previous.transactions != current.transactions,
-      builder: (context, state) {
-        return ListView.builder(
-          itemCount: state.transactions.length,
-          padding: EdgeInsets.zero,
-          itemBuilder: (context, index) {
-            return TransactionListItem(
-              transaction: state.transactions[index],
-              index: index,
-            );
-          },
         );
       },
     );
   }
-}
 
-/// Individual transaction list item with edit/delete capabilities
-class TransactionListItem extends StatelessWidget {
-  final Transaction transaction;
-  final int index;
-
-  const TransactionListItem({
-    Key? key,
-    required this.transaction,
-    required this.index,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    final category = transaction.category.target;
-
-    return Dismissible(
-      key: ValueKey(transaction.hashCode),
-      background: Container(
-        color: AppStyle.expenseColor,
-        alignment: Alignment.centerRight,
-        padding: EdgeInsets.only(right: AppStyle.paddingLarge),
-        child: Icon(Icons.delete_outline, color: Colors.white),
-      ),
-      direction: DismissDirection.endToStart,
-      confirmDismiss: (_) => _confirmDelete(context),
-      onDismissed: (_) =>
-          context.read<BulkTransactionsCubit>().removeTransaction(index),
-      child: ListTile(
-        leading: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: Color(category?.colorValue ?? 0xFF9E9E9E).withOpacity(0.2),
-            borderRadius: BorderRadius.circular(AppStyle.borderRadiusMedium),
-          ),
-          child: Icon(
-            category?.icon ?? Icons.category,
-            color: Color(category?.colorValue ?? 0xFF9E9E9E),
-            size: 20,
-          ),
-        ),
-        title: Text(
-          transaction.title,
-          style: AppStyle.bodyText,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        subtitle: Text(
-          category?.title ?? 'Uncategorized',
-          style: AppStyle.captionStyle,
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              transaction.amount.toStringAsFixed(2),
-              style: AppStyle.subtitleStyle.copyWith(
-                fontWeight: FontWeight.bold,
-                color: transaction.isIncome
-                    ? AppStyle.incomeColor
-                    : AppStyle.expenseColor,
+  // Helper method to show date picker - Moved from _GlobalInfoAndActionsSection
+  Future<void> _selectDate(BuildContext context, DateTime initialDate) async {
+    final DateTime? pickedDate = await showDatePicker(
+        context: context,
+        initialDate: initialDate,
+        firstDate: DateTime(2000),
+        lastDate: DateTime(2100),
+        builder: (context, child) {
+          // Ensure consistent dialog theme
+          return Theme(
+            data: Theme.of(context).copyWith(
+              colorScheme: Theme.of(context).colorScheme.copyWith(
+                    primary: AppStyle.primaryColor,
+                    onPrimary: ColorPalette.onPrimary,
+                    surface: AppStyle.cardColor,
+                    onSurface: AppStyle.textColorPrimary,
+                  ),
+              textButtonTheme: TextButtonThemeData(
+                style: TextButton.styleFrom(
+                  foregroundColor: AppStyle.primaryColor,
+                ),
               ),
+              dialogBackgroundColor: AppStyle.cardColor,
             ),
-            SizedBox(width: AppStyle.paddingMedium),
-            Icon(Icons.chevron_right, color: AppStyle.textColorSecondary),
-          ],
-        ),
-        onTap: () => _editTransaction(context),
-      ),
-    );
-  }
+            child: child!,
+          );
+        });
 
-  Future<bool> _confirmDelete(BuildContext context) async {
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Delete Item?', style: AppStyle.titleStyle),
-        content: Text(
-          'Are you sure you want to remove this item from the receipt?',
-          style: AppStyle.bodyText,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text('Cancel'),
-            style: TextButton.styleFrom(
-                foregroundColor: AppStyle.textColorSecondary),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppStyle.expenseColor,
-              foregroundColor: Colors.white,
-            ),
-            child: Text('Delete'),
-          ),
-        ],
-      ),
-    );
-
-    return result ?? false;
-  }
-
-  Future<void> _editTransaction(BuildContext context) async {
-    final result = await Navigator.push<TransactionResult>(
-      context,
-      MaterialPageRoute(
-        builder: (context) => TransactionFormScreen(transaction: transaction),
-      ),
-    );
-
-    if (result != null && context.mounted) {
-      context
-          .read<BulkTransactionsCubit>()
-          .updateTransaction(index, result.transaction);
+    if (pickedDate != null && context.mounted) {
+      // Access cubit via context.read ONLY if _BottomControlPanel's context has it.
+      // If the Builder wasn't used above, this context might not have it.
+      // Ensure the context used here can access the BulkTransactionsCubit.
+      context.read<BulkTransactionsCubit>().setSelectedDate(pickedDate);
     }
-  }
-}
-
-/// Bottom action bar with save and cancel buttons
-class BottomActionsBar extends StatelessWidget {
-  const BottomActionsBar({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return BlocBuilder<BulkTransactionsCubit, BulkTransactionsState>(
-      buildWhen: (previous, current) =>
-          previous.transactions != current.transactions,
-      builder: (context, state) {
-        return Container(
-          padding: EdgeInsets.all(AppStyle.paddingMedium),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 4,
-                offset: Offset(0, -2),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              // Cancel button
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppStyle.textColorSecondary,
-                    side: BorderSide(
-                        color: AppStyle.textColorSecondary.withOpacity(0.3)),
-                    padding:
-                        EdgeInsets.symmetric(vertical: AppStyle.paddingMedium),
-                  ),
-                  child: Text('Cancel'),
-                ),
-              ),
-              SizedBox(width: AppStyle.paddingMedium),
-
-              // Save button
-              Expanded(
-                flex: 2,
-                child: ElevatedButton(
-                  onPressed: state.transactions.isEmpty
-                      ? null
-                      : () {
-                          final processedTransactions =
-                              List<Transaction>.from(state.transactions);
-                          Navigator.pop(context, processedTransactions);
-                        },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppStyle.primaryColor,
-                    foregroundColor: Colors.white,
-                    padding:
-                        EdgeInsets.symmetric(vertical: AppStyle.paddingMedium),
-                    disabledBackgroundColor:
-                        AppStyle.primaryColor.withOpacity(0.3),
-                  ),
-                  child: Text('Save Transactions'),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
   }
 }
