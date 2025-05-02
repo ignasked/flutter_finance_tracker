@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:money_owl/backend/models/account.dart';
+import 'package:money_owl/backend/models/category.dart';
 import 'package:money_owl/backend/repositories/account_repository.dart';
 import 'package:money_owl/backend/repositories/category_repository.dart';
 import 'package:money_owl/backend/repositories/transaction_repository.dart';
@@ -9,11 +11,10 @@ import 'package:money_owl/backend/utils/defaults.dart';
 import 'package:money_owl/front/auth/auth_bloc/auth_bloc.dart';
 import 'package:money_owl/front/transactions_screen/cubit/transactions_cubit.dart';
 import 'package:money_owl/front/settings_screen/account_management_screen.dart';
-import 'package:money_owl/front/settings_screen/cubit/csv_cubit.dart';
-// import 'package:money_owl/front/receipt_scan_screen/receipt_analyzer_widget.dart'; // Assuming not used directly here
+import 'package:money_owl/front/shared/cubit/importer_cubit.dart';
 import 'package:money_owl/front/settings_screen/category_management_screen.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
-import '../common/loading_widget.dart'; // Ensure this uses AppStyle too if needed
+import '../common/loading_widget.dart';
 import 'package:money_owl/backend/utils/app_style.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -22,21 +23,19 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => CsvCubit(),
-      child: BlocListener<CsvCubit, CsvState>(
+      create: (_) => ImporterCubit(),
+      child: BlocListener<ImporterCubit, ImporterState>(
         listener: (context, state) {
           if (state.error != null) {
             ScaffoldMessenger.of(context)
-              ..hideCurrentSnackBar() // Hide previous snackbars
+              ..hideCurrentSnackBar()
               ..showSnackBar(
                 SnackBar(
                   content: Text(state.error!,
-                      style: AppStyle.bodyText.copyWith(
-                          color: ColorPalette
-                              .onError)), // Use onError color for text
-                  backgroundColor:
-                      ColorPalette.errorContainer, // Use error container
-                  behavior: SnackBarBehavior.floating, // More modern look
+                      style: AppStyle.bodyText
+                          .copyWith(color: ColorPalette.onError)),
+                  backgroundColor: ColorPalette.errorContainer,
+                  behavior: SnackBarBehavior.floating,
                   shape: RoundedRectangleBorder(
                     borderRadius:
                         BorderRadius.circular(AppStyle.borderRadiusMedium),
@@ -45,20 +44,42 @@ class SettingsScreen extends StatelessWidget {
                 ),
               );
           }
+
+          // Show success operation message if available
+          if (state.lastOperation != null && !state.isLoading) {
+            ScaffoldMessenger.of(context)
+              ..hideCurrentSnackBar()
+              ..showSnackBar(
+                SnackBar(
+                  content: Text(state.lastOperation!,
+                      style: AppStyle.bodyText
+                          .copyWith(color: ColorPalette.onPrimary)),
+                  backgroundColor: AppStyle.incomeColor,
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                    borderRadius:
+                        BorderRadius.circular(AppStyle.borderRadiusMedium),
+                  ),
+                  margin: const EdgeInsets.all(AppStyle.paddingSmall),
+                ),
+              );
+
+            // Clear operation message after displaying
+            context.read<ImporterCubit>().clearLastOperation();
+          }
         },
         child: Scaffold(
-          backgroundColor: AppStyle.backgroundColor, // Apply background color
+          backgroundColor: AppStyle.backgroundColor,
           appBar: AppBar(
-            title: const Text('Settings'), // Removed style, inherits from theme
+            title: const Text('Settings'),
             backgroundColor: AppStyle.primaryColor,
-            foregroundColor:
-                ColorPalette.onPrimary, // Use onPrimary for text/icons
-            elevation: AppStyle.elevationSmall, // Add subtle elevation
+            foregroundColor: ColorPalette.onPrimary,
+            elevation: AppStyle.elevationSmall,
           ),
           body: SingleChildScrollView(
             padding: const EdgeInsets.all(AppStyle.paddingMedium),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch, // Stretch buttons
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 // --- Data Management Section ---
                 _buildSectionHeader('Data Management'),
@@ -69,8 +90,7 @@ class SettingsScreen extends StatelessWidget {
                 _buildDeleteAllCategoriesButton(context),
                 const SizedBox(height: AppStyle.paddingSmall),
                 _buildImportButton(),
-                const SizedBox(
-                    height: AppStyle.paddingSmall), // Space before divider
+                const SizedBox(height: AppStyle.paddingSmall),
                 const Divider(
                     height: AppStyle.paddingMedium,
                     color: AppStyle.dividerColor),
@@ -87,7 +107,7 @@ class SettingsScreen extends StatelessWidget {
                 _buildSectionHeader('AI Financial Advisor'),
                 _buildSettingsListTile(
                   context: context,
-                  icon: Icons.auto_awesome, // More relevant AI icon
+                  icon: Icons.auto_awesome,
                   title: 'Ask AI Financial Advisor',
                   onTap: () => _showFinancialAnalysis(context),
                 ),
@@ -106,9 +126,7 @@ class SettingsScreen extends StatelessWidget {
                     Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (_) => BlocProvider(
-                          // Use _ for unused context
                           create: (ctx) => CategoryCubit(
-                              // Use ctx
                               ctx.read<CategoryRepository>(),
                               ctx.read<TransactionsCubit>()),
                           child: const CategoryManagementScreen(),
@@ -125,9 +143,7 @@ class SettingsScreen extends StatelessWidget {
                     Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (_) => BlocProvider(
-                          // Use _ for unused context
                           create: (ctx) => AccountCubit(
-                              // Use ctx
                               ctx.read<AccountRepository>(),
                               ctx.read<TransactionsCubit>(),
                               ctx.read<TransactionRepository>()),
@@ -147,16 +163,15 @@ class SettingsScreen extends StatelessWidget {
                 ElevatedButton.icon(
                   icon: const Icon(Icons.logout, color: ColorPalette.onPrimary),
                   label: const Text('Logout'),
-                  // Use primary button style for consistency, adjust if needed
                   style: AppStyle.primaryButtonStyle.copyWith(
-                    backgroundColor: MaterialStateProperty.all(
-                        AppStyle.secondaryColor), // Muted color for logout
+                    backgroundColor:
+                        MaterialStateProperty.all(AppStyle.secondaryColor),
                   ),
                   onPressed: () {
                     context.read<AuthBloc>().add(AuthLogoutRequested());
                   },
                 ),
-                const SizedBox(height: AppStyle.paddingLarge), // Bottom padding
+                const SizedBox(height: AppStyle.paddingLarge),
               ],
             ),
           ),
@@ -165,7 +180,6 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  // Helper to build section headers consistently
   Widget _buildSectionHeader(String title) {
     return Padding(
       padding: const EdgeInsets.only(
@@ -174,7 +188,6 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  // Helper to build consistent ListTiles for settings navigation
   Widget _buildSettingsListTile({
     required BuildContext context,
     required IconData icon,
@@ -182,51 +195,45 @@ class SettingsScreen extends StatelessWidget {
     required VoidCallback onTap,
   }) {
     return ListTile(
-      leading: Icon(icon,
-          color: AppStyle.secondaryColor), // Use secondary color for icons
+      leading: Icon(icon, color: AppStyle.secondaryColor),
       title: Text(title, style: AppStyle.titleStyle),
-      trailing: const Icon(
-          Icons.arrow_forward_ios, // More standard iOS/Material arrow
-          size: 18,
-          color: AppStyle.textColorSecondary),
+      trailing: const Icon(Icons.arrow_forward_ios,
+          size: 18, color: AppStyle.textColorSecondary),
       onTap: onTap,
-      contentPadding: const EdgeInsets.symmetric(
-          horizontal: AppStyle.paddingSmall), // Adjust padding
+      contentPadding:
+          const EdgeInsets.symmetric(horizontal: AppStyle.paddingSmall),
       shape: RoundedRectangleBorder(
-        // Optional: Add subtle border/background on hover/tap
         borderRadius: BorderRadius.circular(AppStyle.borderRadiusSmall),
       ),
-      // tileColor: AppStyle.cardColor, // Optional: if you want tiles on card background
     );
   }
 
-  // --- Button Builder Methods (Updated Styles) ---
-
   Widget _buildExportButton() {
-    return BlocBuilder<CsvCubit, CsvState>(
+    return BlocBuilder<ImporterCubit, ImporterState>(
       builder: (context, state) {
         return ElevatedButton.icon(
           onPressed: state.isLoading
-              ? null // Disable button when loading
+              ? null
               : () {
                   final transactions = context
                       .read<TransactionsCubit>()
                       .state
                       .displayedTransactions;
-                  context.read<CsvCubit>().exportTransactions(transactions);
+                  context
+                      .read<ImporterCubit>()
+                      .exportTransactions(transactions);
                 },
           style: AppStyle.primaryButtonStyle,
           icon: state.isLoading
               ? const SizedBox(
-                  // Consistent loading indicator size
                   width: 20,
                   height: 20,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    color: ColorPalette.onPrimary, // Use contrast color
+                    color: ColorPalette.onPrimary,
                   ))
               : const Icon(Icons.download, color: ColorPalette.onPrimary),
-          label: const Text("Export CSV"),
+          label: const Text("Export Transactions"),
         );
       },
     );
@@ -235,7 +242,7 @@ class SettingsScreen extends StatelessWidget {
   Widget _buildDeleteAllTransactionsButton(BuildContext context) {
     return ElevatedButton.icon(
       onPressed: () => _showDeleteAllTransactionsConfirmation(context),
-      style: AppStyle.dangerButtonStyle, // Use danger style
+      style: AppStyle.dangerButtonStyle,
       icon: const Icon(Icons.delete_forever, color: ColorPalette.onPrimary),
       label: const Text("Delete All Transactions"),
     );
@@ -244,14 +251,14 @@ class SettingsScreen extends StatelessWidget {
   Widget _buildDeleteAllCategoriesButton(BuildContext context) {
     return ElevatedButton.icon(
       onPressed: () => _showDeleteAllCategoriesConfirmation(context),
-      style: AppStyle.dangerButtonStyle, // Use danger style
+      style: AppStyle.dangerButtonStyle,
       icon: const Icon(Icons.delete_sweep, color: ColorPalette.onPrimary),
       label: const Text("Delete All Categories"),
     );
   }
 
   Widget _buildImportButton() {
-    return BlocBuilder<CsvCubit, CsvState>(
+    return BlocBuilder<ImporterCubit, ImporterState>(
       builder: (context, state) {
         return ElevatedButton.icon(
           onPressed: state.isLoading ? null : () => _handleImport(context),
@@ -265,16 +272,13 @@ class SettingsScreen extends StatelessWidget {
                     color: ColorPalette.onPrimary,
                   ))
               : const Icon(Icons.upload, color: ColorPalette.onPrimary),
-          label: const Text("Import CSV"),
+          label: const Text("Import Transactions"),
         );
       },
     );
   }
 
-  // --- Other Builder Methods (Updated Styles) ---
-
   Widget _buildCurrencySelector(BuildContext context) {
-    // Get available currencies once
     final currencyItems = CurrencyUtils.predefinedCurrencies.entries
         .map((entry) => DropdownMenuItem(
               value: entry.key,
@@ -285,31 +289,24 @@ class SettingsScreen extends StatelessWidget {
 
     return DropdownButtonFormField<String>(
       value: Defaults().defaultCurrency,
-      // Use AppStyle's input decoration
       decoration: AppStyle.getInputDecoration(labelText: 'Default Currency'),
       items: currencyItems,
       onChanged: (value) {
         if (value != null) {
-          // Consider moving this logic to a Cubit/Bloc if state becomes complex
           Defaults().defaultCurrency = value;
           Defaults().defaultCurrencySymbol =
               CurrencyUtils.predefinedCurrencies[value]!;
           Defaults().saveDefaults();
-          // Trigger recalculation in TransactionsCubit
           context.read<TransactionsCubit>().updateDefaultCurrency();
         }
       },
-      // Style dropdown items
       dropdownColor: AppStyle.cardColor,
       icon:
           const Icon(Icons.arrow_drop_down, color: AppStyle.textColorSecondary),
     );
   }
 
-  // --- Dialog Methods (Updated Styles) ---
-
   Future<void> _showFinancialAnalysis(BuildContext context) async {
-    // Check if context is still mounted before async operations
     if (!context.mounted) return;
 
     showLoadingPopup(context, message: 'Analyzing your data...');
@@ -317,19 +314,17 @@ class SettingsScreen extends StatelessWidget {
     try {
       final transactions =
           context.read<TransactionsCubit>().state.displayedTransactions;
-      final csvCubit = context.read<CsvCubit>();
-      final csvData = await csvCubit.exportTransactions(transactions);
+      final importerCubit = context.read<ImporterCubit>();
+      final jsonData = await importerCubit.exportTransactions(transactions);
 
-      // Check mount status again after await
       if (!context.mounted) return;
 
       final analysis =
-          await MistralService.instance.provideFinancialAnalysis(csvData);
+          await MistralService.instance.provideFinancialAnalysis(jsonData);
 
-      // Check mount status again after await
       if (!context.mounted) return;
 
-      hideLoadingPopup(context); // Hide loading before showing dialog
+      hideLoadingPopup(context);
 
       showDialog(
         context: context,
@@ -347,40 +342,32 @@ class SettingsScreen extends StatelessWidget {
               const EdgeInsets.symmetric(horizontal: AppStyle.paddingMedium),
           actionsPadding: const EdgeInsets.all(AppStyle.paddingSmall),
           title: Row(
-            // Keep title row as is, styling is fine
             children: [
               Image.asset(
-                'assets/icons/money_owl_transparent.png', // Ensure this asset exists
-                width: 32, // Slightly smaller icon
+                'assets/icons/money_owl_transparent.png',
+                width: 32,
                 height: 32,
               ),
               const SizedBox(width: AppStyle.paddingSmall),
               const Expanded(
-                // Allow title to wrap
                 child: Text('Financial Analysis', style: AppStyle.heading2),
               ),
             ],
           ),
           content: SizedBox(
-            // Constrain size for readability
-            width: double.maxFinite, // Take available width
-            height: MediaQuery.of(context).size.height * 0.6, // Adjust height
+            width: double.maxFinite,
+            height: MediaQuery.of(context).size.height * 0.6,
             child: Scrollbar(
               thumbVisibility: true,
               child: SingleChildScrollView(
-                // Wrap Markdown in SingleChildScrollView
-                padding: const EdgeInsets.only(
-                    bottom: AppStyle.paddingMedium), // Padding for scrollbar
+                padding: const EdgeInsets.only(bottom: AppStyle.paddingMedium),
                 child: MarkdownBody(
-                  // Use MarkdownBody for better integration
                   data: analysis.toString(),
                   styleSheet:
                       MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
                     p: AppStyle.bodyText,
-                    h1: AppStyle.heading1
-                        .copyWith(fontSize: 24), // Adjust heading sizes
+                    h1: AppStyle.heading1.copyWith(fontSize: 24),
                     h2: AppStyle.heading2.copyWith(fontSize: 20),
-                    // Add other styles as needed (list, code block, etc.)
                   ),
                 ),
               ),
@@ -389,14 +376,13 @@ class SettingsScreen extends StatelessWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
-              style: AppStyle.textButtonStyle, // Use text button style
+              style: AppStyle.textButtonStyle,
               child: const Text('Close'),
             ),
           ],
         ),
       );
     } catch (e) {
-      // Check mount status in catch block
       if (context.mounted) {
         hideLoadingPopup(context);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -416,68 +402,46 @@ class SettingsScreen extends StatelessWidget {
   }
 
   Future<void> _handleImport(BuildContext context) async {
-    // Check if context is still mounted before async operations
     if (!context.mounted) return;
 
     final txCubit = context.read<TransactionsCubit>();
-    final csvCubit = context.read<CsvCubit>();
+    final importerCubit = context.read<ImporterCubit>();
+    final categoryRepository = context.read<CategoryRepository>();
+    final accountRepository = context.read<AccountRepository>();
 
     final existingTransactions = txCubit.state.displayedTransactions;
-    // Consider adding a loading indicator here if import takes time
-    final newTransactions =
-        await csvCubit.importTransactions(existingTransactions, false);
 
-    // Check mount status again after await
+    // Get all available categories and accounts to properly map them during import
+    final availableCategories = await categoryRepository.getAll();
+    final availableAccounts = await accountRepository.getAll();
+
+    final newTransactions = await importerCubit.importTransactions(
+      existingTransactions,
+      false,
+      availableCategories: availableCategories,
+      availableAccounts: availableAccounts,
+    );
+
     if (!context.mounted) return;
 
-    if (newTransactions == null && csvCubit.state.duplicates.isNotEmpty) {
-      await _showDuplicatesDialog(context);
-    } else if (newTransactions != null) {
+    if (newTransactions == null && importerCubit.state.duplicates.isNotEmpty) {
+      await _showDuplicatesDialog(
+          context, availableCategories, availableAccounts);
+    } else if (newTransactions != null && newTransactions.isNotEmpty) {
       txCubit.addTransactions(newTransactions);
-      // Show success message
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            content: Text('CSV imported successfully!',
-                style: AppStyle.bodyText.copyWith(
-                    color: ColorPalette.onPrimary)), // Success text color
-            backgroundColor:
-                AppStyle.incomeColor, // Use income color for success
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-                borderRadius:
-                    BorderRadius.circular(AppStyle.borderRadiusMedium)),
-            margin: const EdgeInsets.all(AppStyle.paddingSmall),
-          ),
-        );
-    } else if (csvCubit.state.error == null) {
-      // Handle case where import resulted in no new transactions and no errors/duplicates (e.g., empty file)
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            content: Text('No new transactions found in the CSV file.',
-                style: AppStyle.bodyText),
-            backgroundColor: AppStyle.secondaryColor, // Neutral color
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-                borderRadius:
-                    BorderRadius.circular(AppStyle.borderRadiusMedium)),
-            margin: const EdgeInsets.all(AppStyle.paddingSmall),
-          ),
-        );
     }
-    // Error case is handled by the BlocListener
   }
 
-  Future<void> _showDuplicatesDialog(BuildContext context) async {
-    // Check mount status before showing dialog
+  Future<void> _showDuplicatesDialog(
+    BuildContext context,
+    List<Category> availableCategories,
+    List<Account> availableAccounts,
+  ) async {
     if (!context.mounted) return;
 
     final txCubit = context.read<TransactionsCubit>();
-    final csvCubit = context.read<CsvCubit>();
-    final duplicatesCount = csvCubit.state.duplicates.length;
+    final importerCubit = context.read<ImporterCubit>();
+    final duplicatesCount = importerCubit.state.duplicates.length;
 
     final result = await showDialog<String>(
       context: context,
@@ -494,17 +458,15 @@ class SettingsScreen extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, 'cancel'),
-            style: AppStyle.textButtonStyle, // Use text button style
+            style: AppStyle.textButtonStyle,
             child: const Text('Cancel'),
           ),
           TextButton(
-            // Consider making "Add All" less prominent if potentially risky
             onPressed: () => Navigator.pop(dialogContext, 'all'),
             style: AppStyle.textButtonStyle,
             child: const Text('Add All'),
           ),
           ElevatedButton(
-            // Primary action
             onPressed: () => Navigator.pop(dialogContext, 'non-duplicates'),
             style: AppStyle.primaryButtonStyle,
             child: const Text('Add Non-Duplicates'),
@@ -513,73 +475,38 @@ class SettingsScreen extends StatelessWidget {
       ),
     );
 
-    // Check mount status again after await
     if (!context.mounted) return;
 
-    List<dynamic>?
-        transactionsToAdd; // Use dynamic or specific Transaction type
-    bool addSuccess = false;
+    List<dynamic>? transactionsToAdd;
 
     if (result == 'all') {
-      transactionsToAdd = await csvCubit.importTransactions(
-          txCubit.state.displayedTransactions, true);
+      transactionsToAdd = await importerCubit.importTransactions(
+        txCubit.state.displayedTransactions,
+        true,
+        availableCategories: availableCategories,
+        availableAccounts: availableAccounts,
+      );
     } else if (result == 'non-duplicates') {
-      // Re-import with includeDuplicates=true to get all potential transactions
-      final allImportedTransactions = await csvCubit.importTransactions(
-          txCubit.state.displayedTransactions, true);
+      final allImportedTransactions = await importerCubit.importTransactions(
+        txCubit.state.displayedTransactions,
+        true,
+        availableCategories: availableCategories,
+        availableAccounts: availableAccounts,
+      );
 
       if (allImportedTransactions != null) {
-        // Filter out duplicates based on existing transactions *before* this import attempt
         final existingIds =
             txCubit.state.allTransactions.map((tx) => tx.id).toSet();
         transactionsToAdd = allImportedTransactions
-            .where((tx) => !existingIds.contains(
-                tx.id)) // Assuming unique IDs are reliable for duplicates
+            .where((tx) => !existingIds.contains(tx.id))
             .toList();
       }
     }
 
-    // Check mount status again
     if (!context.mounted) return;
 
     if (transactionsToAdd != null && transactionsToAdd.isNotEmpty) {
-      txCubit.addTransactions(transactionsToAdd.cast()); // Cast if necessary
-      addSuccess = true;
-    }
-
-    // Show feedback message
-    if (addSuccess) {
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            content: Text('Transactions added successfully!',
-                style:
-                    AppStyle.bodyText.copyWith(color: ColorPalette.onPrimary)),
-            backgroundColor: AppStyle.incomeColor,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-                borderRadius:
-                    BorderRadius.circular(AppStyle.borderRadiusMedium)),
-            margin: const EdgeInsets.all(AppStyle.paddingSmall),
-          ),
-        );
-    } else if (result != 'cancel') {
-      // Only show 'no transactions added' if user didn't cancel
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            content: Text('No new transactions were added.',
-                style: AppStyle.bodyText),
-            backgroundColor: AppStyle.secondaryColor,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-                borderRadius:
-                    BorderRadius.circular(AppStyle.borderRadiusMedium)),
-            margin: const EdgeInsets.all(AppStyle.paddingSmall),
-          ),
-        );
+      txCubit.addTransactions(transactionsToAdd.cast());
     }
   }
 
@@ -589,7 +516,6 @@ class SettingsScreen extends StatelessWidget {
     required String content,
     required VoidCallback onConfirm,
   }) async {
-    // Check mount status before showing dialog
     if (!context.mounted) return;
 
     final confirm = await showDialog<bool>(
@@ -608,19 +534,16 @@ class SettingsScreen extends StatelessWidget {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            // Use ElevatedButton for the destructive action confirmation
             onPressed: () => Navigator.pop(dialogContext, true),
-            style: AppStyle.dangerButtonStyle, // Use danger style for confirm
-            child: const Text('Delete'), // Consistent text
+            style: AppStyle.dangerButtonStyle,
+            child: const Text('Delete'),
           ),
         ],
       ),
     );
 
-    // Check mount status again after await
     if (confirm == true && context.mounted) {
       onConfirm();
-      // Show confirmation snackbar
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(
@@ -628,8 +551,7 @@ class SettingsScreen extends StatelessWidget {
             content: Text('${title.replaceFirst('?', '')} successful.',
                 style:
                     AppStyle.bodyText.copyWith(color: ColorPalette.onPrimary)),
-            backgroundColor:
-                AppStyle.incomeColor, // Green for success confirmation
+            backgroundColor: AppStyle.incomeColor,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
                 borderRadius:
@@ -648,7 +570,6 @@ class SettingsScreen extends StatelessWidget {
       content:
           'This action cannot be undone. Are you sure you want to delete ALL transactions?',
       onConfirm: () {
-        // Check mount status inside callback if needed, though less likely here
         context.read<TransactionsCubit>().deleteAllTransactions();
       },
     );
@@ -663,22 +584,13 @@ class SettingsScreen extends StatelessWidget {
           'This action cannot be undone. Are you sure you want to delete ALL categories? Default categories will be recreated.',
       onConfirm: () {
         context.read<CategoryRepository>().removeAll();
-        // Optionally trigger a refresh in relevant cubits if needed
       },
     );
   }
 }
 
-// Add this extension method to TransactionsCubit if it doesn't exist
-// or update your existing method for handling currency changes.
 extension TransactionCubitCurrencyUpdate on TransactionsCubit {
   void updateDefaultCurrency() {
-    // Re-calculate summary and potentially re-filter/reload transactions
-    // based on the new default currency from Defaults().
-    // This implementation depends on how your cubit manages state.
-    // Example:
-    recalculateSummary(); // Recalculate summary
-    // You might need to re-apply filters if they depend on currency formatting
-    //applyFilters();
+    recalculateSummary();
   }
 }

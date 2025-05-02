@@ -13,7 +13,6 @@ import 'package:money_owl/front/transaction_form_screen/cubit/transaction_form_c
 import 'package:money_owl/front/transaction_form_screen/transaction_form_screen.dart';
 import 'package:money_owl/front/transactions_screen/cubit/transactions_cubit.dart';
 import 'package:money_owl/front/transactions_screen/widgets/navbar.dart';
-import 'package:money_owl/front/settings_screen/cubit/csv_cubit.dart';
 import 'package:money_owl/front/shared/filter_cubit/filter_cubit.dart';
 import 'package:supabase_auth_ui/supabase_auth_ui.dart';
 import 'backend/services/sync_service.dart';
@@ -107,9 +106,9 @@ class MyApp extends StatelessWidget {
           // BlocProvider<TransactionFormCubit>(
           //   create: (context) => TransactionFormCubit(),
           // ),
-          BlocProvider<CsvCubit>(
-            create: (context) => CsvCubit(),
-          ),
+          // BlocProvider<CsvCubit>(
+          //   create: (context) => CsvCubit(),
+          // ),
           // LoginCubit and SignupCubit are provided locally in their respective screens
         ],
         child: MaterialApp(

@@ -340,8 +340,8 @@ class _BottomControlPanel extends StatelessWidget {
                 // Consistent shadow
                 BoxShadow(
                   color: Colors.black.withOpacity(0.08),
-                  blurRadius: 8, // Slightly softer shadow
-                  offset: const Offset(0, -4),
+                  blurRadius: 15, // Slightly softer shadow
+                  offset: const Offset(0, -8),
                 ),
               ],
               // Add a top border for clear separation from list
@@ -420,7 +420,7 @@ class _BottomControlPanel extends StatelessWidget {
                       ),
                   ],
                 ),
-                const SizedBox(height: AppStyle.paddingSmall),
+                const SizedBox(height: AppStyle.paddingMedium),
 
                 // --- Row 2: Account Dropdown ---
                 AccountDropdown(

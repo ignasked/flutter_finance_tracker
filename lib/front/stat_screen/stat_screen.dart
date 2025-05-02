@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:money_owl/backend/models/category.dart';
 import 'package:money_owl/backend/utils/app_style.dart'; // Import AppStyle
 import 'package:money_owl/front/transactions_screen/widgets/summary_bar_widget.dart';
 import 'package:money_owl/front/transactions_screen/widgets/date_bar_widget.dart';
@@ -209,8 +210,12 @@ class StatScreen extends StatelessWidget {
 
   // Helper to get category color (optional, needs access to categories)
   Color _getColorForCategory(String categoryTitle, BuildContext context) {
-    // You might need to read categories from AccountTransactionCubit or CategoryRepository
-    // For now, return a default color or use a predefined map
-    return AppStyle.accentColor; // Placeholder
+    final categories =
+        context.read<TransactionsCubit>().getEnabledCategoriesCache();
+    Category category = categories.firstWhere(
+      (cat) => cat.title == categoryTitle,
+    );
+
+    return category.color ?? AppStyle.accentColor; // Placeholder
   }
 }

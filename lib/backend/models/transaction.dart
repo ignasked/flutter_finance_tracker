@@ -234,10 +234,10 @@ class Transaction extends Equatable {
       'title': title,
       'description': description,
       'amount': amount,
-      'category_id': category.targetId,
-      'from_account_id': fromAccount.targetId,
-      'to_account_id':
-          toAccount.targetId, // Add to_account_id (will be null if not set)
+      'category_id': category.target != null ? category.targetId : null,
+      'from_account_id':
+          fromAccount.target != null ? fromAccount.targetId : null,
+      'to_account_id': toAccount.target != null ? toAccount.targetId : null,
       'date': date.toUtc().toIso8601String(),
       'created_at': createdAt.toUtc().toIso8601String(),
       'updated_at': updatedAt.toUtc().toIso8601String(),
