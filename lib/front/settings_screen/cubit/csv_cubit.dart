@@ -34,45 +34,47 @@ class CsvCubit extends Cubit<CsvState> {
   CsvCubit() : super(const CsvState());
 
   Future<String> exportTransactions(List<Transaction> transactions) async {
-    try {
-      emit(state.copyWith(isLoading: true));
-      final csvData = generateCSVData(transactions);
-      await writeToCSV(csvData);
-      emit(state.copyWith(isLoading: false));
-      return csvData;
-    } catch (e) {
-      emit(state.copyWith(isLoading: false, error: e.toString()));
-      return '';
-    }
+    // try {
+    //   emit(state.copyWith(isLoading: true));
+    //   final csvData = generateCSVData(transactions);
+    //   await writeToCSV(csvData);
+    //   emit(state.copyWith(isLoading: false));
+    //   return csvData;
+    // } catch (e) {
+    //   emit(state.copyWith(isLoading: false, error: e.toString()));
+    //   return '';
+    // }
+    return '';
   }
 
   Future<List<Transaction>?> importTransactions(
     List<Transaction> existingTransactions,
     bool includeDuplicates,
   ) async {
-    try {
-      emit(state.copyWith(isLoading: true));
-      final data = await readCSV();
-      final newTransactions = fromStringToTransactions(data);
+    //   try {
+    //     emit(state.copyWith(isLoading: true));
+    //     final data = await readCSV();
+    //     final newTransactions = fromStringToTransactions(data);
 
-      // Find duplicates
-      final duplicates = newTransactions
-          .where((newTx) => existingTransactions.contains(newTx))
-          .toList();
+    //     // Find duplicates
+    //     final duplicates = newTransactions
+    //         .where((newTx) => existingTransactions.contains(newTx))
+    //         .toList();
 
-      if (duplicates.isNotEmpty && !includeDuplicates) {
-        emit(state.copyWith(
-          isLoading: false,
-          duplicates: duplicates,
-        ));
-        return null;
-      }
+    //     if (duplicates.isNotEmpty && !includeDuplicates) {
+    //       emit(state.copyWith(
+    //         isLoading: false,
+    //         duplicates: duplicates,
+    //       ));
+    //       return null;
+    //     }
 
-      emit(state.copyWith(isLoading: false, duplicates: []));
-      return newTransactions;
-    } catch (e) {
-      emit(state.copyWith(isLoading: false, error: e.toString()));
-      return null;
-    }
+    //     emit(state.copyWith(isLoading: false, duplicates: []));
+    //     return newTransactions;
+    //   } catch (e) {
+    //     emit(state.copyWith(isLoading: false, error: e.toString()));
+    //     return null;
+    //   }
+    return null;
   }
 }

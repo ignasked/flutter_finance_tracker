@@ -4,12 +4,15 @@ import 'package:intl/intl.dart';
 import 'package:money_owl/backend/models/account.dart';
 import 'package:money_owl/backend/models/transaction.dart';
 import 'package:money_owl/backend/models/transaction_result.dart';
-import 'package:money_owl/backend/repositories/category_repository.dart';
-import 'package:money_owl/backend/utils/defaults.dart';
+import 'package:money_owl/backend/utils/app_style.dart';
+import 'package:money_owl/front/receipt_scan_screen/cubit/bulk_transactions_cubit.dart';
 import 'package:money_owl/front/transaction_form_screen/transaction_form_screen.dart';
 import 'package:money_owl/front/transaction_form_screen/widgets/account_dropdown.dart';
 
-class BulkAddTransactionsScreen extends StatefulWidget {
+/// Screen for reviewing and adding transactions from a receipt scan.
+/// Allows users to modify, merge, or apply discounts to transactions
+/// before saving them to the app.
+class BulkAddTransactionsScreen extends StatelessWidget {
   final String transactionName;
   final DateTime date;
   final double totalExpensesFromReceipt;
@@ -24,435 +27,509 @@ class BulkAddTransactionsScreen extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  _BulkAddTransactionsScreenState createState() =>
-      _BulkAddTransactionsScreenState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (context) => BulkTransactionsCubit(
+        transactions: transactions,
+        storeName: transactionName,
+        receiptDate: date,
+        receiptTotalAmount: totalExpensesFromReceipt,
+      ),
+      child: const _BulkAddTransactionsView(),
+    );
+  }
 }
 
-class _BulkAddTransactionsScreenState extends State<BulkAddTransactionsScreen> {
-  late double totalExpenses;
-  Account? selectedAccount;
-  String? warningMessage;
-
-  @override
-  void initState() {
-    super.initState();
-    // Add more detailed logging to diagnose transaction objects
-    print('Transaction Name: ${widget.transactionName}');
-    print('Number of Transactions: ${widget.transactions.length}');
-    print(
-        'Transaction types: ${widget.transactions.map((t) => t.runtimeType).toSet()}');
-
-    selectedAccount = Defaults().defaultAccount;
-    if (selectedAccount != null) {
-      _applyAccountToAllTransactions(selectedAccount!);
-    }
-
-    // Process pending category IDs from metadata
-    _applyPendingCategories();
-
-    _applyDateToAllTransactions(widget.date);
-    totalExpenses = _calculateTotalExpenses();
-
-    // Check if totalExpensesFromReceipt matches calculated totalExpenses
-    if (widget.totalExpensesFromReceipt != totalExpenses) {
-      warningMessage =
-          'Check for inconsistencies\nTotal expenses might be: ${widget.totalExpensesFromReceipt.toStringAsFixed(2)}';
-    }
-  }
-
-  double _calculateTotalExpenses() {
-    final totalExpenses = widget.transactions.fold<double>(
-      0.0,
-      (sum, transaction) => sum + transaction.amount,
-    );
-
-    final roundedTotal = double.parse(totalExpenses.toStringAsFixed(2));
-
-    if (roundedTotal != widget.totalExpensesFromReceipt) {
-      warningMessage =
-          'Check for inconsistencies\nTotal expenses might be: ${widget.totalExpensesFromReceipt.toStringAsFixed(2)}';
-    } else {
-      warningMessage = null; // Clear warning if they match
-    }
-    return roundedTotal;
-  }
-
-  void _removeTransaction(int index) {
-    setState(() {
-      widget.transactions.removeAt(index);
-      totalExpenses = _calculateTotalExpenses(); // Recalculate total expenses
-    });
-  }
-
-  void _mergeTransactionsByCategory() {
-    // Group transactions by category
-    final Map<int, double> categoryTotals = {};
-    for (var transaction in widget.transactions) {
-      final category = transaction.category.target;
-      if (category != null) {
-        if (categoryTotals.containsKey(category.id)) {
-          categoryTotals[category.id] =
-              categoryTotals[category.id]! + transaction.amount;
-        } else {
-          categoryTotals[category.id] = transaction.amount;
-        }
-      }
-    }
-
-    // Create a new list of merged transactions
-    final mergedTransactions = categoryTotals.entries.map((entry) {
-      final category = widget.transactions
-          .firstWhere(
-              (transaction) => transaction.category.target?.id == entry.key)
-          .category
-          .target;
-
-      return Transaction(
-        title:
-            '${category?.title} at ${widget.transactionName}', // Optional: Add a prefix to indicate merging
-        category: category,
-        amount: double.parse(entry.value.toStringAsFixed(2)),
-        date: widget.date, // Use the current date or a default date
-      );
-    }).toList();
-
-    // Update the state with the merged transactions
-    setState(() {
-      widget.transactions
-        ..clear()
-        ..addAll(mergedTransactions);
-      totalExpenses = _calculateTotalExpenses(); // Recalculate total expenses
-    });
-
-    print('Transactions merged by category: $mergedTransactions');
-  }
-
-  void _applyAccountToAllTransactions(Account account) {
-    setState(() {
-      for (var transaction in widget.transactions) {
-        transaction.fromAccount.target =
-            account; // Assuming Transaction has an 'account' field
-      }
-    });
-  }
-
-  void _applyDateToAllTransactions(DateTime date) {
-    // Fixed: Update the transactions list with new instances that have the updated date
-    setState(() {
-      for (int i = 0; i < widget.transactions.length; i++) {
-        // Create a new transaction with the updated date and replace the original
-        widget.transactions[i] = widget.transactions[i].copyWith(date: date);
-      }
-    });
-  }
-
-  // Process any pending category IDs stored in transaction metadata
-  void _applyPendingCategories() async {
-    final categoryRepository = context.read<CategoryRepository>();
-    final categories = await categoryRepository.getAll();
-
-    for (int i = 0; i < widget.transactions.length; i++) {
-      final transaction = widget.transactions[i];
-
-      // Check if transaction has pending category metadata
-      if (transaction.metadata != null) {
-        if (transaction.metadata!.containsKey('pendingCategoryId')) {
-          final categoryId = transaction.metadata!['pendingCategoryId'] as int;
-
-          try {
-            // Find the category by ID
-            final category =
-                categories.firstWhere((cat) => cat.id == categoryId);
-            print('Found category for ID $categoryId: ${category.title}');
-
-            // Create a new transaction with the category, since we can't modify ToOne directly
-            widget.transactions[i] = Transaction(
-              id: transaction.id,
-              title: transaction.title,
-              amount: transaction.amount,
-              date: transaction.date,
-              description: transaction.description,
-              category: category,
-              fromAccount: transaction.fromAccount.target,
-              createdAt: transaction.createdAt,
-              updatedAt: transaction.updatedAt,
-            );
-          } catch (e) {
-            print('Error finding category for ID $categoryId: $e');
-            // Use default category as fallback
-            widget.transactions[i] = Transaction(
-              id: transaction.id,
-              title: transaction.title,
-              amount: transaction.amount,
-              date: transaction.date,
-              description: transaction.description,
-              category: Defaults().defaultCategory,
-              fromAccount: transaction.fromAccount.target,
-              createdAt: transaction.createdAt,
-              updatedAt: transaction.updatedAt,
-            );
-          }
-        } else if (transaction.metadata!.containsKey('pendingCategoryName')) {
-          final categoryName =
-              transaction.metadata!['pendingCategoryName'] as String;
-
-          try {
-            // Find the category by name
-            final category = categories.firstWhere(
-                (cat) => cat.title.toLowerCase() == categoryName.toLowerCase());
-            print('Found category for name $categoryName: ${category.title}');
-
-            // Create a new transaction with the category
-            widget.transactions[i] = Transaction(
-              id: transaction.id,
-              title: transaction.title,
-              amount: transaction.amount,
-              date: transaction.date,
-              description: transaction.description,
-              category: category,
-              fromAccount: transaction.fromAccount.target,
-              createdAt: transaction.createdAt,
-              updatedAt: transaction.updatedAt,
-            );
-          } catch (e) {
-            print('Error finding category for name $categoryName: $e');
-            // Use default category as fallback
-            widget.transactions[i] = Transaction(
-              id: transaction.id,
-              title: transaction.title,
-              amount: transaction.amount,
-              date: transaction.date,
-              description: transaction.description,
-              category: Defaults().defaultCategory,
-              fromAccount: transaction.fromAccount.target,
-              createdAt: transaction.createdAt,
-              updatedAt: transaction.updatedAt,
-            );
-          }
-        }
-      }
-    }
-  }
+/// Main view for the BulkAddTransactionsScreen
+/// Separated from the provider to maintain clean architecture
+class _BulkAddTransactionsView extends StatelessWidget {
+  const _BulkAddTransactionsView({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-            '${widget.transactionName} | ${DateFormat("yMMMd").format(widget.date)}'),
+        title: const Text('Review Receipt Items'),
+        elevation: 0,
       ),
       body: Column(
         children: [
-          // Scrollable list of transactions
-          Flexible(
-            child: ListView.builder(
-              itemCount: widget.transactions.length,
-              itemBuilder: (context, index) {
-                final transaction = widget.transactions[index];
-                final category = transaction.category.target;
+          // Receipt Info Card
+          const ReceiptInfoCard(),
 
-                return Dismissible(
-                  key: UniqueKey(),
-                  confirmDismiss: (direction) async {
-                    final result = await showDialog<bool>(
-                      context: context,
-                      builder: (BuildContext context) {
-                        return AlertDialog(
-                          title: const Text('Confirm'),
-                          content:
-                              const Text('Are you sure you want to delete?'),
-                          actions: <Widget>[
-                            TextButton(
-                              onPressed: () => Navigator.of(context).pop(false),
-                              child: const Text('No'),
-                            ),
-                            TextButton(
-                              onPressed: () => Navigator.of(context).pop(true),
-                              child: const Text('Yes'),
-                            ),
-                          ],
-                        );
-                      },
-                    );
+          // Divider
+          const Divider(height: 1),
 
-                    return result ?? false;
-                  },
-                  onDismissed: (direction) {
-                    _removeTransaction(
-                        index); // Remove transaction and recalculate total
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('${transaction.title} deleted.'),
-                      ),
-                    );
-                  },
-                  background: Container(
-                    color: Colors.red,
-                    padding: const EdgeInsets.only(right: 20),
-                    alignment: Alignment.centerRight,
-                    child: const Icon(
-                      Icons.delete,
-                      color: Colors.white,
-                    ),
-                  ),
-                  child: Card(
-                    child: ListTile(
-                      leading: Icon(
-                        category?.icon ?? Icons.category,
-                        color: Color(category?.colorValue ?? 0xFF000000),
-                      ),
-                      title: Text(transaction.title),
-                      subtitle: Text(
-                          'Price: ${transaction.amount.toStringAsFixed(2)}. Category: ${category?.title ?? 'Uncategorized'}'),
-                      trailing: const Icon(Icons.edit),
-                      onTap: () async {
-                        // Navigate to TransactionFormScreen to edit the transaction
-                        final transactionResult =
-                            await Navigator.push<TransactionResult?>(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => TransactionFormScreen(
-                              transaction: transaction,
-                              // index: index,
-                            ),
-                          ),
-                        );
+          // Transaction List Header
+          const TransactionListHeader(),
 
-                        // If a TransactionResult is returned, update the list
-                        if (transactionResult != null) {
-                          setState(() {
-                            widget.transactions[transactionResult.index!] =
-                                transactionResult.transaction;
-                            totalExpenses =
-                                _calculateTotalExpenses(); // Recalculate total
-                          });
-                        }
-                      },
-                    ),
-                  ),
-                );
+          // Transactions List
+          Expanded(
+            child: BlocBuilder<BulkTransactionsCubit, BulkTransactionsState>(
+              buildWhen: (previous, current) =>
+                  previous.transactions != current.transactions,
+              builder: (context, state) {
+                if (state.transactions.isEmpty) {
+                  return const EmptyTransactionsList();
+                } else {
+                  return const TransactionsList();
+                }
               },
             ),
           ),
 
-          // Footer with total expenses and buttons
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Total expenses
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Total Expenses:',
-                      style:
-                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                    Text(
-                      totalExpenses.toStringAsFixed(2),
-                      style: const TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
+          // Bottom Actions Bar
+          const BottomActionsBar(),
+        ],
+      ),
+    );
+  }
+}
 
-                // Warning message
-                if (warningMessage != null)
-                  Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
+/// Widget that displays receipt information and provides controls
+/// to manipulate the transaction date, account, and discount application
+class ReceiptInfoCard extends StatelessWidget {
+  const ReceiptInfoCard({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<BulkTransactionsCubit, BulkTransactionsState>(
+      buildWhen: (previous, current) =>
+          previous.selectedDate != current.selectedDate ||
+          previous.totalExpenses != current.totalExpenses ||
+          previous.warningMessage != current.warningMessage ||
+          previous.selectedAccount != current.selectedAccount ||
+          previous.discountsApplied != current.discountsApplied,
+      builder: (context, state) {
+        return Container(
+          padding: const EdgeInsets.all(AppStyle.paddingMedium),
+          color: AppStyle.cardColor,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Store name
+              Row(
+                children: [
+                  Icon(Icons.store, color: AppStyle.primaryColor),
+                  SizedBox(width: AppStyle.paddingSmall),
+                  Expanded(
+                    child: Text(
+                      state.storeName,
+                      style: AppStyle.titleStyle,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: AppStyle.paddingSmall),
+
+              // Date picker and total info
+              Row(
+                children: [
+                  // Date picker
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => _selectDate(context, state.selectedDate),
                       child: Row(
                         children: [
-                          const Icon(
-                            Icons.warning,
-                            color: Colors.orange,
-                          ),
-                          const SizedBox(width: 8),
+                          Icon(Icons.calendar_today,
+                              size: 16, color: AppStyle.textColorSecondary),
+                          SizedBox(width: AppStyle.paddingSmall),
                           Text(
-                            warningMessage!,
-                            style: const TextStyle(
-                              color: Colors.orange,
-                              fontSize: 14,
-                            ),
+                            DateFormat.yMMMd().format(state.selectedDate),
+                            style: AppStyle.bodyText,
                           ),
                         ],
-                      )),
-
-                const SizedBox(height: 16),
-
-                // Account dropdown
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8.0),
-                  child: AccountDropdown(
-                    selectedAccount: selectedAccount,
-                    onAccountChanged: (account) {
-                      setState(() {
-                        selectedAccount = account;
-                        _applyAccountToAllTransactions(account!);
-                      });
-                    },
+                      ),
+                    ),
                   ),
-                ),
 
-                // Buttons row
+                  // Total amount
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: AppStyle.paddingMedium,
+                      vertical: AppStyle.paddingSmall / 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppStyle.primaryColor.withOpacity(0.1),
+                      borderRadius:
+                          BorderRadius.circular(AppStyle.borderRadiusSmall),
+                    ),
+                    child: Text(
+                      'Total: ${state.totalExpenses.toStringAsFixed(2)}',
+                      style: AppStyle.subtitleStyle.copyWith(
+                        color: AppStyle.primaryColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              // Warning message if totals don't match
+              if (state.warningMessage != null)
                 Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 16.0),
+                  padding: const EdgeInsets.only(top: AppStyle.paddingSmall),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      OutlinedButton.icon(
-                        onPressed: () {
-                          print('Cancelled transactions');
-                          Navigator.of(context).pop();
-                        },
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 24, vertical: 12),
+                      Icon(Icons.warning_amber_rounded,
+                          color: Colors.amber, size: 16),
+                      SizedBox(width: AppStyle.paddingSmall),
+                      Expanded(
+                        child: Text(
+                          state.warningMessage!,
+                          style: AppStyle.captionStyle
+                              .copyWith(color: Colors.amber[800]),
                         ),
-                        icon: const Icon(Icons.close),
-                        label: const Text('Cancel'),
-                      ),
-                      ElevatedButton.icon(
-                        onPressed: _mergeTransactionsByCategory,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 24, vertical: 12),
-                        ),
-                        icon: const Icon(
-                          Icons.merge_type,
-                          color: Colors.white,
-                        ),
-                        label: const Text('Merge',
-                            style: TextStyle(color: Colors.white)),
-                      ),
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          print('Confirmed transactions');
-                          Navigator.of(context).pop(widget.transactions);
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 24, vertical: 12),
-                        ),
-                        icon: const Icon(
-                          Icons.check,
-                          color: Colors.white,
-                        ),
-                        label: const Text('Save',
-                            style: TextStyle(color: Colors.white)),
                       ),
                     ],
                   ),
                 ),
-              ],
+
+              // Account dropdown
+              Padding(
+                padding: const EdgeInsets.only(top: AppStyle.paddingMedium),
+                child: AccountDropdown(
+                  selectedAccount: state.selectedAccount,
+                  onAccountChanged: (account) {
+                    if (account != null) {
+                      context
+                          .read<BulkTransactionsCubit>()
+                          .setSelectedAccount(account);
+                    }
+                  },
+                ),
+              ),
+
+              // Discounts button
+              Padding(
+                padding: const EdgeInsets.only(top: AppStyle.paddingMedium),
+                child: ElevatedButton(
+                  onPressed: () {
+                    if (state.discountsApplied) {
+                      context
+                          .read<BulkTransactionsCubit>()
+                          .restoreOriginalTransactions();
+                    } else {
+                      context.read<BulkTransactionsCubit>().processDiscounts();
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppStyle.primaryColor,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: Text(
+                    state.discountsApplied
+                        ? 'Remove Discounts'
+                        : 'Apply Discounts',
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // Helper method to show date picker
+  Future<void> _selectDate(BuildContext context, DateTime initialDate) async {
+    final DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+
+    if (pickedDate != null && context.mounted) {
+      context.read<BulkTransactionsCubit>().setSelectedDate(pickedDate);
+    }
+  }
+}
+
+/// Header section for the transaction list
+class TransactionListHeader extends StatelessWidget {
+  const TransactionListHeader({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<BulkTransactionsCubit, BulkTransactionsState>(
+      buildWhen: (previous, current) =>
+          previous.transactions.length != current.transactions.length,
+      builder: (context, state) {
+        return Container(
+          padding: const EdgeInsets.all(AppStyle.paddingMedium),
+          color: AppStyle.backgroundColor,
+          child: Row(
+            children: [
+              Text(
+                'Items (${state.transactions.length})',
+                style: AppStyle.subtitleStyle
+                    .copyWith(fontWeight: FontWeight.bold),
+              ),
+              Spacer(),
+              if (state.transactions.length > 1)
+                TextButton.icon(
+                  onPressed: () => context
+                      .read<BulkTransactionsCubit>()
+                      .mergeTransactionsByCategory(),
+                  icon: Icon(Icons.merge_type, size: 16),
+                  label: Text('Merge Similar'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppStyle.primaryColor,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: AppStyle.paddingMedium,
+                      vertical: AppStyle.paddingSmall / 2,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Widget showing an empty state when no transactions are available
+class EmptyTransactionsList extends StatelessWidget {
+  const EmptyTransactionsList({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.receipt_long,
+            size: 64,
+            color: AppStyle.textColorSecondary.withOpacity(0.5),
+          ),
+          SizedBox(height: AppStyle.paddingMedium),
+          Text(
+            'No items found in this receipt',
+            style: AppStyle.bodyText.copyWith(
+              color: AppStyle.textColorSecondary,
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+/// List showing all transactions from the receipt
+/// Modified to read transactions directly from state
+class TransactionsList extends StatelessWidget {
+  const TransactionsList({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<BulkTransactionsCubit, BulkTransactionsState>(
+      buildWhen: (previous, current) =>
+          previous.transactions != current.transactions,
+      builder: (context, state) {
+        return ListView.builder(
+          itemCount: state.transactions.length,
+          padding: EdgeInsets.zero,
+          itemBuilder: (context, index) {
+            return TransactionListItem(
+              transaction: state.transactions[index],
+              index: index,
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+/// Individual transaction list item with edit/delete capabilities
+class TransactionListItem extends StatelessWidget {
+  final Transaction transaction;
+  final int index;
+
+  const TransactionListItem({
+    Key? key,
+    required this.transaction,
+    required this.index,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final category = transaction.category.target;
+
+    return Dismissible(
+      key: ValueKey(transaction.hashCode),
+      background: Container(
+        color: AppStyle.expenseColor,
+        alignment: Alignment.centerRight,
+        padding: EdgeInsets.only(right: AppStyle.paddingLarge),
+        child: Icon(Icons.delete_outline, color: Colors.white),
+      ),
+      direction: DismissDirection.endToStart,
+      confirmDismiss: (_) => _confirmDelete(context),
+      onDismissed: (_) =>
+          context.read<BulkTransactionsCubit>().removeTransaction(index),
+      child: ListTile(
+        leading: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: Color(category?.colorValue ?? 0xFF9E9E9E).withOpacity(0.2),
+            borderRadius: BorderRadius.circular(AppStyle.borderRadiusMedium),
+          ),
+          child: Icon(
+            category?.icon ?? Icons.category,
+            color: Color(category?.colorValue ?? 0xFF9E9E9E),
+            size: 20,
+          ),
+        ),
+        title: Text(
+          transaction.title,
+          style: AppStyle.bodyText,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        subtitle: Text(
+          category?.title ?? 'Uncategorized',
+          style: AppStyle.captionStyle,
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              transaction.amount.toStringAsFixed(2),
+              style: AppStyle.subtitleStyle.copyWith(
+                fontWeight: FontWeight.bold,
+                color: transaction.isIncome
+                    ? AppStyle.incomeColor
+                    : AppStyle.expenseColor,
+              ),
+            ),
+            SizedBox(width: AppStyle.paddingMedium),
+            Icon(Icons.chevron_right, color: AppStyle.textColorSecondary),
+          ],
+        ),
+        onTap: () => _editTransaction(context),
+      ),
+    );
+  }
+
+  Future<bool> _confirmDelete(BuildContext context) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Delete Item?', style: AppStyle.titleStyle),
+        content: Text(
+          'Are you sure you want to remove this item from the receipt?',
+          style: AppStyle.bodyText,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text('Cancel'),
+            style: TextButton.styleFrom(
+                foregroundColor: AppStyle.textColorSecondary),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppStyle.expenseColor,
+              foregroundColor: Colors.white,
+            ),
+            child: Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    return result ?? false;
+  }
+
+  Future<void> _editTransaction(BuildContext context) async {
+    final result = await Navigator.push<TransactionResult>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => TransactionFormScreen(transaction: transaction),
+      ),
+    );
+
+    if (result != null && context.mounted) {
+      context
+          .read<BulkTransactionsCubit>()
+          .updateTransaction(index, result.transaction);
+    }
+  }
+}
+
+/// Bottom action bar with save and cancel buttons
+class BottomActionsBar extends StatelessWidget {
+  const BottomActionsBar({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<BulkTransactionsCubit, BulkTransactionsState>(
+      buildWhen: (previous, current) =>
+          previous.transactions != current.transactions,
+      builder: (context, state) {
+        return Container(
+          padding: EdgeInsets.all(AppStyle.paddingMedium),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 4,
+                offset: Offset(0, -2),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              // Cancel button
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppStyle.textColorSecondary,
+                    side: BorderSide(
+                        color: AppStyle.textColorSecondary.withOpacity(0.3)),
+                    padding:
+                        EdgeInsets.symmetric(vertical: AppStyle.paddingMedium),
+                  ),
+                  child: Text('Cancel'),
+                ),
+              ),
+              SizedBox(width: AppStyle.paddingMedium),
+
+              // Save button
+              Expanded(
+                flex: 2,
+                child: ElevatedButton(
+                  onPressed: state.transactions.isEmpty
+                      ? null
+                      : () {
+                          final processedTransactions =
+                              List<Transaction>.from(state.transactions);
+                          Navigator.pop(context, processedTransactions);
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppStyle.primaryColor,
+                    foregroundColor: Colors.white,
+                    padding:
+                        EdgeInsets.symmetric(vertical: AppStyle.paddingMedium),
+                    disabledBackgroundColor:
+                        AppStyle.primaryColor.withOpacity(0.3),
+                  ),
+                  child: Text('Save Transactions'),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
