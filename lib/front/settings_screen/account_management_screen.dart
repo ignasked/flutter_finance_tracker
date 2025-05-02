@@ -5,14 +5,14 @@ import 'package:money_owl/backend/repositories/account_repository.dart';
 import 'package:money_owl/backend/repositories/transaction_repository.dart';
 import 'package:money_owl/backend/utils/defaults.dart';
 import 'package:money_owl/front/shared/filter_cubit/filter_cubit.dart';
-import 'package:money_owl/front/transactions_screen/cubit/transactions_cubit.dart';
+import 'package:money_owl/front/transactions_screen/cubit/data_management_cubit.dart';
 import 'package:money_owl/front/settings_screen/widgets/account_form_widget.dart';
 import 'package:path/path.dart';
 
 class AccountCubit extends Cubit<List<Account>> {
   final AccountRepository _accRepo;
   final TransactionRepository _txRepo;
-  final TransactionsCubit _txCubit;
+  final DataManagementCubit _txCubit;
 
   AccountCubit(this._accRepo, this._txCubit, this._txRepo) : super([]) {
     loadAccounts();
@@ -76,7 +76,7 @@ class AccountManagementScreen extends StatelessWidget {
     return BlocProvider(
       create: (context) => AccountCubit(
           context.read<AccountRepository>(),
-          context.read<TransactionsCubit>(),
+          context.read<DataManagementCubit>(),
           context.read<TransactionRepository>()),
       child: BlocBuilder<AccountCubit, List<Account>>(
         builder: (context, accounts) {

@@ -11,7 +11,7 @@ import 'package:money_owl/backend/utils/receipt_format.dart';
 import 'package:money_owl/front/common/loading_widget.dart';
 import 'package:money_owl/front/receipt_scan_screen/bulk_add_transactions_screen.dart';
 import 'package:money_owl/front/receipt_scan_screen/receipt_analysis_cubit.dart';
-import 'package:money_owl/front/transactions_screen/cubit/transactions_cubit.dart';
+import 'package:money_owl/front/transactions_screen/cubit/data_management_cubit.dart';
 
 class ReceiptAnalyzerButton extends StatelessWidget {
   final VoidCallback onTap;
@@ -111,7 +111,7 @@ class ReceiptAnalyzerWidget extends StatelessWidget {
     // Add transactions if the user confirmed
     if (addedTransactions != null && addedTransactions.isNotEmpty) {
       // Add to repository through TransactionsCubit
-      context.read<TransactionsCubit>().addTransactions(addedTransactions);
+      context.read<DataManagementCubit>().addTransactions(addedTransactions);
 
       // Show success message
       _showSuccessSnackbar(context, addedTransactions.length);

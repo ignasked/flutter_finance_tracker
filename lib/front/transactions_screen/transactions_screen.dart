@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:money_owl/backend/models/transaction_result.dart';
 import 'package:money_owl/backend/utils/app_style.dart'; // Import AppStyle
 import 'package:money_owl/backend/utils/enums.dart'; // Import enums
-import 'package:money_owl/front/transactions_screen/cubit/transactions_cubit.dart'; // Updated import
+import 'package:money_owl/front/transactions_screen/cubit/data_management_cubit.dart'; // Updated import
 import 'package:money_owl/front/transactions_screen/widgets/date_bar_widget.dart';
 import 'package:money_owl/front/transaction_form_screen/transaction_form_screen.dart';
 import 'package:money_owl/front/transactions_screen/widgets/transaction_list_widget.dart';
@@ -21,7 +21,7 @@ class TransactionsScreen extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.all(
               AppStyle.paddingMedium), // Use AppStyle padding
-          child: BlocBuilder<TransactionsCubit, TransactionsState>(
+          child: BlocBuilder<DataManagementCubit, DataManagementState>(
             // Updated BlocBuilder
             builder: (context, state) {
               // Use a common structure and conditionally show the list or empty message
@@ -138,7 +138,7 @@ class TransactionsScreen extends StatelessWidget {
 
                   if (transactionFormResult != null) {
                     context
-                        .read<TransactionsCubit>()
+                        .read<DataManagementCubit>()
                         .handleTransactionFormResult(transactionFormResult);
                   }
                 },

@@ -6,7 +6,7 @@ import 'package:money_owl/front/transactions_screen/widgets/summary_bar_widget.d
 import 'package:money_owl/front/transactions_screen/widgets/date_bar_widget.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 import 'package:intl/intl.dart';
-import 'package:money_owl/front/transactions_screen/cubit/transactions_cubit.dart';
+import 'package:money_owl/front/transactions_screen/cubit/data_management_cubit.dart';
 import 'cubit/chart_cubit.dart';
 import 'cubit/chart_state.dart';
 
@@ -23,7 +23,7 @@ class StatScreen extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.all(AppStyle.paddingMedium), // Use AppStyle
           // Listen to AccountTransactionCubit for changes in displayedTransactions
-          child: BlocBuilder<TransactionsCubit, TransactionsState>(
+          child: BlocBuilder<DataManagementCubit, DataManagementState>(
             builder: (context, accountTransactionState) {
               // Rebuild ChartCubit whenever displayedTransactions change
               return BlocProvider(
@@ -211,7 +211,7 @@ class StatScreen extends StatelessWidget {
   // Helper to get category color (optional, needs access to categories)
   Color _getColorForCategory(String categoryTitle, BuildContext context) {
     final categories =
-        context.read<TransactionsCubit>().getEnabledCategoriesCache();
+        context.read<DataManagementCubit>().getEnabledCategoriesCache();
     Category category = categories.firstWhere(
       (cat) => cat.title == categoryTitle,
     );

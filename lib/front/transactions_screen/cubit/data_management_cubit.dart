@@ -20,10 +20,9 @@ import 'package:money_owl/front/shared/filter_cubit/filter_state.dart';
 import 'package:money_owl/front/transaction_form_screen/cubit/transaction_form_cubit.dart';
 import 'package:money_owl/main.dart'; // Import FilterState
 
-part 'transactions_state.dart'; // Updated part directive
+part 'data_management_state.dart'; // Updated part directive
 
-class TransactionsCubit extends Cubit<TransactionsState> {
-  // Renamed class
+class DataManagementCubit extends Cubit<DataManagementState> {
   final TransactionRepository _transactionRepository;
   final AccountRepository _accountRepository;
   final CategoryRepository _categoryRepository;
@@ -31,13 +30,13 @@ class TransactionsCubit extends Cubit<TransactionsState> {
   late StreamSubscription<FilterState>
       _filterSubscription; // Listener for filter changes
 
-  TransactionsCubit(
+  DataManagementCubit(
     // Renamed constructor
     this._transactionRepository,
     this._accountRepository,
     this._categoryRepository,
     this._filterCubit, // Accept FilterCubit
-  ) : super(const TransactionsState()) {
+  ) : super(const DataManagementState()) {
     _loadInitialData();
 
     // Listen to filter changes

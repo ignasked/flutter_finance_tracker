@@ -4,13 +4,13 @@ import 'package:money_owl/backend/models/category.dart';
 import 'package:money_owl/backend/repositories/category_repository.dart';
 import 'package:money_owl/backend/repositories/transaction_repository.dart';
 import 'package:money_owl/backend/utils/defaults.dart';
-import 'package:money_owl/front/transactions_screen/cubit/transactions_cubit.dart';
+import 'package:money_owl/front/transactions_screen/cubit/data_management_cubit.dart';
 import 'package:money_owl/front/settings_screen/widgets/category_form_widget.dart';
 import 'package:money_owl/main.dart';
 
 class CategoryCubit extends Cubit<List<Category>> {
   final CategoryRepository _categoryRepository;
-  final TransactionsCubit _transactionsCubit;
+  final DataManagementCubit _transactionsCubit;
 
   CategoryCubit(this._categoryRepository, this._transactionsCubit) : super([]) {
     loadCategories();
@@ -68,7 +68,7 @@ class CategoryManagementScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (context) => CategoryCubit(context.read<CategoryRepository>(),
-          context.read<TransactionsCubit>()),
+          context.read<DataManagementCubit>()),
       child: BlocBuilder<CategoryCubit, List<Category>>(
         builder: (context, categories) {
           return Scaffold(

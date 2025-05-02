@@ -6,7 +6,7 @@ import 'package:money_owl/backend/models/transaction.dart';
 import 'package:money_owl/backend/models/transaction_result.dart';
 // Assuming TransactionRepository is primarily used within the Cubit now
 // import 'package:money_owl/backend/repositories/transaction_repository.dart';
-import 'package:money_owl/front/transactions_screen/cubit/transactions_cubit.dart';
+import 'package:money_owl/front/transactions_screen/cubit/data_management_cubit.dart';
 import 'package:money_owl/front/transaction_form_screen/transaction_form_screen.dart';
 import 'package:money_owl/backend/utils/app_style.dart';
 
@@ -137,7 +137,7 @@ class TransactionListWidget extends StatelessWidget {
   Widget _buildDismissibleItem(
       BuildContext context, Transaction item, Key key) {
     // Get cubit instance once
-    final txCubit = context.read<TransactionsCubit>();
+    final txCubit = context.read<DataManagementCubit>();
 
     return Dismissible(
       key: key, // Use the provided unique key
@@ -221,7 +221,7 @@ class TransactionListWidget extends StatelessWidget {
 
   // --- Build Transaction Tile (Content of Dismissible) ---
   Widget _buildTransactionTile(
-      BuildContext context, Transaction item, TransactionsCubit txCubit) {
+      BuildContext context, Transaction item, DataManagementCubit txCubit) {
     final category = item.category.target;
     // More user-friendly date format for the tile itself
     final dateFormat = DateFormat.Md(Localizations.localeOf(context)
@@ -270,7 +270,7 @@ class TransactionListWidget extends StatelessWidget {
         // Let the Cubit handle the result (which should contain the transaction ID)
         if (transactionFormResult != null && context.mounted) {
           context
-              .read<TransactionsCubit>()
+              .read<DataManagementCubit>()
               .handleTransactionFormResult(transactionFormResult);
         }
       },

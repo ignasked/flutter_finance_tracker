@@ -4,14 +4,14 @@ import 'package:money_owl/backend/utils/app_style.dart';
 import 'package:money_owl/backend/utils/defaults.dart';
 import 'package:money_owl/front/shared/filter_cubit/filter_cubit.dart';
 import 'package:money_owl/front/shared/filter_cubit/filter_state.dart';
-import 'package:money_owl/front/transactions_screen/cubit/transactions_cubit.dart';
+import 'package:money_owl/front/transactions_screen/cubit/data_management_cubit.dart';
 
 class TransactionSummaryDisplay extends StatelessWidget {
   const TransactionSummaryDisplay({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<TransactionsCubit, TransactionsState>(
+    return BlocBuilder<DataManagementCubit, DataManagementState>(
       buildWhen: (prev, curr) => prev.summary != curr.summary,
       builder: (context, state) {
         FilterState filterState = context.read<FilterCubit>().state;

@@ -11,7 +11,7 @@ import 'package:money_owl/front/auth/auth_bloc/auth_bloc.dart'
     as auth_bloc; // Use a prefix for your local auth bloc to avoid name collision
 import 'package:money_owl/front/transaction_form_screen/cubit/transaction_form_cubit.dart';
 import 'package:money_owl/front/transaction_form_screen/transaction_form_screen.dart';
-import 'package:money_owl/front/transactions_screen/cubit/transactions_cubit.dart';
+import 'package:money_owl/front/transactions_screen/cubit/data_management_cubit.dart';
 import 'package:money_owl/front/transactions_screen/widgets/navbar.dart';
 import 'package:money_owl/front/shared/filter_cubit/filter_cubit.dart';
 import 'package:supabase_auth_ui/supabase_auth_ui.dart';
@@ -95,8 +95,8 @@ class MyApp extends StatelessWidget {
           BlocProvider<FilterCubit>(
             create: (context) => FilterCubit(context.read<DateCubit>()),
           ),
-          BlocProvider<TransactionsCubit>(
-            create: (context) => TransactionsCubit(
+          BlocProvider<DataManagementCubit>(
+            create: (context) => DataManagementCubit(
               context.read<TransactionRepository>(),
               context.read<AccountRepository>(),
               context.read<CategoryRepository>(),

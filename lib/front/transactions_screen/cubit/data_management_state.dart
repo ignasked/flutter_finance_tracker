@@ -1,6 +1,6 @@
-part of 'transactions_cubit.dart';
+part of 'data_management_cubit.dart';
 
-class TransactionsState extends Equatable {
+class DataManagementState extends Equatable {
   final LoadingStatus status;
   final List<Transaction> allTransactions; // All transactions for the user
   final List<Account> allAccounts;
@@ -10,7 +10,7 @@ class TransactionsState extends Equatable {
       summary; // Calculated based on displayedTransactions
   final String? errorMessage;
 
-  const TransactionsState({
+  const DataManagementState({
     this.status = LoadingStatus.initial,
     this.allTransactions = const [],
     this.displayedTransactions = const [],
@@ -20,7 +20,7 @@ class TransactionsState extends Equatable {
     this.errorMessage,
   });
 
-  TransactionsState copyWith({
+  DataManagementState copyWith({
     LoadingStatus? status,
     List<Transaction>? allTransactions,
     List<Transaction>? displayedTransactions,
@@ -30,7 +30,7 @@ class TransactionsState extends Equatable {
     String? errorMessage,
     bool clearErrorMessage = false,
   }) {
-    return TransactionsState(
+    return DataManagementState(
       status: status ?? this.status,
       allTransactions: allTransactions ?? this.allTransactions,
       displayedTransactions:

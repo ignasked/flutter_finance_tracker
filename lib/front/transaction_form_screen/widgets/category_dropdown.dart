@@ -6,7 +6,7 @@ import 'package:money_owl/backend/utils/app_style.dart';
 import 'package:money_owl/backend/utils/defaults.dart';
 import 'package:money_owl/front/transaction_form_screen/cubit/transaction_form_cubit.dart';
 import 'package:money_owl/backend/utils/enums.dart';
-import 'package:money_owl/front/transactions_screen/cubit/transactions_cubit.dart';
+import 'package:money_owl/front/transactions_screen/cubit/data_management_cubit.dart';
 
 class CategoryDropdown extends StatefulWidget {
   const CategoryDropdown({Key? key}) : super(key: key);
@@ -42,7 +42,7 @@ class _CategoryDropdownState extends State<CategoryDropdown> {
     // Safely get categories
     try {
       _allCategories =
-          context.read<TransactionsCubit>().getEnabledCategoriesCache();
+          context.read<DataManagementCubit>().getEnabledCategoriesCache();
     } catch (e) {
       // Handle case when TransactionsCubit is not available
       _allCategories = [];
@@ -74,7 +74,7 @@ class _CategoryDropdownState extends State<CategoryDropdown> {
     // Try to get categories safely
     try {
       _allCategories =
-          context.read<TransactionsCubit>().getEnabledCategoriesCache();
+          context.read<DataManagementCubit>().getEnabledCategoriesCache();
     } catch (e) {
       // Fallback if TransactionsCubit is not available
       return const Text('Cannot access categories at this time.',

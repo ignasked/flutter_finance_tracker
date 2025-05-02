@@ -9,7 +9,7 @@ import 'package:money_owl/backend/services/mistral_service.dart';
 import 'package:money_owl/backend/utils/currency_utils.dart';
 import 'package:money_owl/backend/utils/defaults.dart';
 import 'package:money_owl/front/auth/auth_bloc/auth_bloc.dart';
-import 'package:money_owl/front/transactions_screen/cubit/transactions_cubit.dart';
+import 'package:money_owl/front/transactions_screen/cubit/data_management_cubit.dart';
 import 'package:money_owl/front/settings_screen/account_management_screen.dart';
 import 'package:money_owl/front/shared/cubit/importer_cubit.dart';
 import 'package:money_owl/front/settings_screen/category_management_screen.dart';
@@ -128,7 +128,7 @@ class SettingsScreen extends StatelessWidget {
                         builder: (_) => BlocProvider(
                           create: (ctx) => CategoryCubit(
                               ctx.read<CategoryRepository>(),
-                              ctx.read<TransactionsCubit>()),
+                              ctx.read<DataManagementCubit>()),
                           child: const CategoryManagementScreen(),
                         ),
                       ),
@@ -145,7 +145,7 @@ class SettingsScreen extends StatelessWidget {
                         builder: (_) => BlocProvider(
                           create: (ctx) => AccountCubit(
                               ctx.read<AccountRepository>(),
-                              ctx.read<TransactionsCubit>(),
+                              ctx.read<DataManagementCubit>(),
                               ctx.read<TransactionRepository>()),
                           child: const AccountManagementScreen(),
                         ),
@@ -216,7 +216,7 @@ class SettingsScreen extends StatelessWidget {
               ? null
               : () {
                   final transactions = context
-                      .read<TransactionsCubit>()
+                      .read<DataManagementCubit>()
                       .state
                       .displayedTransactions;
                   context
@@ -297,7 +297,7 @@ class SettingsScreen extends StatelessWidget {
           Defaults().defaultCurrencySymbol =
               CurrencyUtils.predefinedCurrencies[value]!;
           Defaults().saveDefaults();
-          context.read<TransactionsCubit>().updateDefaultCurrency();
+          context.read<DataManagementCubit>().updateDefaultCurrency();
         }
       },
       dropdownColor: AppStyle.cardColor,
@@ -313,7 +313,7 @@ class SettingsScreen extends StatelessWidget {
 
     try {
       final transactions =
-          context.read<TransactionsCubit>().state.displayedTransactions;
+          context.read<DataManagementCubit>().state.displayedTransactions;
       final importerCubit = context.read<ImporterCubit>();
       final jsonData = await importerCubit.exportTransactions(transactions);
 
@@ -404,7 +404,7 @@ class SettingsScreen extends StatelessWidget {
   Future<void> _handleImport(BuildContext context) async {
     if (!context.mounted) return;
 
-    final txCubit = context.read<TransactionsCubit>();
+    final txCubit = context.read<DataManagementCubit>();
     final importerCubit = context.read<ImporterCubit>();
     final categoryRepository = context.read<CategoryRepository>();
     final accountRepository = context.read<AccountRepository>();
@@ -439,7 +439,7 @@ class SettingsScreen extends StatelessWidget {
   ) async {
     if (!context.mounted) return;
 
-    final txCubit = context.read<TransactionsCubit>();
+    final txCubit = context.read<DataManagementCubit>();
     final importerCubit = context.read<ImporterCubit>();
     final duplicatesCount = importerCubit.state.duplicates.length;
 
@@ -570,7 +570,7 @@ class SettingsScreen extends StatelessWidget {
       content:
           'This action cannot be undone. Are you sure you want to delete ALL transactions?',
       onConfirm: () {
-        context.read<TransactionsCubit>().deleteAllTransactions();
+        context.read<DataManagementCubit>().deleteAllTransactions();
       },
     );
   }
@@ -589,7 +589,7 @@ class SettingsScreen extends StatelessWidget {
   }
 }
 
-extension TransactionCubitCurrencyUpdate on TransactionsCubit {
+extension TransactionCubitCurrencyUpdate on DataManagementCubit {
   void updateDefaultCurrency() {
     recalculateSummary();
   }

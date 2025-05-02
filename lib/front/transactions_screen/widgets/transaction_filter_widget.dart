@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:money_owl/backend/models/category.dart';
 import 'package:money_owl/backend/utils/app_style.dart';
-import 'package:money_owl/front/transactions_screen/cubit/transactions_cubit.dart'; // Updated import
+import 'package:money_owl/front/transactions_screen/cubit/data_management_cubit.dart'; // Updated import
 import 'package:money_owl/front/shared/filter_cubit/filter_cubit.dart'; // Import FilterCubit
 import 'package:money_owl/front/shared/filter_cubit/filter_state.dart'; // Import FilterState
 
@@ -52,7 +52,7 @@ class _TransactionFilterSheetState extends State<TransactionFilterSheet> {
     // TODO: Refactor - This dependency should be removed.
     // The list of categories should ideally come from CategoryRepository or FilterCubit state.
     final allCategories = context
-        .read<TransactionsCubit>()
+        .read<DataManagementCubit>()
         .state
         .allCategories; // Updated context.read
     final filterCubit = context.read<FilterCubit>(); // Get FilterCubit instance
