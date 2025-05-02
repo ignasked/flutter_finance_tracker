@@ -42,7 +42,7 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
-                android:scheme="owlandroid://com.games_from_garage.money_owl"
+                android:scheme="owlandroid"
                 android:host="com.games_from_garage.money_owl" />
             </intent-filter>
         </activity>

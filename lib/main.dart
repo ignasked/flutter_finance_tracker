@@ -9,8 +9,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:money_owl/backend/services/auth_service.dart'; // Import AuthService
 import 'package:money_owl/front/auth/auth_bloc/auth_bloc.dart'
     as auth_bloc; // Use a prefix for your local auth bloc to avoid name collision
-import 'package:money_owl/front/transaction_form_screen/cubit/transaction_form_cubit.dart';
-import 'package:money_owl/front/transaction_form_screen/transaction_form_screen.dart';
 import 'package:money_owl/front/shared/data_management_cubit/data_management_cubit.dart';
 import 'package:money_owl/front/shared/navbar.dart';
 import 'package:money_owl/front/shared/filter_cubit/filter_cubit.dart';
@@ -133,35 +131,65 @@ class MyApp extends StatelessWidget {
                   appBar: AppBar(title: const Text('Login / Sign Up')),
                   body: Padding(
                     padding: const EdgeInsets.all(16.0),
-                    child: SupaEmailAuth(
-                      onSignInComplete: (response) {
-                        // AuthBloc listener will handle sync
-                        print('Sign in complete');
-                      },
-                      onSignUpComplete: (response) {
-                        // AuthBloc listener will handle sync if auto-confirm is on
-                        // Or show a message if email confirmation is needed
-                        print('Sign up complete');
-                        if (response.session == null && response.user != null) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                  'Please check your email to confirm your account.'),
-                              duration: Duration(seconds: 5),
-                            ),
-                          );
-                        }
-                      },
-                      onError: (error) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                                'Authentication Error: ${error.toString()}'),
-                            backgroundColor:
-                                Theme.of(context).colorScheme.error,
-                          ),
-                        );
-                      },
+                    child: Column(
+                      // Wrap with Column
+                      children: [
+                        SupaEmailAuth(
+                          onSignInComplete: (response) {
+                            // AuthBloc listener will handle sync
+                            print('Sign in complete');
+                          },
+                          onSignUpComplete: (response) {
+                            // AuthBloc listener will handle sync if auto-confirm is on
+                            // Or show a message if email confirmation is needed
+                            print('Sign up complete');
+                            if (response.session == null &&
+                                response.user != null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                      'Please check your email to confirm your account.'),
+                                  duration: Duration(seconds: 5),
+                                ),
+                              );
+                            }
+                          },
+                          onError: (error) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                    'Authentication Error: ${error.toString()}'),
+                                backgroundColor:
+                                    Theme.of(context).colorScheme.error,
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 20), // Add some spacing
+                        SupaSocialsAuth(
+                          socialProviders: const [
+                            OAuthProvider.google,
+                            // Add other providers like OAuthProvider.apple, OAuthProvider.github, etc.
+                          ],
+                          colored: true, // Use colored buttons
+                          redirectUrl:
+                              'owlandroid://com.games_from_garage.money_owl', // Use the correct redirect URL
+                          onSuccess: (Session session) {
+                            // AuthBloc listener will handle sync
+                            print('Social sign in successful');
+                          },
+                          onError: (error) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                    'Social Auth Error: ${error.toString()}'),
+                                backgroundColor:
+                                    Theme.of(context).colorScheme.error,
+                              ),
+                            );
+                          },
+                        ),
+                      ],
                     ),
                   ),
                 );
