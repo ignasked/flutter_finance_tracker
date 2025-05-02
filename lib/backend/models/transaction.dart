@@ -33,6 +33,10 @@ class Transaction extends Equatable {
   // Add userId field
   final String? userId;
 
+  // Add a transient field for metadata (not stored in database)
+  @Transient()
+  Map<String, dynamic>? metadata;
+
   String get amountAndCurrencyString {
     return '${amount.toStringAsFixed(2)} ${fromAccount.target?.currencySymbolOrCurrency ?? ''}';
   }
@@ -54,6 +58,7 @@ class Transaction extends Equatable {
     DateTime? createdAt,
     DateTime? updatedAt,
     this.userId, // Add userId parameter
+    this.metadata, // Add metadata parameter
   })  : this.id = id ?? 0,
         this.createdAt = createdAt ?? DateTime.now(),
         this.updatedAt = updatedAt ?? (createdAt ?? DateTime.now()) {
@@ -82,6 +87,7 @@ class Transaction extends Equatable {
         createdAt,
         updatedAt,
         userId, // Add userId to props
+        metadata, // Add metadata to props
       ];
 
   /// Creates a copy of this transaction with updated fields.
@@ -97,6 +103,7 @@ class Transaction extends Equatable {
     DateTime? createdAt,
     DateTime? updatedAt,
     String? userId, // Add userId parameter
+    Map<String, dynamic>? metadata, // Add metadata parameter
   }) {
     final updatedTransaction = Transaction(
       id: id ?? this.id,
@@ -109,6 +116,7 @@ class Transaction extends Equatable {
       fromAccount: fromAccount, // Pass fromAccount object
       toAccount: toAccount, // Pass toAccount object
       userId: userId ?? this.userId, // Copy userId
+      metadata: metadata ?? this.metadata, // Copy metadata
     );
     updatedTransaction.category.target = category ?? this.category.target;
     updatedTransaction.fromAccount.target =
@@ -155,21 +163,68 @@ class Transaction extends Equatable {
   }
 
   factory Transaction.fromJson(Map<String, dynamic> json) {
-    final transaction = Transaction(
-      id: json['id'] as int,
-      title: json['title'] as String,
-      amount: (json['amount'] as num).toDouble(),
-      description: json['description'] as String?,
-      date: DateTime.parse(json['date'] as String).toLocal(),
-      createdAt: DateTime.parse(json['created_at'] as String).toLocal(),
-      updatedAt: DateTime.parse(json['updated_at'] as String).toLocal(),
-      userId: json['user_id'] as String?, // Read userId from JSON
-    );
-    transaction.fromAccount.targetId = json['from_account_id'] as int?;
-    transaction.category.targetId = json['category_id'] as int?;
-    transaction.toAccount.targetId =
-        json['to_account_id'] as int?; // Read to_account_id
-    return transaction;
+    // Use safer type checking with ?? default values to handle missing or malformed data
+    try {
+      final transaction = Transaction(
+        id: json['id'] is int ? json['id'] : 0,
+        title: json['title'] is String ? json['title'] as String : 'Untitled',
+        amount:
+            json['amount'] is num ? (json['amount'] as num).toDouble() : 0.0,
+        description: json['description'] is String
+            ? json['description'] as String?
+            : null,
+        date: json['date'] is String
+            ? DateTime.tryParse(json['date'] as String)?.toLocal() ??
+                DateTime.now()
+            : DateTime.now(),
+        createdAt: json['created_at'] is String
+            ? DateTime.tryParse(json['created_at'] as String)?.toLocal() ??
+                DateTime.now()
+            : DateTime.now(),
+        updatedAt: json['updated_at'] is String
+            ? DateTime.tryParse(json['updated_at'] as String)?.toLocal() ??
+                DateTime.now()
+            : DateTime.now(),
+        userId: json['user_id'] is String ? json['user_id'] as String : null,
+        metadata: json['metadata'] is Map<String, dynamic>
+            ? json['metadata'] as Map<String, dynamic>
+            : null, // Parse metadata
+      );
+
+      // Safely assign relationship IDs with null checks
+      // Check both standard format (from_account_id) and camelCase format (fromAccountId)
+      if (json['from_account_id'] is int) {
+        transaction.fromAccount.targetId = json['from_account_id'] as int;
+      } else if (json['fromAccountId'] is int) {
+        transaction.fromAccount.targetId = json['fromAccountId'] as int;
+      }
+
+      // Check both snake_case and camelCase formats for category_id
+      if (json['category_id'] is int) {
+        transaction.category.targetId = json['category_id'] as int;
+      } else if (json['categoryId'] is int) {
+        transaction.category.targetId = json['categoryId'] as int;
+      }
+
+      if (json['to_account_id'] is int) {
+        transaction.toAccount.targetId = json['to_account_id'] as int;
+      } else if (json['toAccountId'] is int) {
+        transaction.toAccount.targetId = json['toAccountId'] as int;
+      }
+
+      return transaction;
+    } catch (e) {
+      // Log the error for debugging
+      print('Error parsing transaction JSON: $e');
+      print('Problematic JSON: $json');
+
+      // Return a minimal valid transaction to prevent crashes
+      return Transaction(
+        title: 'Error: Invalid Data',
+        amount: 0,
+        date: DateTime.now(),
+      );
+    }
   }
 
   Map<String, dynamic> toJson() {
@@ -186,6 +241,7 @@ class Transaction extends Equatable {
       'created_at': createdAt.toUtc().toIso8601String(),
       'updated_at': updatedAt.toUtc().toIso8601String(),
       'user_id': userId, // Include userId in JSON
+      'metadata': metadata, // Include metadata in JSON
     };
   }
 }

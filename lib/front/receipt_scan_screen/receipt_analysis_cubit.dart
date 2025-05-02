@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:money_owl/backend/models/category.dart';
 import 'package:money_owl/backend/models/transaction.dart';
 import 'package:money_owl/backend/repositories/category_repository.dart';
 import 'package:money_owl/backend/services/mistral_service.dart';
@@ -22,7 +23,8 @@ class ReceiptAnalysisCubit extends Cubit<ReceiptAnalysisState> {
     emit(ReceiptAnalysisLoading());
 
     try {
-      //final categoryNames = await _categoryRepository.getEnabledCategoryTitles();
+      // final categoryNames =
+      //     await _categoryRepository.getEnabledCategoryTitles();
       final availableCategories =
           await _categoryRepository.getEnabledCategories();
       final categoryNames =
@@ -42,7 +44,7 @@ class ReceiptAnalysisCubit extends Cubit<ReceiptAnalysisState> {
         }
       }
 
-      final receiptData = _validateJSONAndExtractData(receiptJson);
+      final receiptData = await _validateJSONAndExtractData(receiptJson);
       emit(ReceiptAnalysisSuccess(receiptData));
     } catch (e) {
       emit(ReceiptAnalysisError('Error analyzing file: $e'));
@@ -67,13 +69,13 @@ class ReceiptAnalysisCubit extends Cubit<ReceiptAnalysisState> {
         try {
           final category = availableCategories
               .firstWhere((cat) => cat.title == transaction['category']);
-          transaction['categoryId'] = category.id;
+          transaction['category_od'] = category.id;
         } catch (e) {
-          transaction['categoryId'] = Defaults().defaultCategory.id;
+          transaction['category_id'] = Defaults().defaultCategory.id;
         }
       }
 
-      final receiptData = _validateJSONAndExtractData(receiptJson);
+      final receiptData = await _validateJSONAndExtractData(receiptJson);
       emit(ReceiptAnalysisSuccess(receiptData));
     } catch (e) {
       emit(ReceiptAnalysisError('Error analyzing file: $e'));
@@ -104,18 +106,90 @@ class ReceiptAnalysisCubit extends Cubit<ReceiptAnalysisState> {
     return tempFile;
   }
 
-  Map<String, dynamic> _validateJSONAndExtractData(Map<String, dynamic> json) {
-    final transactionName = json['transactionName'] ?? 'Unnamed Transaction';
+  Future<Map<String, dynamic>> _validateJSONAndExtractData(
+      Map<String, dynamic> json) async {
+    // Validate and extract receipt metadata with proper type checking
+    final transactionName = json['transactionName'] is String
+        ? json['transactionName'] as String
+        : 'Unnamed Transaction';
+
     final date = _parseDate(json['date']);
-    final totalAmount = json['totalAmountPaid'] ?? 0.0;
 
-    final transactions = (json['transactions'] as List<dynamic>)
-        .whereType<Map<String, dynamic>>()
-        .map((transaction) => Transaction.fromJson(transaction))
-        .toList();
+    final totalAmount = json['totalAmountPaid'] is num
+        ? (json['totalAmountPaid'] as num).toDouble()
+        : 0.0;
 
-    for (final transaction in transactions) {
-      transaction.copyWith(date: date);
+    // Safely handle transactions list
+    List<Transaction> transactions = [];
+    if (json['transactions'] is List) {
+      final transactionsList = json['transactions'] as List;
+
+      // Debug the transaction items
+      print('Transaction list items count: ${transactionsList.length}');
+
+      // Get all categories for lookup
+      final availableCategories =
+          await _categoryRepository.getEnabledCategories();
+      final defaultCategory = Defaults().defaultCategory;
+
+      for (var item in transactionsList) {
+        try {
+          if (item is Map<String, dynamic>) {
+            final transactionData = item;
+
+            // Find the corresponding category
+            Category categoryToUse = defaultCategory;
+
+            // Try to find by category ID first
+            if (transactionData['category_id'] is int) {
+              final categoryId = transactionData['category_id'] as int;
+              final matchingCategory = availableCategories
+                  .where((cat) => cat.id == categoryId)
+                  .firstOrNull;
+
+              if (matchingCategory != null) {
+                categoryToUse = matchingCategory;
+                print('Found category by ID: ${categoryToUse.title}');
+              }
+            }
+            // Try to find by category name if ID not found
+            else if (transactionData['category'] is String) {
+              final categoryName = transactionData['category'] as String;
+              final matchingCategory = availableCategories
+                  .where((cat) =>
+                      cat.title.toLowerCase() == categoryName.toLowerCase())
+                  .firstOrNull;
+
+              if (matchingCategory != null) {
+                categoryToUse = matchingCategory;
+                print('Found category by name: ${categoryToUse.title}');
+              } else {
+                print(
+                    'Could not find category for: $categoryName - using default');
+              }
+            }
+
+            // Create the transaction with proper category already assigned
+            final transaction = Transaction(
+              title: transactionData['title'] is String
+                  ? transactionData['title'] as String
+                  : 'Unnamed Item',
+              amount: transactionData['amount'] is num
+                  ? (transactionData['amount'] as num).toDouble()
+                  : 0.0,
+              date: date, // Use the receipt date
+              category: categoryToUse,
+            );
+
+            transactions.add(transaction);
+          }
+        } catch (e) {
+          print('Error converting transaction: $e');
+          // Continue with next transaction
+        }
+      }
+
+      print('Valid transactions after conversion: ${transactions.length}');
     }
 
     return {

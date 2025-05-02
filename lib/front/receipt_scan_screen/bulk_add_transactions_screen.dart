@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:money_owl/backend/models/account.dart';
 import 'package:money_owl/backend/models/transaction.dart';
 import 'package:money_owl/backend/models/transaction_result.dart';
+import 'package:money_owl/backend/repositories/category_repository.dart';
 import 'package:money_owl/backend/utils/defaults.dart';
 import 'package:money_owl/front/transaction_form_screen/transaction_form_screen.dart';
 import 'package:money_owl/front/transaction_form_screen/widgets/account_dropdown.dart';
@@ -34,12 +36,20 @@ class _BulkAddTransactionsScreenState extends State<BulkAddTransactionsScreen> {
   @override
   void initState() {
     super.initState();
+    // Add more detailed logging to diagnose transaction objects
     print('Transaction Name: ${widget.transactionName}');
-    print('Transactions: ${widget.transactions}');
+    print('Number of Transactions: ${widget.transactions.length}');
+    print(
+        'Transaction types: ${widget.transactions.map((t) => t.runtimeType).toSet()}');
+
     selectedAccount = Defaults().defaultAccount;
     if (selectedAccount != null) {
       _applyAccountToAllTransactions(selectedAccount!);
     }
+
+    // Process pending category IDs from metadata
+    _applyPendingCategories();
+
     _applyDateToAllTransactions(widget.date);
     totalExpenses = _calculateTotalExpenses();
 
@@ -127,12 +137,101 @@ class _BulkAddTransactionsScreenState extends State<BulkAddTransactionsScreen> {
   }
 
   void _applyDateToAllTransactions(DateTime date) {
+    // Fixed: Update the transactions list with new instances that have the updated date
     setState(() {
-      for (var transaction in widget.transactions) {
-        transaction = transaction.copyWith(
-            date: date); // Assuming Transaction has a 'date' field
+      for (int i = 0; i < widget.transactions.length; i++) {
+        // Create a new transaction with the updated date and replace the original
+        widget.transactions[i] = widget.transactions[i].copyWith(date: date);
       }
     });
+  }
+
+  // Process any pending category IDs stored in transaction metadata
+  void _applyPendingCategories() async {
+    final categoryRepository = context.read<CategoryRepository>();
+    final categories = await categoryRepository.getAll();
+
+    for (int i = 0; i < widget.transactions.length; i++) {
+      final transaction = widget.transactions[i];
+
+      // Check if transaction has pending category metadata
+      if (transaction.metadata != null) {
+        if (transaction.metadata!.containsKey('pendingCategoryId')) {
+          final categoryId = transaction.metadata!['pendingCategoryId'] as int;
+
+          try {
+            // Find the category by ID
+            final category =
+                categories.firstWhere((cat) => cat.id == categoryId);
+            print('Found category for ID $categoryId: ${category.title}');
+
+            // Create a new transaction with the category, since we can't modify ToOne directly
+            widget.transactions[i] = Transaction(
+              id: transaction.id,
+              title: transaction.title,
+              amount: transaction.amount,
+              date: transaction.date,
+              description: transaction.description,
+              category: category,
+              fromAccount: transaction.fromAccount.target,
+              createdAt: transaction.createdAt,
+              updatedAt: transaction.updatedAt,
+            );
+          } catch (e) {
+            print('Error finding category for ID $categoryId: $e');
+            // Use default category as fallback
+            widget.transactions[i] = Transaction(
+              id: transaction.id,
+              title: transaction.title,
+              amount: transaction.amount,
+              date: transaction.date,
+              description: transaction.description,
+              category: Defaults().defaultCategory,
+              fromAccount: transaction.fromAccount.target,
+              createdAt: transaction.createdAt,
+              updatedAt: transaction.updatedAt,
+            );
+          }
+        } else if (transaction.metadata!.containsKey('pendingCategoryName')) {
+          final categoryName =
+              transaction.metadata!['pendingCategoryName'] as String;
+
+          try {
+            // Find the category by name
+            final category = categories.firstWhere(
+                (cat) => cat.title.toLowerCase() == categoryName.toLowerCase());
+            print('Found category for name $categoryName: ${category.title}');
+
+            // Create a new transaction with the category
+            widget.transactions[i] = Transaction(
+              id: transaction.id,
+              title: transaction.title,
+              amount: transaction.amount,
+              date: transaction.date,
+              description: transaction.description,
+              category: category,
+              fromAccount: transaction.fromAccount.target,
+              createdAt: transaction.createdAt,
+              updatedAt: transaction.updatedAt,
+            );
+          } catch (e) {
+            print('Error finding category for name $categoryName: $e');
+            // Use default category as fallback
+            widget.transactions[i] = Transaction(
+              id: transaction.id,
+              title: transaction.title,
+              amount: transaction.amount,
+              date: transaction.date,
+              description: transaction.description,
+              category: Defaults().defaultCategory,
+              fromAccount: transaction.fromAccount.target,
+              createdAt: transaction.createdAt,
+              updatedAt: transaction.updatedAt,
+            );
+          }
+        }
+      }
+    }
   }
 
   @override

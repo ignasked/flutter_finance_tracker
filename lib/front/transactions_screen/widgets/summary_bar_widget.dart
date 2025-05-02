@@ -19,7 +19,7 @@ class SummaryBarWidget extends StatelessWidget {
 
         return Container(
           padding: const EdgeInsets.all(
-              AppStyle.paddingMedium), // Use AppStyle padding
+              AppStyle.paddingSmall), // Use AppStyle padding
           decoration: BoxDecoration(
             color: AppStyle.cardColor, // Use AppStyle card color
             boxShadow: [
@@ -30,7 +30,7 @@ class SummaryBarWidget extends StatelessWidget {
               ),
             ],
             borderRadius: BorderRadius.circular(
-                AppStyle.paddingSmall), // Use AppStyle padding
+                AppStyle.paddingMedium), // Use AppStyle padding
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
@@ -38,12 +38,13 @@ class SummaryBarWidget extends StatelessWidget {
               // Centered Stats Section: Balance, Income, Expenses
               // This still reads from AccountTransactionCubit for the summary values
               const TransactionSummaryDisplay(),
+
               const SizedBox(
-                  height: AppStyle.paddingSmall), // Use AppStyle padding
+                  height: AppStyle.paddingXSmall), // Use AppStyle padding
               const Divider(
                   color: AppStyle.dividerColor), // Use AppStyle divider
               const SizedBox(
-                  height: AppStyle.paddingSmall), // Use AppStyle padding
+                  height: AppStyle.paddingXSmall), // Use AppStyle padding
 
               // Buttons Section: Account Selector and Filter
               Row(
@@ -83,7 +84,10 @@ class SummaryBarWidget extends StatelessWidget {
                             child: Text(
                               selectedAccount?.name ?? 'All Accounts',
                               style: AppStyle.titleStyle.copyWith(
-                                  color: AppStyle.primaryColor), // Use AppStyle
+                                color: selectedAccount != null
+                                    ? Color(selectedAccount.colorValue)
+                                    : AppStyle.primaryColor,
+                              ),
                               overflow:
                                   TextOverflow.ellipsis, // Handle long names
                             ),

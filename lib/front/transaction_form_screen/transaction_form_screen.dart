@@ -540,19 +540,14 @@ extension TransactionFormStateResult on TransactionFormState {
           actionType: ActionType.edit,
           transaction: submittedTransaction!.transaction,
         );
-      } else if (actionType == ActionType.delete //&& originalIndex != null
-          ) {
-        // Ensure submittedTransaction is available or adjust logic if delete clears it
+      } else if (actionType == ActionType.delete) {
         if (submittedTransaction != null) {
           return TransactionResult(
             actionType: ActionType.delete,
             transaction: submittedTransaction!
-                .transaction, // Pass the deleted transaction data if needed
-          ); // Or pass originalIndex if needed by listener
+                .transaction, // Pass the transaction to be deleted
+          );
         } else {
-          // Handle case where transaction data isn't available post-delete
-          // Maybe return just the type and index if that's sufficient
-          // return TransactionResult(actionType: ActionType.delete, index: originalIndex);
           return null; // Or adjust based on what the listener needs
         }
       }

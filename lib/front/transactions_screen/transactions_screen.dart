@@ -77,40 +77,66 @@ class TransactionsScreen extends StatelessWidget {
   void _showBottomSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: AppStyle.backgroundColor, // Use AppStyle background
+      isScrollControlled: true, // Allows sheet to take more height if needed
+      backgroundColor: AppStyle.backgroundColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(
-            top: Radius.circular(
-                AppStyle.paddingMedium)), // Use AppStyle padding
+          top: Radius.circular(
+              AppStyle.borderRadiusLarge), // Slightly larger radius for sheet
+        ),
       ),
       builder: (sheetContext) {
         // Use sheetContext
         return Padding(
-          padding: const EdgeInsets.all(
-              AppStyle.paddingLarge), // Use AppStyle padding
+          // Padding includes space for keyboard if it appears
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
+            left: AppStyle.paddingMedium,
+            right: AppStyle.paddingMedium,
+            top: AppStyle
+                .paddingSmall, // Less top padding needed due to handle/title
+          ),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisSize: MainAxisSize.min, // Take only needed height
             children: [
+              // --- Drag Handle ---
+              Container(
+                width: 40,
+                height: 5,
+                margin: const EdgeInsets.only(bottom: AppStyle.paddingMedium),
+                decoration: BoxDecoration(
+                  color: AppStyle.dividerColor.withOpacity(0.5),
+                  borderRadius:
+                      BorderRadius.circular(AppStyle.borderRadiusSmall),
+                ),
+              ),
+
+              // --- List Tiles ---
               ListTile(
                 leading: const Icon(Icons.add_circle_outline,
-                    color: AppStyle.primaryColor), // Use AppStyle color
+                    color: AppStyle.primaryColor),
                 title: const Text('Add Transaction',
-                    style: AppStyle.titleStyle), // Use AppStyle
+                    style: AppStyle.titleStyle), // Use bodyText for options
+                shape: RoundedRectangleBorder(
+                  // Add shape for tap feedback area
+                  borderRadius:
+                      BorderRadius.circular(AppStyle.borderRadiusMedium),
+                ),
                 onTap: () async {
                   Navigator.pop(sheetContext); // Close the bottom sheet first
                   final TransactionResult? transactionFormResult =
                       await Navigator.push<TransactionResult>(
                     context,
                     MaterialPageRoute(
+                      // Pass the context from the main screen, not sheetContext
                       builder: (context) => const TransactionFormScreen(),
                     ),
                   );
 
+                  // Use the original context here
                   if (!context.mounted) return;
 
                   if (transactionFormResult != null) {
-                    // Always handle the result through the cubit
                     context
                         .read<TransactionsCubit>()
                         .handleTransactionFormResult(transactionFormResult);
@@ -118,37 +144,47 @@ class TransactionsScreen extends StatelessWidget {
                 },
               ),
               const Divider(
-                  color: AppStyle.dividerColor), // Use AppStyle divider
+                color: AppStyle.dividerColor,
+                height: AppStyle.paddingSmall, // Reduce divider height
+                indent: AppStyle.paddingMedium, // Indent divider slightly
+                endIndent: AppStyle.paddingMedium,
+              ),
               ListTile(
                 leading: const Icon(Icons.receipt_long_outlined,
-                    color: AppStyle.primaryColor), // Use AppStyle color
+                    color: AppStyle.primaryColor),
                 title: const Text('Scan Receipt',
-                    style: AppStyle.titleStyle), // Use AppStyle
+                    style: AppStyle.titleStyle), // Use bodyText
+                shape: RoundedRectangleBorder(
+                  borderRadius:
+                      BorderRadius.circular(AppStyle.borderRadiusMedium),
+                ),
                 onTap: () {
                   Navigator.pop(sheetContext); // Close the first bottom sheet
-                  showModalBottomSheet(
-                    context: context,
-                    isScrollControlled: true,
-                    backgroundColor:
-                        AppStyle.backgroundColor, // Use AppStyle background
-                    shape: const RoundedRectangleBorder(
-                      borderRadius: BorderRadius.vertical(
-                          top: Radius.circular(
-                              AppStyle.paddingMedium)), // Use AppStyle padding
-                    ),
-                    builder: (context) {
-                      // Wrap ReceiptAnalyzerWidget for better layout control if needed
-                      return const Padding(
-                        padding: EdgeInsets.all(AppStyle.paddingMedium),
-                        child: ReceiptAnalyzerWidget(),
-                      );
-                    },
-                  );
+                  // Show the second sheet for scanning options
+                  _showReceiptAnalyzerSheet(context); // Use helper function
                 },
               ),
+              const SizedBox(height: AppStyle.paddingMedium), // Bottom padding
             ],
           ),
         );
+      },
+    );
+  }
+
+  // Helper function to show the Receipt Analyzer bottom sheet
+  void _showReceiptAnalyzerSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppStyle.backgroundColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppStyle.borderRadiusLarge),
+        ),
+      ),
+      builder: (analyzerSheetContext) {
+        return const ReceiptAnalyzerWidget(); // Directly use the styled widget
       },
     );
   }

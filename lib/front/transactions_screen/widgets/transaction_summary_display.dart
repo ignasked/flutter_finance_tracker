@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:money_owl/backend/utils/app_style.dart';
 import 'package:money_owl/backend/utils/defaults.dart';
 import 'package:money_owl/front/shared/filter_cubit/filter_cubit.dart';
 import 'package:money_owl/front/shared/filter_cubit/filter_state.dart';
@@ -18,43 +19,115 @@ class TransactionSummaryDisplay extends StatelessWidget {
             filterState.selectedAccount?.currencySymbolOrCurrency ??
                 Defaults().defaultCurrencySymbol;
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Text(
-              '${state.summary.balanceString} ${filterState.selectedAccount?.currencySymbolOrCurrency ?? Defaults().defaultCurrencySymbol}',
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
+        return Padding(
+          // Reduced vertical padding as it's now a single row
+          padding: const EdgeInsets.symmetric(vertical: AppStyle.paddingSmall),
+          child: Row(
+            // Distribute the 3 items evenly across the row
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            crossAxisAlignment:
+                CrossAxisAlignment.center, // Align items vertically center
+            children: [
+              // --- Balance Figure ---
+              // Use Flexible or Expanded if you want them to take up equal width
+              Flexible(
+                child: _buildSummaryFigure(
+                  label: 'Balance',
+                  amountString: state.summary.balanceString,
+                  currencySymbol: currencySymbol,
+                  // Style for balance - maybe slightly more prominent?
+                  style: AppStyle.titleStyle.copyWith(
+                    // Using titleStyle instead of heading2 for compactness
+                    fontWeight: FontWeight.w600, // Make it boldish
+                    color: AppStyle.textColorPrimary,
+                  ),
+                  // Optional: Add an icon for balance
+                  icon: Icons.account_balance_wallet_outlined,
+                  iconColor: AppStyle.primaryColor, // Or textColorSecondary
+                ),
               ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 4),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  '${state.summary.totalIncomeString} ${filterState.selectedAccount?.currencySymbolOrCurrency ?? Defaults().defaultCurrencySymbol}',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.green,
-                  ),
+
+              _buildVerticalDivider(),
+
+              // --- Income Figure ---
+              Flexible(
+                child: _buildSummaryFigure(
+                  label: 'Income',
+                  amountString: state.summary.totalIncomeString,
+                  currencySymbol: currencySymbol,
+                  style: AppStyle.amountIncomeStyle,
+                  icon: Icons.arrow_upward,
+                  iconColor: AppStyle.incomeColor,
                 ),
-                const SizedBox(width: 16),
-                Text(
-                  '${state.summary.totalExpensesString} ${filterState.selectedAccount?.currencySymbolOrCurrency ?? Defaults().defaultCurrencySymbol}',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.red,
-                  ),
+              ),
+
+              _buildVerticalDivider(),
+
+              // --- Expense Figure ---
+              Flexible(
+                child: _buildSummaryFigure(
+                  label: 'Expenses',
+                  amountString: state.summary.totalExpensesString,
+                  currencySymbol: currencySymbol,
+                  style: AppStyle.amountExpenseStyle,
+                  icon: Icons.arrow_downward,
+                  iconColor: AppStyle.expenseColor,
                 ),
-              ],
-            ),
-          ],
+              ),
+            ],
+          ),
         );
       },
+    );
+  }
+
+// Helper widget to build the Income/Expense figures consistently
+  // Helper widget remains the same, builds a Column for label/amount
+  Widget _buildSummaryFigure({
+    required String label,
+    required String amountString,
+    required String currencySymbol,
+    required TextStyle style,
+    required IconData icon,
+    required Color iconColor,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min, // Take minimum vertical space
+      children: [
+        Row(
+          // Icon and Label row
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: iconColor, size: 16),
+            const SizedBox(width: AppStyle.paddingXSmall),
+            Text(
+              label,
+              style: AppStyle.captionStyle,
+            ),
+          ],
+        ),
+        const SizedBox(height: AppStyle.paddingXSmall), // Small gap
+        Text(
+          '$amountString $currencySymbol',
+          style: style,
+          overflow: TextOverflow.ellipsis, // Prevent overflow on small screens
+          maxLines: 1,
+        ),
+      ],
+    );
+  }
+
+  // Helper for the Vertical Divider
+  Widget _buildVerticalDivider() {
+    return SizedBox(
+      height: 35, // Adjust height to visually fit between the text lines
+      child: VerticalDivider(
+        color:
+            AppStyle.dividerColor.withOpacity(0.5), // Make it slightly subtle
+        width: AppStyle.paddingMedium, // Give it some horizontal space
+        thickness: 1,
+      ),
     );
   }
 }
