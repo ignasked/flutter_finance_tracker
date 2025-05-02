@@ -15,21 +15,9 @@ class MistralService {
   static final MistralService instance = MistralService._();
 
   Future<String> provideFinancialAnalysis(String data) async {
-    // final encodedReceipt = await _encodeFileToBase64(receiptFile);
-    // final ocrResultText = await _performOCR(encodedReceipt, receiptFormat);
-
-    // final parsedOcrResult = jsonDecode(ocrResultText);
-    // final extractedPages = parsedOcrResult['pages'] as List;
-    // final markdownTexts =
-    //     extractedPages.map((page) => page['markdown'] as String).join('\n\n');
-
     final llmResponseText = await _askLLMForAnalysis(data);
     final rawContent =
         jsonDecode(llmResponseText)['choices'][0]['message']['content'].trim();
-
-    // final json = _extractJson(rawContent);
-
-    // await saveApiOutput(json);
 
     return rawContent;
   }
@@ -175,14 +163,12 @@ $markdownTexts
 
   // Utility Methods
 
-  // TODO: Remove. Just for testing purposes
   Future<void> saveApiOutput(Map<String, dynamic> data) async {
     final directory = await getApplicationDocumentsDirectory();
     final file = File('${directory.path}/mistral_output.json');
     await file.writeAsString(jsonEncode(data));
   }
 
-  // TODO: Remove. Just for testing purposes
   Future<Map<String, dynamic>?> loadSavedApiOutput() async {
     final directory = await getApplicationDocumentsDirectory();
     final file = File('${directory.path}/mistral_output.json');

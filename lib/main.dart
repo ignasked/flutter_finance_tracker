@@ -11,12 +11,12 @@ import 'package:money_owl/front/auth/auth_bloc/auth_bloc.dart'
     as auth_bloc; // Use a prefix for your local auth bloc to avoid name collision
 import 'package:money_owl/front/transaction_form_screen/cubit/transaction_form_cubit.dart';
 import 'package:money_owl/front/transaction_form_screen/transaction_form_screen.dart';
-import 'package:money_owl/front/transactions_screen/cubit/data_management_cubit.dart';
-import 'package:money_owl/front/transactions_screen/widgets/navbar.dart';
+import 'package:money_owl/front/shared/data_management_cubit/data_management_cubit.dart';
+import 'package:money_owl/front/shared/navbar.dart';
 import 'package:money_owl/front/shared/filter_cubit/filter_cubit.dart';
 import 'package:supabase_auth_ui/supabase_auth_ui.dart';
 import 'backend/services/sync_service.dart';
-import 'front/transactions_screen/cubit/date_cubit.dart';
+import 'front/shared/data_management_cubit/date_cubit.dart';
 import 'config/env.dart';
 
 /// Repository providers

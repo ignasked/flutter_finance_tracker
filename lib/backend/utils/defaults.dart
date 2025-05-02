@@ -53,26 +53,5 @@ class Defaults {
     final prefs = await SharedPreferences.getInstance();
     defaultCurrency = prefs.getString('defaultCurrency') ?? 'USD';
     defaultCurrencySymbol = prefs.getString('defaultCurrencySymbol') ?? '\$';
-    // final defaultAccountName = prefs.getString('defaultAccount');
-    // if (defaultAccountName != null) {
-    //   defaultAccount = Account(
-    //     name: defaultAccountName,
-    //     currency: defaultCurrency,
-    //     iconCodePoint: Icons.account_balance.codePoint,
-    //     colorValue: Colors.blue.value,
-    //     typeValue: 1,
-    //   );
-    // }
-    // final defaultCategoryTitle = prefs.getString('defaultCategory');
-    // if (defaultCategoryTitle != null) {
-    //   defaultCategory = Category(
-    //     title: defaultCategoryTitle,
-    //     descriptionForAI: "Uncategorized transactions",
-    //     iconCodePoint: Icons.category.codePoint,
-    //     colorValue: Colors.grey.value,
-    //     typeValue: 1,
-    //     isEnabled: false,
-    //   );
-    // }
   }
 }

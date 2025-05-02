@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:money_owl/backend/utils/app_style.dart'; // Import AppStyle
-import 'package:money_owl/front/transactions_screen/cubit/date_cubit.dart';
+import 'package:money_owl/front/shared/data_management_cubit/date_cubit.dart';
 
 /// A widget that displays a date bar with navigation buttons and a calendar button.
 /// It allows users to navigate between dates and open a date selection sheet.

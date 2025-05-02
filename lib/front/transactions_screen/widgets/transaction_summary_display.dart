@@ -4,7 +4,7 @@ import 'package:money_owl/backend/utils/app_style.dart';
 import 'package:money_owl/backend/utils/defaults.dart';
 import 'package:money_owl/front/shared/filter_cubit/filter_cubit.dart';
 import 'package:money_owl/front/shared/filter_cubit/filter_state.dart';
-import 'package:money_owl/front/transactions_screen/cubit/data_management_cubit.dart';
+import 'package:money_owl/front/shared/data_management_cubit/data_management_cubit.dart';
 
 class TransactionSummaryDisplay extends StatelessWidget {
   const TransactionSummaryDisplay({Key? key}) : super(key: key);

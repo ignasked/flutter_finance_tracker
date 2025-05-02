@@ -126,43 +126,6 @@ class Transaction extends Equatable {
     return updatedTransaction;
   }
 
-  // static String toCSVHeader() {
-  //   return 'id,title,description,amount,categoryId,categoryName,accountId,accountName,date,createdAt,updatedAt';
-  // }
-
-  // String toCSV() {
-  //   return [
-  //     id,
-  //     title.replaceAll(',', ';'),
-  //     (description ?? '').replaceAll(',', ';'),
-  //     amount,
-  //     category.target?.id ?? '',
-  //     (category.target?.title ?? '').replaceAll(',', ';'),
-  //     fromAccount.target?.id ?? '',
-  //     (fromAccount.target?.name ?? '').replaceAll(',', ';'),
-  //     date.toIso8601String(),
-  //     createdAt.toIso8601String(),
-  //     updatedAt.toIso8601String(),
-  //   ].join(',');
-  // }
-
-  // static Transaction fromCSV(String csv) {
-  //   List<String> fields = csv.split(',');
-  //   if (fields.length < 9) {
-  //     throw Exception('Invalid CSV format for Transaction');
-  //   }
-
-  //   return Transaction(
-  //     id: int.parse(fields[0]),
-  //     title: fields[1].replaceAll(';', ','),
-  //     description: fields[2].isNotEmpty ? fields[2].replaceAll(';', ',') : null,
-  //     amount: double.parse(fields[3]),
-  //     date: DateTime.parse(fields[8]),
-  //     createdAt: fields.length > 9 ? DateTime.tryParse(fields[9]) : null,
-  //     updatedAt: fields.length > 10 ? DateTime.tryParse(fields[10]) : null,
-  //   );
-  // }
-
   factory Transaction.fromJson(Map<String, dynamic> json) {
     // Use safer type checking with ?? default values to handle missing or malformed data
     try {

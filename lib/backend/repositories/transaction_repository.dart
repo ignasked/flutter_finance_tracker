@@ -129,7 +129,7 @@ class TransactionRepository extends BaseRepository<Transaction> {
     return results;
   }
 
-  /// Get transactions based on filters, precisely matching the logic of the in-memory applyFilters.
+  /// Get transactions based on filters
   Future<List<Transaction>> getFiltered(FilterState filters) async {
     // 1. Build the combined condition for properties (Date, Amount, Income/Expense)
     Condition<Transaction>? propertyCondition;

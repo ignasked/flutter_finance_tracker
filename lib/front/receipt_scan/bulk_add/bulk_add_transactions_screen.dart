@@ -5,7 +5,7 @@ import 'package:money_owl/backend/models/account.dart';
 import 'package:money_owl/backend/models/transaction.dart';
 import 'package:money_owl/backend/models/transaction_result.dart';
 import 'package:money_owl/backend/utils/app_style.dart';
-import 'package:money_owl/front/receipt_scan_screen/cubit/bulk_transactions_cubit.dart';
+import 'package:money_owl/front/receipt_scan/bulk_add/cubit/bulk_transactions_cubit.dart';
 import 'package:money_owl/front/transaction_form_screen/cubit/transaction_form_cubit.dart';
 import 'package:money_owl/front/transaction_form_screen/transaction_form_screen.dart';
 import 'package:money_owl/front/transaction_form_screen/widgets/account_dropdown.dart';

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:money_owl/backend/models/category.dart';
 import 'package:money_owl/backend/utils/app_style.dart';
-import 'package:money_owl/front/transactions_screen/cubit/data_management_cubit.dart'; // Updated import
+import 'package:money_owl/front/shared/data_management_cubit/data_management_cubit.dart'; // Updated import
 import 'package:money_owl/front/shared/filter_cubit/filter_cubit.dart'; // Import FilterCubit
 import 'package:money_owl/front/shared/filter_cubit/filter_state.dart'; // Import FilterState
 

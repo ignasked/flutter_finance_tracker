@@ -9,9 +9,9 @@ import 'package:money_owl/backend/services/mistral_service.dart';
 import 'package:money_owl/backend/utils/app_style.dart';
 import 'package:money_owl/backend/utils/receipt_format.dart';
 import 'package:money_owl/front/common/loading_widget.dart';
-import 'package:money_owl/front/receipt_scan_screen/bulk_add_transactions_screen.dart';
-import 'package:money_owl/front/receipt_scan_screen/receipt_analysis_cubit.dart';
-import 'package:money_owl/front/transactions_screen/cubit/data_management_cubit.dart';
+import 'package:money_owl/front/receipt_scan/bulk_add/bulk_add_transactions_screen.dart';
+import 'package:money_owl/front/receipt_scan/receipt_analyzer/cubit/receipt_analysis_cubit.dart';
+import 'package:money_owl/front/shared/data_management_cubit/data_management_cubit.dart';
 
 class ReceiptAnalyzerButton extends StatelessWidget {
   final VoidCallback onTap;

@@ -6,7 +6,7 @@ import 'package:money_owl/backend/models/transaction.dart';
 import 'package:money_owl/backend/models/transaction_result.dart';
 // Assuming TransactionRepository is primarily used within the Cubit now
 // import 'package:money_owl/backend/repositories/transaction_repository.dart';
-import 'package:money_owl/front/transactions_screen/cubit/data_management_cubit.dart';
+import 'package:money_owl/front/shared/data_management_cubit/data_management_cubit.dart';
 import 'package:money_owl/front/transaction_form_screen/transaction_form_screen.dart';
 import 'package:money_owl/backend/utils/app_style.dart';
 

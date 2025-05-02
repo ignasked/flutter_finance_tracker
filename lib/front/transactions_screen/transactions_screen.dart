@@ -3,12 +3,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:money_owl/backend/models/transaction_result.dart';
 import 'package:money_owl/backend/utils/app_style.dart'; // Import AppStyle
 import 'package:money_owl/backend/utils/enums.dart'; // Import enums
-import 'package:money_owl/front/transactions_screen/cubit/data_management_cubit.dart'; // Updated import
+import 'package:money_owl/front/shared/data_management_cubit/data_management_cubit.dart'; // Updated import
 import 'package:money_owl/front/transactions_screen/widgets/date_bar_widget.dart';
 import 'package:money_owl/front/transaction_form_screen/transaction_form_screen.dart';
 import 'package:money_owl/front/transactions_screen/widgets/transaction_list_widget.dart';
 import 'package:money_owl/front/transactions_screen/widgets/summary_bar_widget.dart';
-import 'package:money_owl/front/receipt_scan_screen/receipt_analyzer_widget.dart';
+import 'package:money_owl/front/receipt_scan/receipt_analyzer/receipt_analyzer_widget.dart';
 
 class TransactionsScreen extends StatelessWidget {
   const TransactionsScreen({Key? key}) : super(key: key);

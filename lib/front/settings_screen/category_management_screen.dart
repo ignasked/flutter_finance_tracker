@@ -4,7 +4,7 @@ import 'package:money_owl/backend/models/category.dart';
 import 'package:money_owl/backend/repositories/category_repository.dart';
 import 'package:money_owl/backend/repositories/transaction_repository.dart';
 import 'package:money_owl/backend/utils/defaults.dart';
-import 'package:money_owl/front/transactions_screen/cubit/data_management_cubit.dart';
+import 'package:money_owl/front/shared/data_management_cubit/data_management_cubit.dart';
 import 'package:money_owl/front/settings_screen/widgets/category_form_widget.dart';
 import 'package:money_owl/main.dart';
 

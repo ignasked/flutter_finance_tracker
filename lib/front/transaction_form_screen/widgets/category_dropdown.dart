@@ -6,7 +6,7 @@ import 'package:money_owl/backend/utils/app_style.dart';
 import 'package:money_owl/backend/utils/defaults.dart';
 import 'package:money_owl/front/transaction_form_screen/cubit/transaction_form_cubit.dart';
 import 'package:money_owl/backend/utils/enums.dart';
-import 'package:money_owl/front/transactions_screen/cubit/data_management_cubit.dart';
+import 'package:money_owl/front/shared/data_management_cubit/data_management_cubit.dart';
 
 class CategoryDropdown extends StatefulWidget {
   const CategoryDropdown({Key? key}) : super(key: key);

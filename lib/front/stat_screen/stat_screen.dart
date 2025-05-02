@@ -6,7 +6,7 @@ import 'package:money_owl/front/transactions_screen/widgets/summary_bar_widget.d
 import 'package:money_owl/front/transactions_screen/widgets/date_bar_widget.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 import 'package:intl/intl.dart';
-import 'package:money_owl/front/transactions_screen/cubit/data_management_cubit.dart';
+import 'package:money_owl/front/shared/data_management_cubit/data_management_cubit.dart';
 import 'cubit/chart_cubit.dart';
 import 'cubit/chart_state.dart';
 
