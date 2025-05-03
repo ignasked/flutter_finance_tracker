@@ -86,12 +86,10 @@ class SettingsScreen extends StatelessWidget {
                 _buildSectionHeader('Data Management'),
                 _buildExportButton(),
                 const SizedBox(height: AppStyle.paddingSmall),
-                _buildDeleteAllTransactionsButton(context),
-                const SizedBox(height: AppStyle.paddingSmall),
-                _buildDeleteAllCategoriesButton(context),
+                _buildDeleteAllDataButton(context),
                 const SizedBox(height: AppStyle.paddingSmall),
                 _buildImportButton(),
-                const SizedBox(height: AppStyle.paddingSmall),
+                const SizedBox(height: AppStyle.paddingMedium),
                 const Divider(
                     height: AppStyle.paddingMedium,
                     color: AppStyle.dividerColor),
@@ -281,21 +279,13 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildDeleteAllTransactionsButton(BuildContext context) {
+  Widget _buildDeleteAllDataButton(BuildContext context) {
     return ElevatedButton.icon(
-      onPressed: () => _showDeleteAllTransactionsConfirmation(context),
+      onPressed: () => _showDeleteAllDataConfirmation(context),
       style: AppStyle.dangerButtonStyle,
-      icon: const Icon(Icons.delete_forever, color: ColorPalette.onPrimary),
-      label: const Text("Delete All Transactions"),
-    );
-  }
-
-  Widget _buildDeleteAllCategoriesButton(BuildContext context) {
-    return ElevatedButton.icon(
-      onPressed: () => _showDeleteAllCategoriesConfirmation(context),
-      style: AppStyle.dangerButtonStyle,
-      icon: const Icon(Icons.delete_sweep, color: ColorPalette.onPrimary),
-      label: const Text("Delete All Categories"),
+      icon: const Icon(Icons.delete_forever_outlined,
+          color: ColorPalette.onPrimary),
+      label: const Text("Delete All My Data"),
     );
   }
 
@@ -449,8 +439,6 @@ class SettingsScreen extends StatelessWidget {
     final txCubit = context.read<DataManagementCubit>();
     final importerCubit = context.read<ImporterCubit>();
     final txRepo = context.read<TransactionRepository>();
-    // final categoryRepository = context.read<CategoryRepository>();
-    // final accountRepository = context.read<AccountRepository>();
 
     final existingTransactions = txCubit.state.filteredTransactions;
 
@@ -471,8 +459,7 @@ class SettingsScreen extends StatelessWidget {
       await _showDuplicatesDialog(
           context, availableCategories, availableAccounts);
     } else if (newTransactions != null && newTransactions.isNotEmpty) {
-      await txRepo.putMany(newTransactions);
-      await txCubit.refreshData();
+      await txCubit.addTransactions(newTransactions);
     }
   }
 
@@ -608,28 +595,52 @@ class SettingsScreen extends StatelessWidget {
     }
   }
 
-  Future<void> _showDeleteAllTransactionsConfirmation(
-      BuildContext context) async {
+  Future<void> _showDeleteAllDataConfirmation(BuildContext context) async {
     await _showDeleteConfirmationDialog(
       context: context,
-      title: 'Delete All Transactions?',
+      title: 'Delete All Your Data?',
       content:
-          'This action cannot be undone. Are you sure you want to delete ALL transactions?',
-      onConfirm: () {
-        context.read<DataManagementCubit>().deleteAllTransactions();
-      },
-    );
-  }
+          'This action cannot be undone and will delete all your transactions, custom categories, and accounts. Are you sure?',
+      onConfirm: () async {
+        if (!context.mounted) return;
+        showLoadingPopup(context, message: 'Deleting data...');
 
-  Future<void> _showDeleteAllCategoriesConfirmation(
-      BuildContext context) async {
-    await _showDeleteConfirmationDialog(
-      context: context,
-      title: 'Delete All Categories?',
-      content:
-          'This action cannot be undone. Are you sure you want to delete ALL categories? Default categories will be recreated.',
-      onConfirm: () {
-        context.read<CategoryRepository>().removeAllForCurrentUser();
+        try {
+          final txRepo = context.read<TransactionRepository>();
+          final catRepo = context.read<CategoryRepository>();
+          final accRepo = context.read<AccountRepository>();
+          final dataCubit = context.read<DataManagementCubit>();
+
+          await txRepo.removeAllForCurrentUser();
+
+          await {
+            catRepo.removeAllForCurrentUser(),
+            accRepo.removeAllForCurrentUser()
+          };
+
+          await {
+            catRepo.init(),
+            accRepo.init(),
+          };
+
+          await dataCubit.refreshData();
+
+          if (context.mounted) {
+            hideLoadingPopup(context);
+          }
+        } catch (e) {
+          if (context.mounted) {
+            hideLoadingPopup(context);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Error deleting data: $e',
+                    style: AppStyle.bodyText
+                        .copyWith(color: ColorPalette.onError)),
+                backgroundColor: ColorPalette.errorContainer,
+              ),
+            );
+          }
+        }
       },
     );
   }

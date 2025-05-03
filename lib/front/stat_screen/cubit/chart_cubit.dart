@@ -21,12 +21,14 @@ class ChartCubit extends Cubit<ChartState> {
       final category =
           transaction.category.target; // Access the related Category
       if (category != null) {
+        // --- CORRECTED CATEGORY TOTAL CALCULATION ---
+        // Simply add the transaction amount (positive for income, negative for expense)
         categoryTotals.update(
           category.title,
-          (value) =>
-              value + (transaction.amount * (transaction.isIncome ? 1 : -1)),
-          ifAbsent: () => transaction.amount * (transaction.isIncome ? 1 : -1),
+          (value) => value + transaction.amount,
+          ifAbsent: () => transaction.amount,
         );
+        // --- END CORRECTION ---
       }
     }
 
@@ -49,8 +51,12 @@ class ChartCubit extends Cubit<ChartState> {
         transaction.date.day,
       );
 
-      balance +=
-          transaction.isIncome ? transaction.amount : -transaction.amount;
+      // --- CORRECTED BALANCE CALCULATION ---
+      // Amount is positive for income, negative for expense.
+      // Simply add the amount to the running balance.
+      balance += transaction.amount;
+      // --- END CORRECTION ---
+
       dateTotals[date] = balance;
     }
 

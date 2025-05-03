@@ -321,40 +321,53 @@ class AccountRepository extends BaseRepository<Account> {
     }
   }
 
-  /// Soft removes all accounts for the current user.
+  /// Soft deletes all accounts for the currently logged-in user.
+  /// If no user is logged in, soft deletes accounts with a null userId.
   Future<int> removeAllForCurrentUser() async {
     final currentUserId = _authService.currentUser?.id;
-    if (currentUserId == null) {
+
+    // Define the base condition based on user authentication state
+    final Condition<Account> userCondition = currentUserId != null
+        ? Account_.userId.equals(currentUserId)
+        : Account_.userId.isNull();
+
+    // Define common conditions
+    final Condition<Account> notDeletedCondition = Account_.deletedAt.isNull();
+    final Condition<Account> notDefaultCondition =
+        Account_.id.notEquals(Defaults().defaultAccount.id);
+
+    // Combine all conditions using the '&' operator
+    final Condition<Account> finalCondition =
+        userCondition & notDeletedCondition & notDefaultCondition;
+
+    // Build the query with the combined condition
+    final query = box.query(finalCondition).build(); // Build the Query object
+
+    final accountsToDelete = await query.findAsync(); // Find using the Query
+    query.close(); // Close the Query object after finding
+
+    if (accountsToDelete.isEmpty) {
       print(
-          "Warn: Attempted to remove all accounts for current user, but no user is logged in.");
-      return 0;
-    }
-    // Fetch non-deleted items first
-    final query = box
-        .query(
-            Account_.userId.equals(currentUserId).and(_notDeletedCondition()))
-        .build();
-    final itemsToRemove = await query.findAsync();
-    query.close();
-
-    if (itemsToRemove.isEmpty) {
-      print("No active accounts found for user $currentUserId to soft remove.");
+          "No accounts found to delete for user: ${currentUserId ?? 'unauthenticated'}");
       return 0;
     }
 
+    // Iterates and calls remove(id) which performs soft delete
     int successCount = 0;
     int skippedCount = 0;
-    for (final item in itemsToRemove) {
-      if (await remove(item.id)) {
+    for (final account in accountsToDelete) {
+      if (await remove(account.id)) {
+        // remove calls super.softRemove
         successCount++;
       } else {
         skippedCount++;
       }
     }
-    print("Soft removed $successCount accounts for user $currentUserId." +
-        (skippedCount > 0
-            ? " Skipped $skippedCount due to active transactions."
-            : ""));
+    print(
+        "Soft removed $successCount accounts for user: ${currentUserId ?? 'unauthenticated'}." +
+            (skippedCount > 0
+                ? " Skipped $skippedCount due to active transactions."
+                : ""));
     return successCount;
   }
 

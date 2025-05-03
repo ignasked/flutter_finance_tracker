@@ -532,41 +532,44 @@ class CategoryRepository extends BaseRepository<Category> {
     }
   }
 
-  /// Soft removes all categories for the current user.
-  /// Skips categories that are currently in use by active transactions.
+  /// Soft deletes all categories for the currently logged-in user.
+  /// If no user is logged in, soft deletes categories with a null userId.
   Future<int> removeAllForCurrentUser() async {
     final currentUserId = _authService.currentUser?.id;
-    if (currentUserId == null) {
-      print(
-          "Warn: Attempted to remove all categories for current user, but no user is logged in.");
-      return 0;
-    }
-    final query = box
-        .query(
-            Category_.userId.equals(currentUserId).and(_notDeletedCondition()))
-        .build();
-    final itemsToRemove = await query.findAsync();
-    query.close();
 
-    if (itemsToRemove.isEmpty) {
+    // If user is logged in, target their ID. If not logged in, target null userId.
+    final queryBuilder = currentUserId != null
+        ? box.query(Category_.userId.equals(currentUserId) &
+            Category_.deletedAt.isNull() &
+            Category_.id
+                .notEquals(Defaults().defaultCategory.id)) // Exclude default
+        : box.query(Category_.userId
+                .isNull() & // <-- Target null userId if not logged in
+            Category_.deletedAt.isNull() &
+            Category_.id
+                .notEquals(Defaults().defaultCategory.id)); // Exclude default
+
+    final categoriesToDelete = await queryBuilder.build().findAsync();
+    if (categoriesToDelete.isEmpty) {
       print(
-          "No active categories found for user $currentUserId to soft remove.");
+          "No categories found to delete for user: ${currentUserId ?? 'unauthenticated'}");
       return 0;
     }
 
     int successCount = 0;
     int skippedCount = 0;
-    for (final item in itemsToRemove) {
+    for (final item in categoriesToDelete) {
       if (await remove(item.id)) {
         successCount++;
       } else {
         skippedCount++;
       }
     }
-    print("Soft removed $successCount categories for user $currentUserId." +
-        (skippedCount > 0
-            ? " Skipped $skippedCount due to active transactions."
-            : ""));
+    print(
+        "Soft removed $successCount categories for user ${currentUserId ?? 'unauthenticated'}." +
+            (skippedCount > 0
+                ? " Skipped $skippedCount due to active transactions."
+                : ""));
     return successCount;
   }
 

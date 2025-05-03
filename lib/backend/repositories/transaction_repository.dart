@@ -226,37 +226,38 @@ class TransactionRepository extends BaseRepository<Transaction> {
     }
   }
 
-  /// Soft removes all transactions for the current user.
+  /// Soft deletes all transactions for the currently logged-in user.
+  /// If no user is logged in, soft deletes transactions with a null userId.
   Future<int> removeAllForCurrentUser() async {
     final currentUserId = _authService.currentUser?.id;
-    if (currentUserId == null) {
-      print(
-          "Warn: Attempted to remove all transactions for current user, but no user is logged in.");
-      return 0;
-    }
-    final query = box
-        .query(Transaction_.userId
-            .equals(currentUserId)
-            .and(_notDeletedCondition()))
-        .build();
-    final itemsToRemove = await query.findAsync();
-    query.close();
 
-    if (itemsToRemove.isEmpty) {
+    // If user is logged in, target their ID. If not logged in, target null userId.
+    final queryBuilder = currentUserId != null
+        ? box.query(Transaction_.userId.equals(currentUserId) &
+            Transaction_.deletedAt
+                .isNull()) // Existing condition for logged-in user
+        : box.query(Transaction_.userId.isNull() &
+            Transaction_.deletedAt.isNull()); // Condition for logged-out user
+
+    final transactionsToDelete = await queryBuilder.build().findAsync();
+    if (transactionsToDelete.isEmpty) {
       print(
-          "No active transactions found for user $currentUserId to soft remove.");
+          "No transactions found to delete for user: ${currentUserId ?? 'unauthenticated'}");
       return 0;
     }
 
-    final idsToRemove = itemsToRemove.map((e) => e.id).toList();
-    int successCount = 0;
-    for (final id in idsToRemove) {
-      if (await softRemove(id)) {
-        successCount++;
-      }
-    }
-    print("Soft removed $successCount transactions for user $currentUserId.");
-    return successCount;
+    final now = DateTime.now();
+    // Create new instances with deletedAt set
+    final List<Transaction> updatedTransactions = transactionsToDelete
+        .map((transaction) => transaction.copyWith(deletedAt: now))
+        .toList();
+
+    // Save the updated instances, replacing the old ones
+    await box.putManyAsync(updatedTransactions);
+
+    print(
+        "Soft deleted ${updatedTransactions.length} transactions for user: ${currentUserId ?? 'unauthenticated'}");
+    return updatedTransactions.length;
   }
 
   /// Override removeAll from BaseRepository.
