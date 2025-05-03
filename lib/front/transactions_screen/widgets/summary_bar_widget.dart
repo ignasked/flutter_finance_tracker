@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:money_owl/backend/repositories/account_repository.dart';
 import 'package:money_owl/backend/utils/app_style.dart'; // Import AppStyle
+import 'package:money_owl/front/shared/data_management_cubit/data_management_cubit.dart';
 import 'package:money_owl/front/transactions_screen/widgets/transaction_filter_widget.dart';
 import 'package:money_owl/front/transactions_screen/widgets/transaction_summary_display.dart';
 import 'package:money_owl/front/shared/filter_cubit/filter_cubit.dart'; // Import FilterCubit
@@ -116,7 +117,8 @@ class SummaryBarWidget extends StatelessWidget {
   void _showAccountSelectionDialog(BuildContext context) async {
     // Read FilterCubit and AccountTransactionCubit
     final filterCubit = context.read<FilterCubit>();
-    final accounts = await context.read<AccountRepository>().getAllEnabled();
+    final accounts =
+        context.read<DataManagementCubit>().getEnabledAccountsCache();
 
     showDialog(
       context: context,

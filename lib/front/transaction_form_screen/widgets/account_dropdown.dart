@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:money_owl/backend/models/account.dart';
 import 'package:money_owl/backend/repositories/account_repository.dart';
-import 'package:money_owl/backend/utils/app_style.dart'; // Import AppStyle
+import 'package:money_owl/backend/utils/app_style.dart';
+import 'package:money_owl/front/shared/data_management_cubit/data_management_cubit.dart'; // Import AppStyle
 
 class AccountDropdown extends StatelessWidget {
   final Account? selectedAccount;
@@ -18,7 +19,8 @@ class AccountDropdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<Account>>(
-      future: Future.value(context.read<AccountRepository>().getAllEnabled()),
+      future: Future.value(
+          context.read<DataManagementCubit>().getEnabledAccountsCache()),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());

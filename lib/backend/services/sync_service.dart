@@ -120,10 +120,6 @@ class SyncService {
           if (localItem == null) {
             // Doesn't exist locally, insert it
             print('Sync Down: Inserting $tableName item ${remoteItem.id}');
-            // Ensure createdAt is set correctly if coming from Supabase
-            remoteItem.createdAt =
-                remoteItem.createdAt.toLocal(); // Adjust if needed
-            remoteItem.updatedAt = remoteItem.updatedAt.toLocal();
             await repository.put(remoteItem, syncSource: SyncSource.supabase);
           } else {
             // Compare UTC timestamps for accuracy
@@ -133,13 +129,24 @@ class SyncService {
             // Use a small tolerance to account for potential clock skew or precision differences
             const tolerance = Duration(seconds: 1);
             if (remoteUpdatedAtUTC.isAfter(localUpdatedAtUTC.add(tolerance))) {
-              // Remote is significantly newer, update local
+              // Remote is significantly newer, update local using copyWith
               print(
                   'Sync Down: Updating $tableName item ${remoteItem.id} (Remote: $remoteUpdatedAtUTC > Local: $localUpdatedAtUTC)');
-              remoteItem.createdAt =
-                  localItem.createdAt; // Keep original creation time
-              remoteItem.updatedAt = remoteItem.updatedAt.toLocal();
-              await repository.put(remoteItem, syncSource: SyncSource.supabase);
+
+              // Create a new instance using copyWith, preserving local createdAt
+              // and applying remote updatedAt (converted to local).
+              // Also pass relationship IDs from the remote item.
+              final itemToSave = remoteItem.copyWith(
+                createdAt: localItem.createdAt, // Keep original creation time
+                updatedAt: remoteItem.updatedAt
+                    .toLocal(), // Use remote update time (local TZ)
+                // Pass relationship IDs explicitly to copyWith
+                categoryId: remoteItem.category.targetId,
+                fromAccountId: remoteItem.fromAccount.targetId,
+                toAccountId: remoteItem.toAccount.targetId,
+              );
+
+              await repository.put(itemToSave, syncSource: SyncSource.supabase);
             } else {
               // print('Sync Down: Skipping $tableName item ${remoteItem.id} (Local is same or newer)');
             }

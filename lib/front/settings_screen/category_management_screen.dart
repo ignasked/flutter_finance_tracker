@@ -53,10 +53,9 @@ class CategoryCubit extends Cubit<List<Category>> {
   }
 
   Future<bool> isTransactionRemovable(
-      Category category, TransactionRepository txRepo) async {
+      Category category, DataManagementCubit cubit) async {
     // Check if the category has related transactions
-    return await txRepo.hasTransactionsForCategory(category.id) ||
-        category.id == 13;
+    return cubit.hasTransactionsForCategory(category.id) || category.id == 13;
   }
 }
 
@@ -107,8 +106,8 @@ class CategoryManagementScreen extends StatelessWidget {
                       FutureBuilder<bool>(
                         future: context
                             .read<CategoryCubit>()
-                            .isTransactionRemovable(category,
-                                context.read<TransactionRepository>()),
+                            .isTransactionRemovable(
+                                category, context.read<DataManagementCubit>()),
                         builder: (context, snapshot) {
                           // If future not complete, show disabled button with loading indicator
                           if (snapshot.connectionState ==

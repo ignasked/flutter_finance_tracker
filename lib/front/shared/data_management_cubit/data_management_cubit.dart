@@ -45,6 +45,10 @@ class DataManagementCubit extends Cubit<DataManagementState> {
     });
   }
 
+  Future<void> refreshData() async {
+    _loadInitialData();
+  }
+
   Future<void> _loadInitialData() async {
     emit(state.copyWith(status: LoadingStatus.loading));
     try {
@@ -69,6 +73,10 @@ class DataManagementCubit extends Cubit<DataManagementState> {
 
   List<Category> getEnabledCategoriesCache() {
     return state.allCategories.where((category) => category.isEnabled).toList();
+  }
+
+  List<Account> getEnabledAccountsCache() {
+    return state.allAccounts.where((acc) => acc.isEnabled).toList();
   }
 
   // Future _applyFiltersQuery(FilterState filterState) async {
@@ -305,6 +313,19 @@ class DataManagementCubit extends Cubit<DataManagementState> {
         await deleteTransaction(result.transaction.id);
         break;
     }
+  }
+
+  bool hasTransactionsForCategory(int categoryId) {
+    final transactions = state.allTransactions;
+    return transactions
+        .any((transaction) => transaction.category.targetId == categoryId);
+  }
+
+  // check if any transactions are associated with the account
+  bool hasTransactionsForAccount(int accountId) {
+    final transactions = state.allTransactions;
+    return transactions
+        .any((transaction) => transaction.fromAccount.targetId == accountId);
   }
 
   @override

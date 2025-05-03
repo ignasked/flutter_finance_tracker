@@ -61,8 +61,7 @@ class AccountCubit extends Cubit<List<Account>> {
 
   Future<bool> isAccountRemovable(Account account) async {
     // Check if the account has related transactions
-    return await _txRepo.hasTransactionsForAccount(account.id) ||
-        account.id == 2;
+    return _txCubit.hasTransactionsForAccount(account.id) || account.id == 2;
   }
 }
 

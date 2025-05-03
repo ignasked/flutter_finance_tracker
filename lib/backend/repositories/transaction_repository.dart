@@ -1,271 +1,372 @@
+import 'package:money_owl/backend/models/account.dart';
+import 'package:money_owl/backend/models/category.dart';
 import 'package:money_owl/backend/repositories/base_repository.dart';
-import 'package:money_owl/backend/services/auth_service.dart'; // Import AuthService
-import 'package:money_owl/front/shared/filter_cubit/filter_state.dart';
 import 'package:money_owl/backend/models/transaction.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-
-import '../../objectbox.g.dart'; // Adjust path as necessary
+import 'package:money_owl/backend/services/auth_service.dart';
+import 'package:money_owl/front/shared/filter_cubit/filter_state.dart';
+import 'package:money_owl/objectbox.g.dart';
 import 'package:objectbox/objectbox.dart';
 import 'package:money_owl/backend/services/sync_service.dart'; // Import SyncSource
 
 class TransactionRepository extends BaseRepository<Transaction> {
-  // No need for _supabaseClient here if SyncService handles Supabase interactions
-  final SupabaseClient _authService; // Add AuthService
+  final AuthService _authService;
 
-  // Inject AuthService
   TransactionRepository(Store store, this._authService) : super(store);
 
-  /// Get transactions modified after a specific time (UTC) for the current user.
-  Future<List<Transaction>> getAllModifiedSince(DateTime time) async {
-    const currentUserId = "_authService.accessToken?.toString()";
+  /// Get the user ID condition based on auth state.
+  Condition<Transaction> _userIdCondition() {
+    final currentUserId = _authService.currentUser?.id;
+    return currentUserId != null
+        ? Transaction_.userId.equals(currentUserId)
+        : Transaction_.userId.isNull();
+  }
 
-    // Ensure comparison is done with UTC timestamps in the database
+  /// Condition to filter out soft-deleted items.
+  Condition<Transaction> _notDeletedCondition() {
+    return Transaction_.deletedAt.isNull();
+  }
+
+  /// Get transactions modified after a specific time (UTC) for the current context.
+  /// Includes soft-deleted items for syncing.
+  Future<List<Transaction>> getAllModifiedSince(DateTime time) async {
     final query = box
         .query(Transaction_.updatedAt
             .greaterThan(time.toUtc().millisecondsSinceEpoch)
-            .and(Transaction_.userId
-                .equals(currentUserId))) // Corrected: Use Transaction_.userId
+            .and(_userIdCondition())) // Filter by user
         .build();
     final results = await query.findAsync();
     query.close();
     return results;
   }
 
-  /// Override put to update timestamps and set userId before saving.
+  /// Override put to update timestamps and set userId based on auth state.
   @override
   Future<int> put(Transaction transaction,
       {SyncSource syncSource = SyncSource.local}) async {
+    final currentUserId = _authService.currentUser?.id;
+
     if (syncSource == SyncSource.local) {
       final now = DateTime.now();
       Transaction transactionToSave;
-      const currentUserId = "_authService.currentUser?.id";
 
       if (transaction.id == 0) {
-        // New transaction: set userId, createdAt, updatedAt
+        // New transaction
         transactionToSave = transaction.copyWith(
-          userId: currentUserId, // Set user ID
+          userId: currentUserId,
           createdAt: now,
           updatedAt: now,
+          deletedAt: transaction.deletedAt, // Preserve if explicitly set
         );
       } else {
-        // Existing transaction: update updatedAt, ensure userId is preserved/correct
+        // Existing transaction - fetch directly to handle updates/restores
+        final existing = await box.getAsync(transaction.id);
+        if (existing == null) {
+          print(
+              "Warning: Attempted to update non-existent transaction ID: ${transaction.id}");
+          return transaction.id; // Or throw?
+        }
+        if (existing.userId != currentUserId) {
+          print(
+              "Error: Attempted to update transaction with mismatched userId context. Existing: ${existing.userId}, Current: $currentUserId");
+          throw Exception(
+              "Cannot modify data belonging to a different user context.");
+        }
         transactionToSave = transaction.copyWith(
-          userId: transaction.userId ?? currentUserId, // Ensure userId is set
+          userId: currentUserId,
           updatedAt: now,
+          createdAt:
+              transaction.createdAt != DateTime.fromMillisecondsSinceEpoch(0)
+                  ? transaction.createdAt
+                  : existing.createdAt,
+          // copyWith handles deletedAt logic (including setDeletedAtNull)
         );
       }
 
-      // Safety check: Ensure the userId being saved matches the logged-in user
       if (transactionToSave.userId != currentUserId) {
         print(
-            "Error: Attempted to save transaction with mismatched userId (${transactionToSave.userId}) for current user ($currentUserId).");
-        throw Exception("Cannot save data for a different user.");
+            "Error: Mismatched userId (${transactionToSave.userId}) during save for current context ($currentUserId).");
+        throw Exception("Data integrity error: User ID mismatch.");
       }
-
-      final savedId =
-          await super.put(transactionToSave, syncSource: syncSource);
-      // Optional: Trigger immediate push via SyncService if needed
-      // context.read<SyncService>().pushUpsert('transactions', transactionToSave);
-      return savedId;
+      return await super.put(transactionToSave, syncSource: syncSource);
     } else {
       // Syncing down from Supabase
-      // userId should already be set from fromJson
-      // Link relations if needed (existing logic can be kept or refined)
-      // ... existing relation linking logic ...
-      return await super.put(transaction, syncSource: syncSource);
+      if (transaction.userId == null) {
+        print(
+            "Warning: Syncing down transaction with null userId. ID: ${transaction.id}");
+      }
+      final transactionToSave = transaction.copyWith(
+          createdAt: transaction.createdAt.toLocal(),
+          updatedAt: transaction.updatedAt.toLocal(),
+          deletedAt:
+              transaction.deletedAt?.toLocal()); // Ensure deletedAt is local
+      return await super.put(transactionToSave, syncSource: syncSource);
     }
   }
 
-  /// Fetch all transactions for the current user and ensure relations are loaded.
+  /// Fetch all non-deleted transactions for the current context.
   @override
   Future<List<Transaction>> getAll() async {
-    const currentUserId = "_authService.currentUser?.id";
-
     try {
-      final query =
-          box.query(Transaction_.userId.equals(currentUserId)).build();
-      final transactions = await query.findAsync();
+      final query = box
+          .query(_userIdCondition()
+              .and(_notDeletedCondition())) // Filter by user and not deleted
+          .order(Transaction_.date,
+              flags: Order.descending) // Order by date descending
+          .build();
+      final results = await query.findAsync();
       query.close();
-
-      // Manually trigger lazy-loading (consider eager loading if performance is an issue)
-      // This is synchronous but ensures data is available if accessed immediately after.
-      for (final transaction in transactions) {
-        transaction.category.target;
-        transaction.fromAccount.target;
-        // transaction.toAccount.target; // If applicable
-      }
-      return transactions;
+      return results;
     } catch (e) {
-      print('Error fetching transactions for user $currentUserId: $e');
+      final context = _authService.currentUser?.id ?? 'local (unauthenticated)';
+      print('Error fetching transactions for context $context: $e');
       return [];
     }
   }
 
-  // Fetch all transactions and check if any are associated with the category (now async)
-  Future<bool> hasTransactionsForCategory(int categoryId) async {
+  /// Fetch a transaction by ID if it belongs to the current context and is not soft-deleted.
+  @override
+  Future<Transaction?> getById(int id) async {
     try {
-      // Use await
-      final transactions = await super.getAll();
-      return transactions
-          .any((transaction) => transaction.category.targetId == categoryId);
+      final query = box
+          .query(Transaction_.id
+              .equals(id)
+              .and(_userIdCondition())
+              .and(_notDeletedCondition())) // Filter by user and not deleted
+          .build();
+      final result = await query.findFirstAsync();
+      query.close();
+      return result;
     } catch (e) {
-      print('Error checking transactions for category $categoryId: $e');
-      return false;
+      final context = _authService.currentUser?.id ?? 'local (unauthenticated)';
+      print("Error fetching transaction $id for context $context: $e");
+      return null;
     }
   }
 
-  // Fetch all transactions and check if any are associated with the account (now async)
-  Future<bool> hasTransactionsForAccount(int accountId) async {
-    try {
-      // Use await
-      final transactions = await super.getAll();
-      return transactions
-          .any((transaction) => transaction.fromAccount.targetId == accountId);
-    } catch (e) {
-      print('Error checking transactions for account $accountId: $e');
-      return false;
-    }
+  /// Soft removes a transaction by ID if it belongs to the current context.
+  @override
+  Future<bool> remove(int id) async {
+    return await super.softRemove(id);
   }
 
-  /// Get transactions for a specific date range for the current user.
-  Future<List<Transaction>> getTransactionsBetween(
-      DateTime start, DateTime end) async {
-    const currentUserId = "_authService.currentUser?.id";
+  /// Restores a soft-deleted transaction by ID if it belongs to the current context.
+  Future<bool> restoreTransaction(int id) async {
+    return await super.restore(id);
+  }
 
+  /// Updates non-deleted transactions with null userId to the provided newUserId.
+  Future<int> assignUserIdToNullEntries(String newUserId) async {
     final query = box
-        .query(Transaction_.date
-            .between(start.millisecondsSinceEpoch, end.millisecondsSinceEpoch)
-            .and(Transaction_.userId.equals(currentUserId))) // Filter by user
-        .order(Transaction_.date, flags: Order.descending)
+        .query(Transaction_.userId
+            .isNull()
+            .and(_notDeletedCondition())) // Only non-deleted
         .build();
-    final results = await query.findAsync();
+    final nullUserItems = await query.findAsync();
     query.close();
-    return results;
+
+    if (nullUserItems.isEmpty) {
+      return 0;
+    }
+
+    print(
+        "Assigning userId $newUserId to ${nullUserItems.length} local-only transactions...");
+
+    final List<Transaction> updatedItems = [];
+    final now = DateTime.now();
+
+    for (final item in nullUserItems) {
+      // Check if a transaction with the same ID already exists for the target user
+      final existingUserItemQuery = box
+          .query(Transaction_.id
+              .equals(item.id)
+              .and(Transaction_.userId.equals(newUserId)))
+          .build();
+      final existingUserItem = await existingUserItemQuery.findFirstAsync();
+      existingUserItemQuery.close();
+
+      if (existingUserItem != null) {
+        print(
+            "Skipping assignment for transaction ${item.id}: Already exists for user $newUserId.");
+        continue;
+      }
+      updatedItems.add(item.copyWith(
+        userId: newUserId,
+        updatedAt: now,
+      ));
+    }
+
+    if (updatedItems.isNotEmpty) {
+      await putMany(updatedItems, syncSource: SyncSource.local);
+      print(
+          "Successfully assigned userId $newUserId to ${updatedItems.length} transactions.");
+      return updatedItems.length;
+    } else {
+      print(
+          "No transactions needed userId assignment after checking for existing entries.");
+      return 0;
+    }
   }
 
-  /// Get transactions based on filters for the current user.
-  Future<List<Transaction>> getFiltered(FilterState filters) async {
-    const currentUserId = "_authService.currentUser?.id";
+  /// Soft removes all transactions for the current user.
+  Future<int> removeAllForCurrentUser() async {
+    final currentUserId = _authService.currentUser?.id;
+    if (currentUserId == null) {
+      print(
+          "Warn: Attempted to remove all transactions for current user, but no user is logged in.");
+      return 0;
+    }
+    // Fetch non-deleted items first
+    final query = box
+        .query(Transaction_.userId
+            .equals(currentUserId)
+            .and(_notDeletedCondition()))
+        .build();
+    final itemsToRemove = await query.findAsync();
+    query.close();
 
-    // Start with user ID condition
-    Condition<Transaction> combinedCondition =
-        Transaction_.userId.equals(currentUserId);
+    if (itemsToRemove.isEmpty) {
+      print(
+          "No active transactions found for user $currentUserId to soft remove.");
+      return 0;
+    }
+
+    final idsToRemove = itemsToRemove.map((e) => e.id).toList();
+    int successCount = 0;
+    for (final id in idsToRemove) {
+      if (await softRemove(id)) {
+        successCount++;
+      }
+    }
+    print("Soft removed $successCount transactions for user $currentUserId.");
+    return successCount;
+  }
+
+  /// Override removeAll from BaseRepository.
+  @override
+  Future<int> removeAll() async {
+    print(
+        "Error: Direct call to removeAll() is disabled for safety. Use removeAllForCurrentUser() instead.");
+    throw UnimplementedError(
+        "Use removeAllForCurrentUser() to soft-delete user-specific data.");
+  }
+
+  /// Override putMany to handle syncSource correctly.
+  @override
+  Future<List<int>> putMany(List<Transaction> entities,
+      {SyncSource syncSource = SyncSource.local}) async {
+    if (syncSource == SyncSource.supabase) {
+      final entitiesToSave = entities
+          .map((e) => e.copyWith(
+              createdAt: e.createdAt.toLocal(),
+              updatedAt: e.updatedAt.toLocal(),
+              deletedAt: e.deletedAt?.toLocal()))
+          .toList();
+      return await super.putMany(entitiesToSave, syncSource: syncSource);
+    } else {
+      final currentUserId = _authService.currentUser?.id;
+      final now = DateTime.now();
+      final List<Transaction> processedEntities = [];
+      for (final entity in entities) {
+        Transaction entityToSave;
+        if (entity.id == 0) {
+          entityToSave = entity.copyWith(
+            userId: currentUserId,
+            createdAt: now,
+            updatedAt: now,
+            deletedAt: entity.deletedAt, // Preserve if explicitly set
+          );
+        } else {
+          entityToSave = entity.copyWith(
+            userId: currentUserId, // Ensure context
+            updatedAt: now,
+            createdAt:
+                entity.createdAt != DateTime.fromMillisecondsSinceEpoch(0)
+                    ? entity.createdAt
+                    : now,
+          );
+        }
+        processedEntities.add(entityToSave);
+      }
+      return await super.putMany(processedEntities, syncSource: syncSource);
+    }
+  }
+
+  /// Fetch filtered transactions for the current context, excluding soft-deleted ones.
+  Future<List<Transaction>> getFiltered(FilterState filterState) async {
+    Condition<Transaction> queryCondition =
+        _userIdCondition().and(_notDeletedCondition());
+
+    // Apply Account Filter
+    if (filterState.selectedAccount != null) {
+      queryCondition = queryCondition.and(
+          Transaction_.fromAccount.equals(filterState.selectedAccount!.id));
+    }
+
+    // Apply Category Filter
+    if (filterState.selectedCategories.isNotEmpty) {
+      final categoryIds =
+          filterState.selectedCategories.map((c) => c.id).toList();
+      queryCondition =
+          queryCondition.and(Transaction_.category.oneOf(categoryIds));
+    }
 
     // Apply Date Filter
-    if (filters.startDate != null) {
-      Condition<Transaction> dateCondition;
-      if (filters.singleDay) {
-        final startOfDay = DateTime(filters.startDate!.year,
-            filters.startDate!.month, filters.startDate!.day);
+    if (filterState.startDate != null) {
+      if (filterState.singleDay) {
+        final startOfDay = DateTime(filterState.startDate!.year,
+            filterState.startDate!.month, filterState.startDate!.day);
         final endOfDay = startOfDay.add(const Duration(days: 1));
-        dateCondition = Transaction_.date
+        queryCondition = queryCondition.and(Transaction_.date
             .greaterOrEqual(startOfDay.millisecondsSinceEpoch)
-            .and(Transaction_.date.lessThan(endOfDay.millisecondsSinceEpoch));
+            .and(Transaction_.date.lessThan(endOfDay.millisecondsSinceEpoch)));
       } else {
-        final rangeStart = filters.startDate!;
-        final rangeEnd = filters.endDate?.add(const Duration(days: 1));
-        dateCondition =
-            Transaction_.date.greaterOrEqual(rangeStart.millisecondsSinceEpoch);
+        final rangeStart = filterState.startDate!;
+        final rangeEnd = filterState.endDate?.add(const Duration(days: 1));
+        queryCondition = queryCondition.and(Transaction_.date
+            .greaterOrEqual(rangeStart.millisecondsSinceEpoch));
         if (rangeEnd != null) {
-          dateCondition = dateCondition
+          queryCondition = queryCondition
               .and(Transaction_.date.lessThan(rangeEnd.millisecondsSinceEpoch));
         }
       }
-      combinedCondition = combinedCondition.and(dateCondition);
     }
 
-    // Apply Amount Filter
-    if (filters.minAmount != null) {
-      final minAmount = filters.minAmount!;
-      final amountCondition = Transaction_.amount
-          .greaterOrEqual(minAmount)
-          .or(Transaction_.amount.lessOrEqual(-minAmount));
-      combinedCondition = combinedCondition.and(amountCondition);
+    // Apply Amount Filter (Optional)
+    if (filterState.minAmount != null) {
+      // ObjectBox doesn't directly support filtering on absolute value.
+      // Fetch and filter in Dart, or adjust query if possible.
+      // For now, we'll filter after fetching.
     }
 
-    // Apply Income/Expense Filter (using amount sign)
-    if (filters.isIncome != null) {
-      Condition<Transaction> incomeCondition;
-      if (filters.isIncome!) {
-        incomeCondition = Transaction_.amount.greaterThan(0);
-      } else {
-        incomeCondition = Transaction_.amount.lessThan(0);
-      }
-      combinedCondition = combinedCondition.and(incomeCondition);
+    // Apply Income/Expense Filter (Optional)
+    if (filterState.isIncome != null) {
+      // This requires joining with Category, which is complex in ObjectBox query builder.
+      // Fetch and filter in Dart.
     }
-
-    // Create the query builder with the combined condition
-    final queryBuilder = box.query(combinedCondition);
-
-    // Apply Link Filters (Account, Category)
-    if (filters.selectedAccount != null) {
-      queryBuilder.link(Transaction_.fromAccount,
-          Account_.id.equals(filters.selectedAccount!.id));
-    }
-    if (filters.selectedCategories.isNotEmpty) {
-      final categoryIds = filters.selectedCategories.map((c) => c.id).toList();
-      queryBuilder.link(Transaction_.category, Category_.id.oneOf(categoryIds));
-    }
-
-    // Add sorting
-    queryBuilder.order(Transaction_.date, flags: Order.descending);
-
-    // Execute query
-    final query = queryBuilder.build();
-    final results = await query.findAsync();
-    query.close();
-
-    // Optional: Manually load relations if needed immediately
-    // for (var tx in results) { tx.fromAccount.target; tx.category.target; }
-
-    return results;
-  }
-
-  // Override remove to filter by user
-  @override
-  Future<bool> remove(int id) async {
-    const currentUserId = "_authService.currentUser?.id";
-    // Fetch the item first to ensure it belongs to the user
-    final item = await getById(id); // getById is now user-filtered
-    if (item != null) {
-      // No need to check userId again, getById handles it
-      final success = await super.remove(id);
-      // Optional: Trigger immediate push delete
-      // if (success) context.read<SyncService>().pushDelete('transactions', id);
-      return success;
-    } else {
-      print(
-          "Warn: Attempted to remove transaction $id not found or not belonging to user $currentUserId.");
-      return false;
-    }
-  }
-
-  // Override getById to filter by user
-  @override
-  Future<Transaction?> getById(int id) async {
-    const currentUserId = "_authService.currentUser?.id";
 
     final query = box
-        .query(Transaction_.id
-            .equals(id)
-            .and(Transaction_.userId.equals(currentUserId)))
+        .query(queryCondition)
+        .order(Transaction_.date, flags: Order.descending)
         .build();
-    final result = await query.findFirstAsync();
-    query.close();
-    // Optional: Load relations if needed
-    // result?.category.target;
-    // result?.fromAccount.target;
-    return result;
-  }
 
-  // Be cautious with removeAll - ensure it ONLY removes for the current user
-  Future<int> removeAllForCurrentUser() async {
-    const currentUserId = "_authService.currentUser?.id";
-    final query = box.query(Transaction_.userId.equals(currentUserId)).build();
-    // Use removeAsync for efficiency
-    final count = await query.removeAsync();
+    List<Transaction> results = await query.findAsync();
     query.close();
-    print("Removed $count transactions for user $currentUserId.");
-    return count;
+
+    // --- Post-fetch filtering for complex conditions ---
+
+    // Amount Filter (Absolute Value)
+    if (filterState.minAmount != null) {
+      results = results
+          .where((t) => t.amount.abs() >= filterState.minAmount!)
+          .toList();
+    }
+
+    // Income/Expense Filter
+    if (filterState.isIncome != null) {
+      results =
+          results.where((t) => t.isIncome == filterState.isIncome).toList();
+    }
+
+    return results;
   }
 }

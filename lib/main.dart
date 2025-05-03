@@ -37,16 +37,20 @@ Future<void> main() async {
   );
   final supabase = Supabase.instance.client;
 
+  // Initialize Services
+  authService = AuthService(supabase); // Instantiate AuthService
+
   // Initialize ObjectBox Store
   final store = await BaseRepository.createStore();
 
-  // Initialize Repositories
-  accountRepository = AccountRepository(store);
-  categoryRepository = CategoryRepository(store);
-  txRepository = TransactionRepository(store, supabase);
+  // Initialize Repositories - Inject AuthService
+  accountRepository =
+      AccountRepository(store, authService); // Inject AuthService
+  categoryRepository =
+      CategoryRepository(store, authService); // Inject AuthService
+  txRepository = TransactionRepository(store, authService); // Already injected
 
   // Initialize Services
-  authService = AuthService(supabase); // Instantiate AuthService
   syncService = SyncService(
     supabaseClient: supabase,
     transactionRepository: txRepository,
@@ -81,12 +85,6 @@ class MyApp extends StatelessWidget {
       ],
       child: MultiBlocProvider(
         providers: [
-          BlocProvider<auth_bloc.AuthBloc>(
-            create: (context) => auth_bloc.AuthBloc(
-              authService: context.read<AuthService>(),
-              syncService: context.read<SyncService>(),
-            )..add(auth_bloc.AuthSubscriptionRequested()),
-          ),
           BlocProvider<DateCubit>(
             create: (context) => DateCubit(),
           ),
@@ -100,6 +98,33 @@ class MyApp extends StatelessWidget {
               context.read<CategoryRepository>(),
               context.read<FilterCubit>(), // Provide FilterCubit
             ),
+          ),
+          BlocProvider<auth_bloc.AuthBloc>(
+            create: (context) {
+              // Define the callback function
+              void syncCompleteCallback() {
+                print(
+                    "AuthBloc Callback: Requesting DataManagementCubit refresh.");
+                // Use context.read inside the callback to get the Cubit instance
+                // when the callback is actually executed.
+                try {
+                  context.read<DataManagementCubit>().refreshData();
+                } catch (e) {
+                  // Handle cases where context might be invalid if callback runs late
+                  print(
+                      "Error refreshing DataManagementCubit from AuthBloc callback: $e");
+                }
+              }
+
+              return auth_bloc.AuthBloc(
+                authService: context.read<AuthService>(),
+                syncService: context.read<SyncService>(),
+                transactionRepository: context.read<TransactionRepository>(),
+                accountRepository: context.read<AccountRepository>(),
+                categoryRepository: context.read<CategoryRepository>(),
+                onSyncComplete: syncCompleteCallback,
+              )..add(auth_bloc.AuthSubscriptionRequested());
+            },
           ),
         ],
         child: MaterialApp(

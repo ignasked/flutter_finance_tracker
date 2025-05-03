@@ -1,4 +1,5 @@
 import 'package:money_owl/backend/models/category.dart';
+import 'package:money_owl/backend/models/transaction.dart';
 import 'package:money_owl/backend/repositories/base_repository.dart';
 import 'package:money_owl/backend/utils/app_style.dart';
 import 'package:money_owl/backend/utils/defaults.dart';
@@ -6,17 +7,20 @@ import 'package:money_owl/backend/utils/enums.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:money_owl/objectbox.g.dart';
 import 'package:money_owl/backend/services/sync_service.dart';
+import 'package:money_owl/backend/services/auth_service.dart';
 
 class CategoryRepository extends BaseRepository<Category> {
-  CategoryRepository(Store store) : super(store) {
+  final AuthService _authService;
+
+  CategoryRepository(Store store, this._authService) : super(store) {
     _initializeDefaultCategories();
     _setDefaultCategory();
   }
 
   /// Factory method for asynchronous initialization
-  static Future<CategoryRepository> create([Store? store]) async {
-    final newStore = store ?? await BaseRepository.createStore();
-    return CategoryRepository(newStore);
+  static Future<CategoryRepository> create(
+      Store store, AuthService authService) async {
+    return CategoryRepository(store, authService);
   }
 
   /// Helper method to set default category asynchronously
@@ -27,11 +31,29 @@ class CategoryRepository extends BaseRepository<Category> {
     }
   }
 
-  /// Check if a category title is unique
-  bool isTitleUnique(String title) {
+  /// Get the user ID condition based on auth state.
+  Condition<Category> _userIdCondition() {
+    final currentUserId = _authService.currentUser?.id;
+    return currentUserId != null
+        ? Category_.userId.equals(currentUserId)
+        : Category_.userId.isNull();
+  }
+
+  /// Condition to filter out soft-deleted items.
+  Condition<Category> _notDeletedCondition() {
+    return Category_.deletedAt.isNull();
+  }
+
+  /// Check if a category title is unique among non-deleted categories
+  Future<bool> isTitleUnique(String title) async {
     try {
-      final query = box.query(Category_.title.equals(title)).build();
-      final isUnique = query.find().isEmpty;
+      final query = box
+          .query(Category_.title
+              .equals(title)
+              .and(_userIdCondition())
+              .and(_notDeletedCondition()))
+          .build();
+      final isUnique = (query.count()) == 0;
       query.close();
       return isUnique;
     } catch (e) {
@@ -40,10 +62,15 @@ class CategoryRepository extends BaseRepository<Category> {
     }
   }
 
-  /// Fetch only enabled categories asynchronously
+  /// Fetch only enabled and non-deleted categories asynchronously
   Future<List<Category>> getEnabledCategories() async {
     try {
-      final query = box.query(Category_.isEnabled.equals(true)).build();
+      final query = box
+          .query(Category_.isEnabled
+              .equals(true)
+              .and(_userIdCondition())
+              .and(_notDeletedCondition()))
+          .build();
       final enabledCategories = await query.findAsync();
       query.close();
       return enabledCategories;
@@ -53,7 +80,7 @@ class CategoryRepository extends BaseRepository<Category> {
     }
   }
 
-  /// Fetch enabled category titles as a comma-separated string (now async)
+  /// Fetch enabled and non-deleted category titles as a comma-separated string (now async)
   Future<String> getEnabledCategoryTitles() async {
     final enabledCategories = await getEnabledCategories();
     if (enabledCategories.isEmpty) {
@@ -62,13 +89,14 @@ class CategoryRepository extends BaseRepository<Category> {
     return enabledCategories.map((category) => category.title).join(', ');
   }
 
-  /// Initialize default categories
+  /// Initialize default categories if they don't exist (ignores deleted status for check)
   Future<void> _initializeDefaultCategories() async {
     final isFirstLaunch = await _isFirstLaunch();
     if (!isFirstLaunch) {
-      final defaultCategory = await getById(1);
-      if (defaultCategory != null) {
-        Defaults().defaultCategory = defaultCategory;
+      final defaultCategoryExists = await box.getAsync(1);
+      if (defaultCategoryExists != null &&
+          defaultCategoryExists.deletedAt == null) {
+        Defaults().defaultCategory = defaultCategoryExists;
       }
       return;
     }
@@ -221,14 +249,17 @@ class CategoryRepository extends BaseRepository<Category> {
     ];
 
     for (final defaultCategory in defaultCategories) {
-      final query =
-          box.query(Category_.title.equals(defaultCategory.title)).build();
-      final exists = query.find().isNotEmpty;
+      final query = box
+          .query(Category_.title
+              .equals(defaultCategory.title)
+              .and(_userIdCondition()))
+          .build();
+      final existing = await query.findFirstAsync();
       query.close();
 
-      if (!exists) {
+      if (existing == null) {
         try {
-          await put(defaultCategory);
+          await put(defaultCategory, syncSource: SyncSource.local);
           print('Added default category: ${defaultCategory.title}');
         } catch (e) {
           print('Error adding default category ${defaultCategory.title}: $e');
@@ -251,32 +282,287 @@ class CategoryRepository extends BaseRepository<Category> {
     return isFirstLaunch;
   }
 
-  /// Get categories modified after a specific time (UTC).
+  /// Get categories modified after a specific time (UTC) for the current context.
   Future<List<Category>> getAllModifiedSince(DateTime time) async {
     final query = box
-        .query(Category_.updatedAt > time.toUtc().millisecondsSinceEpoch)
+        .query(Category_.updatedAt
+            .greaterThan(time.toUtc().millisecondsSinceEpoch)
+            .and(_userIdCondition()))
         .build();
     final results = await query.findAsync();
     query.close();
     return results;
   }
 
-  /// Override put to update timestamps before saving.
+  /// Override put to update timestamps, set userId, and handle deletedAt.
   @override
   Future<int> put(Category category,
       {SyncSource syncSource = SyncSource.local}) async {
+    final currentUserId = _authService.currentUser?.id;
+
     if (syncSource == SyncSource.local) {
       final now = DateTime.now();
       Category categoryToSave;
+
       if (category.id == 0) {
-        categoryToSave = category.copyWith(createdAt: now, updatedAt: now);
+        categoryToSave = category.copyWith(
+          userId: currentUserId,
+          createdAt: now,
+          updatedAt: now,
+          deletedAt: category.deletedAt,
+        );
       } else {
-        categoryToSave = category.copyWith(updatedAt: now);
+        final existing = await box.getAsync(category.id);
+        if (existing == null) {
+          print(
+              "Warning: Attempted to update non-existent category ID: ${category.id}");
+          return category.id;
+        }
+        if (existing.userId != currentUserId) {
+          print(
+              "Error: Attempted to update category with mismatched userId context. Existing: ${existing.userId}, Current: $currentUserId");
+          throw Exception(
+              "Cannot modify data belonging to a different user context.");
+        }
+        categoryToSave = category.copyWith(
+          userId: currentUserId,
+          updatedAt: now,
+          createdAt:
+              category.createdAt != DateTime.fromMillisecondsSinceEpoch(0)
+                  ? category.createdAt
+                  : existing.createdAt,
+        );
       }
-      final savedId = await super.put(categoryToSave, syncSource: syncSource);
-      return savedId;
+
+      if (categoryToSave.userId != currentUserId) {
+        print(
+            "Error: Mismatched userId (${categoryToSave.userId}) during save for current context ($currentUserId).");
+        throw Exception("Data integrity error: User ID mismatch.");
+      }
+      return await super.put(categoryToSave, syncSource: syncSource);
     } else {
-      return await super.put(category, syncSource: syncSource);
+      if (category.userId == null) {
+        print(
+            "Warning: Syncing down category with null userId. ID: ${category.id}");
+      }
+      final categoryToSave = category.copyWith(
+          createdAt: category.createdAt.toLocal(),
+          updatedAt: category.updatedAt.toLocal(),
+          deletedAt: category.deletedAt?.toLocal());
+      return await super.put(categoryToSave, syncSource: syncSource);
+    }
+  }
+
+  /// Fetch all non-deleted categories for the current context.
+  @override
+  Future<List<Category>> getAll() async {
+    try {
+      final query =
+          box.query(_userIdCondition().and(_notDeletedCondition())).build();
+      final results = await query.findAsync();
+      query.close();
+      return results;
+    } catch (e) {
+      final context = _authService.currentUser?.id ?? 'local (unauthenticated)';
+      print('Error fetching categories for context $context: $e');
+      return [];
+    }
+  }
+
+  /// Fetch a category by ID if it belongs to the current context and is not soft-deleted.
+  @override
+  Future<Category?> getById(int id) async {
+    try {
+      final query = box
+          .query(Category_.id
+              .equals(id)
+              .and(_userIdCondition())
+              .and(_notDeletedCondition()))
+          .build();
+      final result = await query.findFirstAsync();
+      query.close();
+      return result;
+    } catch (e) {
+      final context = _authService.currentUser?.id ?? 'local (unauthenticated)';
+      print("Error fetching category $id for context $context: $e");
+      return null;
+    }
+  }
+
+  /// Soft removes a category by ID if it belongs to the current context.
+  @override
+  Future<bool> remove(int id) async {
+    final hasTransactions = await _hasTransactionsForCategory(id);
+    if (hasTransactions) {
+      print(
+          "Soft remove failed: Category $id is still linked to active transactions.");
+      return false;
+    }
+    return await super.softRemove(id);
+  }
+
+  /// Helper to check if a category is used by non-deleted transactions.
+  Future<bool> _hasTransactionsForCategory(int categoryId) async {
+    final transactionBox = store.box<Transaction>();
+    final query = transactionBox
+        .query(Transaction_.category
+            .equals(categoryId)
+            .and(Transaction_.deletedAt.isNull())
+            .and(_transactionUserIdCondition()))
+        .build();
+    final count = query.count();
+    query.close();
+    return count > 0;
+  }
+
+  Condition<Transaction> _transactionUserIdCondition() {
+    final currentUserId = _authService.currentUser?.id;
+    return currentUserId != null
+        ? Transaction_.userId.equals(currentUserId)
+        : Transaction_.userId.isNull();
+  }
+
+  /// Restores a soft-deleted category by ID if it belongs to the current context.
+  Future<bool> restoreCategory(int id) async {
+    return await super.restore(id);
+  }
+
+  /// Updates categories with null userId to the provided newUserId.
+  /// Skips soft-deleted categories.
+  Future<int> assignUserIdToNullEntries(String newUserId) async {
+    final query = box
+        .query(Category_.userId.isNull().and(_notDeletedCondition()))
+        .build();
+    final nullUserItems = await query.findAsync();
+    query.close();
+
+    if (nullUserItems.isEmpty) {
+      return 0;
+    }
+
+    print(
+        "Assigning userId $newUserId to ${nullUserItems.length} local-only categories...");
+
+    final List<Category> updatedItems = [];
+    final now = DateTime.now();
+
+    for (final item in nullUserItems) {
+      final existingUserItemQuery = box
+          .query(Category_.id
+              .equals(item.id)
+              .and(Category_.userId.equals(newUserId)))
+          .build();
+      final existingUserItem = await existingUserItemQuery.findFirstAsync();
+      existingUserItemQuery.close();
+
+      if (existingUserItem != null) {
+        print(
+            "Skipping assignment for category ${item.id}: Already exists for user $newUserId.");
+        continue;
+      }
+      updatedItems.add(item.copyWith(
+        userId: newUserId,
+        updatedAt: now,
+      ));
+    }
+
+    if (updatedItems.isNotEmpty) {
+      await putMany(updatedItems, syncSource: SyncSource.local);
+      print(
+          "Successfully assigned userId $newUserId to ${updatedItems.length} categories.");
+      return updatedItems.length;
+    } else {
+      print(
+          "No categories needed userId assignment after checking for existing entries.");
+      return 0;
+    }
+  }
+
+  /// Soft removes all categories for the current user.
+  /// Skips categories that are currently in use by active transactions.
+  Future<int> removeAllForCurrentUser() async {
+    final currentUserId = _authService.currentUser?.id;
+    if (currentUserId == null) {
+      print(
+          "Warn: Attempted to remove all categories for current user, but no user is logged in.");
+      return 0;
+    }
+    final query = box
+        .query(
+            Category_.userId.equals(currentUserId).and(_notDeletedCondition()))
+        .build();
+    final itemsToRemove = await query.findAsync();
+    query.close();
+
+    if (itemsToRemove.isEmpty) {
+      print(
+          "No active categories found for user $currentUserId to soft remove.");
+      return 0;
+    }
+
+    int successCount = 0;
+    int skippedCount = 0;
+    for (final item in itemsToRemove) {
+      if (await remove(item.id)) {
+        successCount++;
+      } else {
+        skippedCount++;
+      }
+    }
+    print("Soft removed $successCount categories for user $currentUserId." +
+        (skippedCount > 0
+            ? " Skipped $skippedCount due to active transactions."
+            : ""));
+    return successCount;
+  }
+
+  /// Override removeAll from BaseRepository.
+  @override
+  Future<int> removeAll() async {
+    print(
+        "Error: Direct call to removeAll() is disabled for safety. Use removeAllForCurrentUser() instead.");
+    throw UnimplementedError(
+        "Use removeAllForCurrentUser() to soft-delete user-specific data.");
+  }
+
+  /// Override putMany to handle syncSource correctly.
+  @override
+  Future<List<int>> putMany(List<Category> entities,
+      {SyncSource syncSource = SyncSource.local}) async {
+    if (syncSource == SyncSource.supabase) {
+      final entitiesToSave = entities
+          .map((e) => e.copyWith(
+              createdAt: e.createdAt.toLocal(),
+              updatedAt: e.updatedAt.toLocal(),
+              deletedAt: e.deletedAt?.toLocal()))
+          .toList();
+      return await super.putMany(entitiesToSave, syncSource: syncSource);
+    } else {
+      final currentUserId = _authService.currentUser?.id;
+      final now = DateTime.now();
+      final List<Category> processedEntities = [];
+      for (final entity in entities) {
+        Category entityToSave;
+        if (entity.id == 0) {
+          entityToSave = entity.copyWith(
+            userId: currentUserId,
+            createdAt: now,
+            updatedAt: now,
+            deletedAt: entity.deletedAt,
+          );
+        } else {
+          entityToSave = entity.copyWith(
+            userId: currentUserId,
+            updatedAt: now,
+            createdAt:
+                entity.createdAt != DateTime.fromMillisecondsSinceEpoch(0)
+                    ? entity.createdAt
+                    : now,
+          );
+        }
+        processedEntities.add(entityToSave);
+      }
+      return await super.putMany(processedEntities, syncSource: syncSource);
     }
   }
 }

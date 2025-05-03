@@ -8,7 +8,7 @@ import 'category.dart'; // Import the Category model
 // ignore: must_be_immutable
 /// Represents a financial transaction with details such as title, amount, type (income/expense), category, and date.
 class Transaction extends Equatable {
-  @Id()
+  @Id(assignable: true) // <-- Add assignable: true
   int id; // Remove 'final'
 
   final String title;
@@ -25,10 +25,10 @@ class Transaction extends Equatable {
   final DateTime date;
 
   @Property(type: PropertyType.date)
-  final DateTime createdAt;
+  final DateTime createdAt; // Add 'final' back
 
   @Property(type: PropertyType.date)
-  final DateTime updatedAt;
+  final DateTime updatedAt; // Add 'final' back
 
   // Add userId field
   @Index() // Index for faster lookups by userId
@@ -38,6 +38,11 @@ class Transaction extends Equatable {
   @Transient()
   Map<String, dynamic>? metadata;
 
+  // Add deletedAt field
+  @Property(type: PropertyType.date)
+  @Index()
+  DateTime? deletedAt; // Nullable: Tracks deletion time (UTC)
+
   String get amountAndCurrencyString {
     return '${amount.toStringAsFixed(2)} ${fromAccount.target?.currencySymbolOrCurrency ?? ''}';
   }
@@ -46,6 +51,9 @@ class Transaction extends Equatable {
   bool get isIncome {
     return category.target?.type == TransactionType.income;
   }
+
+  /// Getter to determine if the transaction is deleted
+  bool get isDeleted => deletedAt != null;
 
   Transaction({
     int? id,
@@ -60,9 +68,12 @@ class Transaction extends Equatable {
     DateTime? updatedAt,
     this.userId, // Add userId parameter
     this.metadata, // Add metadata parameter
+    this.deletedAt, // Add deletedAt parameter
   })  : id = id ?? 0,
+        // Initialize final fields in initializer list
         createdAt = createdAt ?? DateTime.now(),
         updatedAt = updatedAt ?? (createdAt ?? DateTime.now()) {
+    // Constructor body remains the same for relationship assignment
     if (category != null) {
       this.category.target = category;
     }
@@ -70,7 +81,6 @@ class Transaction extends Equatable {
       this.fromAccount.target = fromAccount;
     }
     if (toAccount != null) {
-      // Assign target directly to the non-nullable ToOne
       this.toAccount.target = toAccount;
     }
   }
@@ -90,6 +100,7 @@ class Transaction extends Equatable {
         updatedAt,
         userId,
         metadata,
+        deletedAt,
       ];
 
   /// Creates a copy of this transaction with updated fields.
@@ -97,33 +108,67 @@ class Transaction extends Equatable {
     int? id,
     String? title,
     double? amount,
-    Category? category,
-    Account? fromAccount, // Renamed parameter
-    Account? toAccount,
+    Category? category, // Keep accepting objects for convenience elsewhere
+    int? categoryId, // Add ID parameters for sync logic
+    Account? fromAccount, // Keep accepting objects
+    int? fromAccountId, // Add ID parameters
+    Account? toAccount, // Keep accepting objects
+    int? toAccountId, // Add ID parameters
     DateTime? date,
     String? description,
-    DateTime? createdAt,
-    DateTime? updatedAt,
-    String? userId, // Add userId parameter
-    Map<String, dynamic>? metadata, // Add metadata parameter
+    DateTime? createdAt, // Keep accepting DateTime
+    DateTime? updatedAt, // Keep accepting DateTime
+    String? userId,
+    Map<String, dynamic>? metadata,
+    DateTime? deletedAt,
+    bool? setDeletedAtNull,
   }) {
+    // Create the new instance with updated primitive/DateTime fields
     final updatedTransaction = Transaction(
       id: id ?? this.id,
       title: title ?? this.title,
       amount: amount ?? this.amount,
       date: date ?? this.date,
       description: description ?? this.description,
+      // Use provided timestamps or existing ones
       createdAt: createdAt ?? this.createdAt,
+      // Always update 'updatedAt' on copy unless explicitly provided
       updatedAt: updatedAt ?? DateTime.now(),
-      fromAccount: fromAccount, // Pass fromAccount object
-      toAccount: toAccount, // Pass toAccount object
-      userId: userId ?? this.userId, // Copy userId
-      metadata: metadata ?? this.metadata, // Copy metadata
+      userId: userId ?? this.userId,
+      metadata: metadata ?? this.metadata,
+      deletedAt:
+          setDeletedAtNull == true ? null : (deletedAt ?? this.deletedAt),
+      // Pass relationship objects ONLY if they were explicitly provided
+      // Otherwise, we'll set IDs below
+      category: category,
+      fromAccount: fromAccount,
+      toAccount: toAccount,
     );
-    updatedTransaction.category.target = category ?? this.category.target;
-    updatedTransaction.fromAccount.target =
-        fromAccount ?? this.fromAccount.target;
-    updatedTransaction.toAccount.target = toAccount ?? this.toAccount.target;
+
+    // --- Handle Relationship IDs ---
+    // Prioritize passed objects, then passed IDs, then existing IDs.
+
+    // Category
+    if (category == null) {
+      // If no Category object was passed
+      updatedTransaction.category.targetId =
+          categoryId ?? this.category.targetId;
+    } // else: constructor already set the target from the passed object
+
+    // FromAccount
+    if (fromAccount == null) {
+      // If no fromAccount object was passed
+      updatedTransaction.fromAccount.targetId =
+          fromAccountId ?? this.fromAccount.targetId;
+    } // else: constructor already set the target
+
+    // ToAccount
+    if (toAccount == null) {
+      // If no toAccount object was passed
+      updatedTransaction.toAccount.targetId =
+          toAccountId ?? this.toAccount.targetId;
+    } // else: constructor already set the target
+
     return updatedTransaction;
   }
 
@@ -154,6 +199,10 @@ class Transaction extends Equatable {
         metadata: json['metadata'] is Map<String, dynamic>
             ? json['metadata'] as Map<String, dynamic>
             : null, // Parse metadata
+        deletedAt: json['deleted_at'] == null
+            ? null
+            : DateTime.tryParse(json['deleted_at'] as String)
+                ?.toLocal(), // Add deletedAt (local)
       );
 
       // Safely assign relationship IDs with null checks
@@ -207,6 +256,7 @@ class Transaction extends Equatable {
       'updated_at': updatedAt.toUtc().toIso8601String(),
       'user_id': userId, // Include userId in JSON
       'metadata': metadata, // Include metadata in JSON
+      'deleted_at': deletedAt?.toUtc().toIso8601String(), // Add deletedAt (UTC)
     };
   }
 }

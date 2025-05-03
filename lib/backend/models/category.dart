@@ -26,6 +26,9 @@ class Category extends Equatable {
   @Property(type: PropertyType.date)
   final DateTime updatedAt;
 
+  @Property(type: PropertyType.date)
+  final DateTime? deletedAt; // Nullable: Tracks deletion time (UTC)
+
   @Backlink('category')
   final ToMany<Transaction> transactions = ToMany<Transaction>();
 
@@ -33,6 +36,7 @@ class Category extends Equatable {
   Color get color => Color(colorValue); // Getter
   IconData get icon =>
       IconData(iconCodePoint, fontFamily: 'MaterialIcons'); // Getter
+  bool get isDeleted => deletedAt != null; // Helper getter
 
   Category({
     this.id = 0, // Default ID for ObjectBox (auto-incremented)
@@ -45,6 +49,7 @@ class Category extends Equatable {
     DateTime? createdAt,
     DateTime? updatedAt,
     this.userId, // Add userId parameter
+    this.deletedAt, // Add to constructor
   })  : createdAt = createdAt ?? DateTime.now(),
         updatedAt = updatedAt ?? (createdAt ?? DateTime.now());
 
@@ -62,6 +67,7 @@ class Category extends Equatable {
       'created_at': createdAt.toUtc().toIso8601String(),
       'updated_at': updatedAt.toUtc().toIso8601String(),
       'user_id': userId, // Include userId in JSON
+      'deleted_at': deletedAt?.toUtc().toIso8601String(), // Add deletedAt (UTC)
     };
   }
 
@@ -82,6 +88,10 @@ class Category extends Equatable {
       createdAt: DateTime.parse(json['created_at'] as String).toLocal(),
       updatedAt: DateTime.parse(json['updated_at'] as String).toLocal(),
       userId: json['user_id'] as String?, // Read userId from JSON
+      deletedAt: json['deleted_at'] == null
+          ? null
+          : DateTime.parse(json['deleted_at'] as String)
+              .toLocal(), // Add deletedAt (local)
     );
   }
 
@@ -97,6 +107,8 @@ class Category extends Equatable {
     DateTime? createdAt,
     DateTime? updatedAt,
     String? userId, // Add userId parameter
+    DateTime? deletedAt, // Add to copyWith
+    bool? setDeletedAtNull, // Helper to explicitly set deletedAt to null
   }) {
     return Category(
       id: id ?? this.id,
@@ -109,6 +121,9 @@ class Category extends Equatable {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? DateTime.now(), // Update timestamp on copy
       userId: userId ?? this.userId, // Copy userId
+      deletedAt: setDeletedAtNull == true
+          ? null
+          : (deletedAt ?? this.deletedAt), // Handle null setting
     );
   }
 
@@ -124,6 +139,7 @@ class Category extends Equatable {
         createdAt,
         updatedAt,
         userId, // Add userId to props
+        deletedAt, // Add deletedAt to props
       ];
 
   // Keep custom == and hashCode if needed, otherwise Equatable handles it
