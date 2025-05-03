@@ -3,6 +3,8 @@ plugins {
     id "kotlin-android"
     id "dev.flutter.flutter-gradle-plugin"
 }
+// Add the ObjectBox plugin
+apply plugin: 'io.objectbox'
 
 def localProperties = new Properties()
 def localPropertiesFile = rootProject.file('local.properties')
@@ -24,12 +26,12 @@ if (flutterVersionName == null) {
 
 android {
     namespace "com.games_from_garage.money_owl"
-    compileSdk 34
+    compileSdk 35
 
     defaultConfig {
         applicationId "com.games_from_garage.money_owl"
         minSdkVersion 21
-        targetSdk 34
+        targetSdk 35 // Update targetSdk to 35
         multiDexEnabled true
         versionCode 1
         versionName "1.0"

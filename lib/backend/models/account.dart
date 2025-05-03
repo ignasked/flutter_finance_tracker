@@ -64,8 +64,8 @@ class Account extends Equatable {
           typeValue >= 0 && typeValue < AccountType.values.length,
           'Invalid AccountType value: $typeValue',
         ),
-        this.createdAt = createdAt ?? DateTime.now(),
-        this.updatedAt = updatedAt ?? (createdAt ?? DateTime.now());
+        createdAt = createdAt ?? DateTime.now(),
+        updatedAt = updatedAt ?? (createdAt ?? DateTime.now());
 
   // Convert to JSON for saving preferences
   Map<String, dynamic> toJson() {

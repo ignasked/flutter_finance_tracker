@@ -5,7 +5,6 @@ import 'package:money_owl/backend/utils/defaults.dart';
 import 'package:money_owl/backend/utils/enums.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:money_owl/objectbox.g.dart';
-import 'package:objectbox/objectbox.dart';
 import 'package:money_owl/backend/services/sync_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 

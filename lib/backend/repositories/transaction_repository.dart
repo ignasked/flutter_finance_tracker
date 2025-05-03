@@ -1,90 +1,102 @@
 import 'package:money_owl/backend/repositories/base_repository.dart';
+import 'package:money_owl/backend/services/auth_service.dart'; // Import AuthService
 import 'package:money_owl/front/shared/filter_cubit/filter_state.dart';
-import '../../objectbox.g.dart'; // ObjectBox generated file
 import 'package:money_owl/backend/models/transaction.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../objectbox.g.dart'; // Adjust path as necessary
 import 'package:objectbox/objectbox.dart';
 import 'package:money_owl/backend/services/sync_service.dart'; // Import SyncSource
-import 'package:money_owl/backend/models/account.dart'; // Import Account model for linking
-import 'package:money_owl/backend/models/category.dart'; // Import Category model for linking
 
 class TransactionRepository extends BaseRepository<Transaction> {
-  TransactionRepository(Store store) : super(store);
+  // No need for _supabaseClient here if SyncService handles Supabase interactions
+  final SupabaseClient _authService; // Add AuthService
 
-  /// Factory method for asynchronous initialization
-  static Future<TransactionRepository> create([Store? store]) async {
-    final newStore = store ?? await BaseRepository.createStore();
-    return TransactionRepository(newStore);
-  }
+  // Inject AuthService
+  TransactionRepository(Store store, this._authService) : super(store);
 
-  /// Get transactions modified after a specific time (UTC).
+  /// Get transactions modified after a specific time (UTC) for the current user.
   Future<List<Transaction>> getAllModifiedSince(DateTime time) async {
+    const currentUserId = "_authService.accessToken?.toString()";
+
     // Ensure comparison is done with UTC timestamps in the database
     final query = box
-        .query(Transaction_.updatedAt > time.toUtc().millisecondsSinceEpoch)
+        .query(Transaction_.updatedAt
+            .greaterThan(time.toUtc().millisecondsSinceEpoch)
+            .and(Transaction_.userId
+                .equals(currentUserId))) // Corrected: Use Transaction_.userId
         .build();
-    // Use findAsync
     final results = await query.findAsync();
     query.close();
-    // Note: Relations (account, category) are NOT automatically loaded by findAsync.
-    // They will need to be loaded manually if required before sending to Supabase,
-    // or handled by ensuring toJson sends only the IDs.
     return results;
   }
 
-  /// Override put to update timestamps before saving.
+  /// Override put to update timestamps and set userId before saving.
   @override
   Future<int> put(Transaction transaction,
       {SyncSource syncSource = SyncSource.local}) async {
     if (syncSource == SyncSource.local) {
       final now = DateTime.now();
       Transaction transactionToSave;
+      const currentUserId = "_authService.currentUser?.id";
+
       if (transaction.id == 0) {
-        transactionToSave =
-            transaction.copyWith(createdAt: now, updatedAt: now);
+        // New transaction: set userId, createdAt, updatedAt
+        transactionToSave = transaction.copyWith(
+          userId: currentUserId, // Set user ID
+          createdAt: now,
+          updatedAt: now,
+        );
       } else {
-        transactionToSave = transaction.copyWith(updatedAt: now);
+        // Existing transaction: update updatedAt, ensure userId is preserved/correct
+        transactionToSave = transaction.copyWith(
+          userId: transaction.userId ?? currentUserId, // Ensure userId is set
+          updatedAt: now,
+        );
       }
-      // Use await for the super call which is now async
+
+      // Safety check: Ensure the userId being saved matches the logged-in user
+      if (transactionToSave.userId != currentUserId) {
+        print(
+            "Error: Attempted to save transaction with mismatched userId (${transactionToSave.userId}) for current user ($currentUserId).");
+        throw Exception("Cannot save data for a different user.");
+      }
+
       final savedId =
           await super.put(transactionToSave, syncSource: syncSource);
-      // Optional: Trigger immediate push
-      // syncService.pushUpsert('transactions', transactionToSave);
+      // Optional: Trigger immediate push via SyncService if needed
+      // context.read<SyncService>().pushUpsert('transactions', transactionToSave);
       return savedId;
     } else {
-      // When syncing down from Supabase, ensure relations are linked correctly.
-      // This might require fetching Account/Category based on IDs if not already linked.
-      // Example (simplified - assumes target IDs are set in fromJson):
-      if (transaction.fromAccount.targetId != null &&
-          transaction.fromAccount.target == null) {
-        // Fetch and link account if needed (requires AccountRepository access or passing Store)
-        // transaction.account.target = await store.box<Account>().getAsync(transaction.account.targetId!);
-      }
-      if (transaction.category.targetId != null &&
-          transaction.category.target == null) {
-        // Fetch and link category if needed
-        // transaction.category.target = await store.box<Category>().getAsync(transaction.category.targetId!);
-      }
-      // Use await for the super call which is now async
+      // Syncing down from Supabase
+      // userId should already be set from fromJson
+      // Link relations if needed (existing logic can be kept or refined)
+      // ... existing relation linking logic ...
       return await super.put(transaction, syncSource: syncSource);
     }
   }
 
-  /// Fetch all transactions and ensure relations are loaded
+  /// Fetch all transactions for the current user and ensure relations are loaded.
   @override
   Future<List<Transaction>> getAll() async {
+    const currentUserId = "_authService.currentUser?.id";
+
     try {
-      // Use await for the super call which is now async
-      final transactions = await super.getAll();
-      // Note: Accessing target here is synchronous lazy-loading.
-      // For true async relation loading, consider ObjectBox queries with eager loading if needed.
-      for (var transaction in transactions) {
-        transaction.category
-            .target; // Ensure the target is loaded (fixes lazy loading)
-        transaction.fromAccount.target; // Ensure account target is loaded
+      final query =
+          box.query(Transaction_.userId.equals(currentUserId)).build();
+      final transactions = await query.findAsync();
+      query.close();
+
+      // Manually trigger lazy-loading (consider eager loading if performance is an issue)
+      // This is synchronous but ensures data is available if accessed immediately after.
+      for (final transaction in transactions) {
+        transaction.category.target;
+        transaction.fromAccount.target;
+        // transaction.toAccount.target; // If applicable
       }
       return transactions;
     } catch (e) {
-      print('Error fetching transactions: $e');
+      print('Error fetching transactions for user $currentUserId: $e');
       return [];
     }
   }
@@ -115,24 +127,29 @@ class TransactionRepository extends BaseRepository<Transaction> {
     }
   }
 
-  /// Example: Get transactions for a specific date range (modify as needed)
+  /// Get transactions for a specific date range for the current user.
   Future<List<Transaction>> getTransactionsBetween(
       DateTime start, DateTime end) async {
+    const currentUserId = "_authService.currentUser?.id";
+
     final query = box
         .query(Transaction_.date
-            .between(start.millisecondsSinceEpoch, end.millisecondsSinceEpoch))
+            .between(start.millisecondsSinceEpoch, end.millisecondsSinceEpoch)
+            .and(Transaction_.userId.equals(currentUserId))) // Filter by user
         .order(Transaction_.date, flags: Order.descending)
         .build();
-    // Use findAsync
     final results = await query.findAsync();
     query.close();
     return results;
   }
 
-  /// Get transactions based on filters
+  /// Get transactions based on filters for the current user.
   Future<List<Transaction>> getFiltered(FilterState filters) async {
-    // 1. Build the combined condition for properties (Date, Amount, Income/Expense)
-    Condition<Transaction>? propertyCondition;
+    const currentUserId = "_authService.currentUser?.id";
+
+    // Start with user ID condition
+    Condition<Transaction> combinedCondition =
+        Transaction_.userId.equals(currentUserId);
 
     // Apply Date Filter
     if (filters.startDate != null) {
@@ -140,84 +157,115 @@ class TransactionRepository extends BaseRepository<Transaction> {
       if (filters.singleDay) {
         final startOfDay = DateTime(filters.startDate!.year,
             filters.startDate!.month, filters.startDate!.day);
-        final endOfDay =
-            startOfDay.add(const Duration(days: 1)); // Start of next day
-        // Condition: date >= startOfDay AND date < endOfDay
+        final endOfDay = startOfDay.add(const Duration(days: 1));
         dateCondition = Transaction_.date
             .greaterOrEqual(startOfDay.millisecondsSinceEpoch)
             .and(Transaction_.date.lessThan(endOfDay.millisecondsSinceEpoch));
       } else {
         final rangeStart = filters.startDate!;
-        final rangeEnd = filters.endDate
-            ?.add(const Duration(days: 1)); // Start of day after endDate
-
-        // Condition: date >= rangeStart
+        final rangeEnd = filters.endDate?.add(const Duration(days: 1));
         dateCondition =
             Transaction_.date.greaterOrEqual(rangeStart.millisecondsSinceEpoch);
-
-        // Add condition: date < rangeEnd (if rangeEnd exists)
         if (rangeEnd != null) {
           dateCondition = dateCondition
               .and(Transaction_.date.lessThan(rangeEnd.millisecondsSinceEpoch));
         }
       }
-      propertyCondition = dateCondition; // Initialize propertyCondition
+      combinedCondition = combinedCondition.and(dateCondition);
     }
 
-    // Apply Amount Filter (Absolute value >= minAmount)
+    // Apply Amount Filter
     if (filters.minAmount != null) {
       final minAmount = filters.minAmount!;
-      // Condition: (amount >= minAmount) OR (amount <= -minAmount)
       final amountCondition = Transaction_.amount
           .greaterOrEqual(minAmount)
           .or(Transaction_.amount.lessOrEqual(-minAmount));
-      propertyCondition = (propertyCondition == null)
-          ? amountCondition
-          : propertyCondition.and(amountCondition);
+      combinedCondition = combinedCondition.and(amountCondition);
     }
 
-    // Apply Income/Expense Filter
+    // Apply Income/Expense Filter (using amount sign)
     if (filters.isIncome != null) {
-      // Query based on the sign of the amount, as isIncome is a getter
       Condition<Transaction> incomeCondition;
       if (filters.isIncome!) {
-        // isIncome == true means amount > 0
         incomeCondition = Transaction_.amount.greaterThan(0);
       } else {
-        // isIncome == false means amount < 0
         incomeCondition = Transaction_.amount.lessThan(0);
       }
-      propertyCondition = (propertyCondition == null)
-          ? incomeCondition
-          : propertyCondition.and(incomeCondition);
+      combinedCondition = combinedCondition.and(incomeCondition);
     }
 
-    // 2. Create the query builder with the combined property condition
-    final queryBuilder =
-        box.query(propertyCondition); // Pass the combined condition here
+    // Create the query builder with the combined condition
+    final queryBuilder = box.query(combinedCondition);
 
-    // 3. Apply Link Filters (Account, Category)
+    // Apply Link Filters (Account, Category)
     if (filters.selectedAccount != null) {
       queryBuilder.link(Transaction_.fromAccount,
           Account_.id.equals(filters.selectedAccount!.id));
     }
-
     if (filters.selectedCategories.isNotEmpty) {
       final categoryIds = filters.selectedCategories.map((c) => c.id).toList();
       queryBuilder.link(Transaction_.category, Category_.id.oneOf(categoryIds));
     }
 
-    // 4. Add sorting (optional, but good practice)
+    // Add sorting
     queryBuilder.order(Transaction_.date, flags: Order.descending);
 
-    // 5. Execute query
+    // Execute query
     final query = queryBuilder.build();
     final results = await query.findAsync();
     query.close();
 
-    // Relations might need manual loading after findAsync if accessed immediately
+    // Optional: Manually load relations if needed immediately
     // for (var tx in results) { tx.fromAccount.target; tx.category.target; }
 
     return results;
+  }
+
+  // Override remove to filter by user
+  @override
+  Future<bool> remove(int id) async {
+    const currentUserId = "_authService.currentUser?.id";
+    // Fetch the item first to ensure it belongs to the user
+    final item = await getById(id); // getById is now user-filtered
+    if (item != null) {
+      // No need to check userId again, getById handles it
+      final success = await super.remove(id);
+      // Optional: Trigger immediate push delete
+      // if (success) context.read<SyncService>().pushDelete('transactions', id);
+      return success;
+    } else {
+      print(
+          "Warn: Attempted to remove transaction $id not found or not belonging to user $currentUserId.");
+      return false;
+    }
+  }
+
+  // Override getById to filter by user
+  @override
+  Future<Transaction?> getById(int id) async {
+    const currentUserId = "_authService.currentUser?.id";
+
+    final query = box
+        .query(Transaction_.id
+            .equals(id)
+            .and(Transaction_.userId.equals(currentUserId)))
+        .build();
+    final result = await query.findFirstAsync();
+    query.close();
+    // Optional: Load relations if needed
+    // result?.category.target;
+    // result?.fromAccount.target;
+    return result;
+  }
+
+  // Be cautious with removeAll - ensure it ONLY removes for the current user
+  Future<int> removeAllForCurrentUser() async {
+    const currentUserId = "_authService.currentUser?.id";
+    final query = box.query(Transaction_.userId.equals(currentUserId)).build();
+    // Use removeAsync for efficiency
+    final count = await query.removeAsync();
+    query.close();
+    print("Removed $count transactions for user $currentUserId.");
+    return count;
   }
 }

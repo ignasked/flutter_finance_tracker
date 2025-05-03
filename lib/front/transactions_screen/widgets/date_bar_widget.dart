@@ -134,7 +134,7 @@ class DateSelectionOptionsSheet extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch, // Stretch buttons
         children: [
-          Text(
+          const Text(
             'Date Filter',
             style: AppStyle.heading2, // Use AppStyle heading
             textAlign: TextAlign.center,

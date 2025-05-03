@@ -561,7 +561,7 @@ class ImporterCubit extends Cubit<ImporterState> {
       }
 
       // Convert to pretty-printed JSON string
-      return JsonEncoder.withIndent('  ').convert(transactionMaps);
+      return const JsonEncoder.withIndent('  ').convert(transactionMaps);
     } catch (e) {
       // Handle any unexpected errors during JSON generation
       throw Exception('Failed to generate JSON: $e');

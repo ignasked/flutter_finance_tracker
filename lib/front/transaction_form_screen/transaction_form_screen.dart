@@ -28,7 +28,7 @@ class TransactionFormScreen extends StatelessWidget {
 }
 
 class _TransactionForm extends StatelessWidget {
-  const _TransactionForm({super.key});
+  const _TransactionForm();
 
   @override
   Widget build(BuildContext context) {
@@ -204,7 +204,7 @@ class _TransactionForm extends StatelessWidget {
                                 AppStyle.cardColor;
 
                             // Border color for the unselected segment
-                            final unselectedBorderColor = AppStyle.dividerColor;
+                            const unselectedBorderColor = AppStyle.dividerColor;
 
                             return SegmentedButton<TransactionType>(
                               segments: const <ButtonSegment<TransactionType>>[

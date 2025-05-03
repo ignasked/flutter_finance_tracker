@@ -70,7 +70,7 @@ class BulkTransactionsCubit extends Cubit<BulkTransactionsState> {
 
     // Check if the category title matches the discount type
     // and it's an expense type category (discounts reduce expenses)
-    return category.title?.toLowerCase() == discountType.toLowerCase() &&
+    return category.title.toLowerCase() == discountType.toLowerCase() &&
         category.type == TransactionType.income;
   }
 

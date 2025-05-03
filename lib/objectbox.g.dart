@@ -24,7 +24,7 @@ final _entities = <obx_int.ModelEntity>[
   obx_int.ModelEntity(
       id: const obx_int.IdUid(1, 1380094922926077824),
       name: 'Transaction',
-      lastPropertyId: const obx_int.IdUid(13, 2686481647713928676),
+      lastPropertyId: const obx_int.IdUid(14, 4366251851602547332),
       flags: 0,
       properties: <obx_int.ModelProperty>[
         obx_int.ModelProperty(
@@ -82,14 +82,20 @@ final _entities = <obx_int.ModelEntity>[
             type: 11,
             flags: 520,
             indexId: const obx_int.IdUid(4, 3173231574842338743),
-            relationTarget: 'Account')
+            relationTarget: 'Account'),
+        obx_int.ModelProperty(
+            id: const obx_int.IdUid(14, 4366251851602547332),
+            name: 'userId',
+            type: 9,
+            flags: 2048,
+            indexId: const obx_int.IdUid(5, 2320810090527615073))
       ],
       relations: <obx_int.ModelRelation>[],
       backlinks: <obx_int.ModelBacklink>[]),
   obx_int.ModelEntity(
       id: const obx_int.IdUid(2, 6364566181600309643),
       name: 'Category',
-      lastPropertyId: const obx_int.IdUid(9, 1181372859796335165),
+      lastPropertyId: const obx_int.IdUid(10, 1308887976627578461),
       flags: 0,
       properties: <obx_int.ModelProperty>[
         obx_int.ModelProperty(
@@ -136,6 +142,11 @@ final _entities = <obx_int.ModelEntity>[
             id: const obx_int.IdUid(9, 1181372859796335165),
             name: 'updatedAt',
             type: 10,
+            flags: 0),
+        obx_int.ModelProperty(
+            id: const obx_int.IdUid(10, 1308887976627578461),
+            name: 'userId',
+            type: 9,
             flags: 0)
       ],
       relations: <obx_int.ModelRelation>[],
@@ -148,7 +159,7 @@ final _entities = <obx_int.ModelEntity>[
   obx_int.ModelEntity(
       id: const obx_int.IdUid(3, 1793876900561739160),
       name: 'Account',
-      lastPropertyId: const obx_int.IdUid(13, 864178891988542051),
+      lastPropertyId: const obx_int.IdUid(14, 4503427942151526522),
       flags: 0,
       properties: <obx_int.ModelProperty>[
         obx_int.ModelProperty(
@@ -210,6 +221,11 @@ final _entities = <obx_int.ModelEntity>[
             id: const obx_int.IdUid(13, 864178891988542051),
             name: 'updatedAt',
             type: 10,
+            flags: 0),
+        obx_int.ModelProperty(
+            id: const obx_int.IdUid(14, 4503427942151526522),
+            name: 'userId',
+            type: 9,
             flags: 0)
       ],
       relations: <obx_int.ModelRelation>[],
@@ -261,7 +277,7 @@ obx_int.ModelDefinition getObjectBoxModel() {
   final model = obx_int.ModelInfo(
       entities: _entities,
       lastEntityId: const obx_int.IdUid(3, 1793876900561739160),
-      lastIndexId: const obx_int.IdUid(4, 3173231574842338743),
+      lastIndexId: const obx_int.IdUid(5, 2320810090527615073),
       lastRelationId: const obx_int.IdUid(0, 0),
       lastSequenceId: const obx_int.IdUid(0, 0),
       retiredEntityUids: const [],
@@ -292,7 +308,9 @@ obx_int.ModelDefinition getObjectBoxModel() {
           final descriptionOffset = object.description == null
               ? null
               : fbb.writeString(object.description!);
-          fbb.startTable(14);
+          final userIdOffset =
+              object.userId == null ? null : fbb.writeString(object.userId!);
+          fbb.startTable(15);
           fbb.addInt64(0, object.id);
           fbb.addOffset(1, titleOffset);
           fbb.addFloat64(2, object.amount);
@@ -303,6 +321,7 @@ obx_int.ModelDefinition getObjectBoxModel() {
           fbb.addInt64(10, object.updatedAt.millisecondsSinceEpoch);
           fbb.addInt64(11, object.fromAccount.targetId);
           fbb.addInt64(12, object.toAccount.targetId);
+          fbb.addOffset(13, userIdOffset);
           fbb.finish(fbb.endTable());
           return object.id;
         },
@@ -324,6 +343,8 @@ obx_int.ModelDefinition getObjectBoxModel() {
               const fb.Int64Reader().vTableGet(buffer, rootOffset, 22, 0));
           final updatedAtParam = DateTime.fromMillisecondsSinceEpoch(
               const fb.Int64Reader().vTableGet(buffer, rootOffset, 24, 0));
+          final userIdParam = const fb.StringReader(asciiOptimization: true)
+              .vTableGetNullable(buffer, rootOffset, 30);
           final object = Transaction(
               id: idParam,
               title: titleParam,
@@ -331,7 +352,8 @@ obx_int.ModelDefinition getObjectBoxModel() {
               description: descriptionParam,
               date: dateParam,
               createdAt: createdAtParam,
-              updatedAt: updatedAtParam);
+              updatedAt: updatedAtParam,
+              userId: userIdParam);
           object.category.targetId =
               const fb.Int64Reader().vTableGet(buffer, rootOffset, 16, 0);
           object.category.attach(store);
@@ -359,7 +381,9 @@ obx_int.ModelDefinition getObjectBoxModel() {
           final titleOffset = fbb.writeString(object.title);
           final descriptionForAIOffset =
               fbb.writeString(object.descriptionForAI);
-          fbb.startTable(10);
+          final userIdOffset =
+              object.userId == null ? null : fbb.writeString(object.userId!);
+          fbb.startTable(11);
           fbb.addInt64(0, object.id);
           fbb.addOffset(1, titleOffset);
           fbb.addOffset(2, descriptionForAIOffset);
@@ -369,6 +393,7 @@ obx_int.ModelDefinition getObjectBoxModel() {
           fbb.addInt64(6, object.colorValue);
           fbb.addInt64(7, object.createdAt.millisecondsSinceEpoch);
           fbb.addInt64(8, object.updatedAt.millisecondsSinceEpoch);
+          fbb.addOffset(9, userIdOffset);
           fbb.finish(fbb.endTable());
           return object.id;
         },
@@ -394,6 +419,8 @@ obx_int.ModelDefinition getObjectBoxModel() {
               const fb.Int64Reader().vTableGet(buffer, rootOffset, 18, 0));
           final updatedAtParam = DateTime.fromMillisecondsSinceEpoch(
               const fb.Int64Reader().vTableGet(buffer, rootOffset, 20, 0));
+          final userIdParam = const fb.StringReader(asciiOptimization: true)
+              .vTableGetNullable(buffer, rootOffset, 22);
           final object = Category(
               id: idParam,
               title: titleParam,
@@ -403,7 +430,8 @@ obx_int.ModelDefinition getObjectBoxModel() {
               typeValue: typeValueParam,
               isEnabled: isEnabledParam,
               createdAt: createdAtParam,
-              updatedAt: updatedAtParam);
+              updatedAt: updatedAtParam,
+              userId: userIdParam);
           obx_int.InternalToManyAccess.setRelInfo<Category>(
               object.transactions,
               store,
@@ -432,7 +460,9 @@ obx_int.ModelDefinition getObjectBoxModel() {
           final currencySymbolOffset = object.currencySymbol == null
               ? null
               : fbb.writeString(object.currencySymbol!);
-          fbb.startTable(14);
+          final userIdOffset =
+              object.userId == null ? null : fbb.writeString(object.userId!);
+          fbb.startTable(15);
           fbb.addInt64(0, object.id);
           fbb.addOffset(1, nameOffset);
           fbb.addInt64(3, object.iconCodePoint);
@@ -445,6 +475,7 @@ obx_int.ModelDefinition getObjectBoxModel() {
           fbb.addOffset(10, currencySymbolOffset);
           fbb.addInt64(11, object.createdAt.millisecondsSinceEpoch);
           fbb.addInt64(12, object.updatedAt.millisecondsSinceEpoch);
+          fbb.addOffset(13, userIdOffset);
           fbb.finish(fbb.endTable());
           return object.id;
         },
@@ -476,6 +507,8 @@ obx_int.ModelDefinition getObjectBoxModel() {
               const fb.Int64Reader().vTableGet(buffer, rootOffset, 26, 0));
           final updatedAtParam = DateTime.fromMillisecondsSinceEpoch(
               const fb.Int64Reader().vTableGet(buffer, rootOffset, 28, 0));
+          final userIdParam = const fb.StringReader(asciiOptimization: true)
+              .vTableGetNullable(buffer, rootOffset, 30);
           final object = Account(
               id: idParam,
               name: nameParam,
@@ -488,7 +521,8 @@ obx_int.ModelDefinition getObjectBoxModel() {
               isEnabled: isEnabledParam,
               excludeFromTotalBalance: excludeFromTotalBalanceParam,
               createdAt: createdAtParam,
-              updatedAt: updatedAtParam);
+              updatedAt: updatedAtParam,
+              userId: userIdParam);
           obx_int.InternalToManyAccess.setRelInfo<Account>(
               object.transactionsFrom,
               store,
@@ -547,6 +581,10 @@ class Transaction_ {
   /// See [Transaction.toAccount].
   static final toAccount =
       obx.QueryRelationToOne<Transaction, Account>(_entities[0].properties[9]);
+
+  /// See [Transaction.userId].
+  static final userId =
+      obx.QueryStringProperty<Transaction>(_entities[0].properties[10]);
 }
 
 /// [Category] entity fields to define ObjectBox queries.
@@ -586,6 +624,10 @@ class Category_ {
   /// See [Category.updatedAt].
   static final updatedAt =
       obx.QueryDateProperty<Category>(_entities[1].properties[8]);
+
+  /// See [Category.userId].
+  static final userId =
+      obx.QueryStringProperty<Category>(_entities[1].properties[9]);
 
   /// see [Category.transactions]
   static final transactions =
@@ -641,6 +683,10 @@ class Account_ {
   /// See [Account.updatedAt].
   static final updatedAt =
       obx.QueryDateProperty<Account>(_entities[2].properties[11]);
+
+  /// See [Account.userId].
+  static final userId =
+      obx.QueryStringProperty<Account>(_entities[2].properties[12]);
 
   /// see [Account.transactionsFrom]
   static final transactionsFrom =

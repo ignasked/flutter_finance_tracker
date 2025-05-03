@@ -9,6 +9,7 @@ import 'package:money_owl/backend/services/mistral_service.dart';
 import 'package:money_owl/backend/utils/currency_utils.dart';
 import 'package:money_owl/backend/utils/defaults.dart';
 import 'package:money_owl/front/auth/auth_bloc/auth_bloc.dart';
+import 'package:money_owl/front/auth/auth_screen.dart';
 import 'package:money_owl/front/shared/data_management_cubit/data_management_cubit.dart';
 import 'package:money_owl/front/settings_screen/account_management_screen.dart';
 import 'package:money_owl/front/settings_screen/cubit/importer_cubit.dart';
@@ -159,16 +160,47 @@ class SettingsScreen extends StatelessWidget {
                     color: AppStyle.dividerColor),
 
                 // --- Account Section ---
-                _buildSectionHeader('Account'),
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.logout, color: ColorPalette.onPrimary),
-                  label: const Text('Logout'),
-                  style: AppStyle.primaryButtonStyle.copyWith(
-                    backgroundColor:
-                        MaterialStateProperty.all(AppStyle.secondaryColor),
-                  ),
-                  onPressed: () {
-                    context.read<AuthBloc>().add(AuthLogoutRequested());
+                _buildSectionHeader('Account', icon: Icons.person_outline),
+                // Display Login/Signup button if not authenticated
+                BlocBuilder<AuthBloc, AuthState>(
+                  builder: (context, state) {
+                    if (state.status == AuthStatus.unauthenticated) {
+                      return Padding(
+                        padding: const EdgeInsets.only(
+                            bottom: AppStyle.paddingSmall),
+                        child: ElevatedButton.icon(
+                          icon: const Icon(Icons.login,
+                              color: ColorPalette.onPrimary),
+                          label: const Text('Login / Sign Up for Cloud Sync'),
+                          style: AppStyle.primaryButtonStyle,
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const AuthScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                      );
+                    } else {
+                      // Display Logout button if authenticated
+                      return Padding(
+                        padding: const EdgeInsets.only(
+                            bottom: AppStyle.paddingSmall),
+                        child: ElevatedButton.icon(
+                          icon: const Icon(Icons.logout,
+                              color: ColorPalette.onPrimary),
+                          label: const Text('Logout'),
+                          style: AppStyle.primaryButtonStyle.copyWith(
+                            backgroundColor: WidgetStateProperty.all(
+                                AppStyle.secondaryColor),
+                          ),
+                          onPressed: () {
+                            context.read<AuthBloc>().add(AuthLogoutRequested());
+                          },
+                        ),
+                      );
+                    }
                   },
                 ),
                 const SizedBox(height: AppStyle.paddingLarge),
@@ -180,11 +212,21 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSectionHeader(String title) {
+  Widget _buildSectionHeader(String title, {IconData? icon}) {
     return Padding(
       padding: const EdgeInsets.only(
           top: AppStyle.paddingMedium, bottom: AppStyle.paddingSmall),
-      child: Text(title, style: AppStyle.heading2),
+      child: Row(
+        children: [
+          if (icon != null) ...[
+            Icon(icon, color: AppStyle.secondaryColor, size: 20),
+            const SizedBox(width: AppStyle.paddingSmall),
+          ],
+          Expanded(
+            child: Text(title, style: AppStyle.heading2),
+          ),
+        ],
+      ),
     );
   }
 

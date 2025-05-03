@@ -70,7 +70,7 @@ class _TransactionFilterSheetState extends State<TransactionFilterSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
+            const Text(
               'Filter Transactions',
               style: AppStyle.heading2,
               textAlign: TextAlign.center,
@@ -78,7 +78,7 @@ class _TransactionFilterSheetState extends State<TransactionFilterSheet> {
             const SizedBox(height: AppStyle.paddingLarge),
 
             // Category Filter
-            Text('Categories', style: AppStyle.titleStyle),
+            const Text('Categories', style: AppStyle.titleStyle),
             const SizedBox(height: AppStyle.paddingSmall),
             Wrap(
               spacing: AppStyle.paddingSmall,
@@ -120,7 +120,7 @@ class _TransactionFilterSheetState extends State<TransactionFilterSheet> {
             const SizedBox(height: AppStyle.paddingMedium),
 
             // Income/Expense Filter
-            Text('Type', style: AppStyle.titleStyle),
+            const Text('Type', style: AppStyle.titleStyle),
             const SizedBox(height: AppStyle.paddingSmall),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,

@@ -6,7 +6,6 @@ import 'package:money_owl/backend/repositories/transaction_repository.dart';
 import 'package:money_owl/backend/utils/defaults.dart';
 import 'package:money_owl/front/shared/data_management_cubit/data_management_cubit.dart';
 import 'package:money_owl/front/settings_screen/widgets/category_form_widget.dart';
-import 'package:money_owl/main.dart';
 
 class CategoryCubit extends Cubit<List<Category>> {
   final CategoryRepository _categoryRepository;

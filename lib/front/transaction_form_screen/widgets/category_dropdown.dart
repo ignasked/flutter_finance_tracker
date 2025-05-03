@@ -33,8 +33,8 @@ class _CategoryDropdownState extends State<CategoryDropdown> {
     if (!mounted) return;
 
     // Safely get form cubit if available
-    final formCubit = context.read<TransactionFormCubit>();
-    if (formCubit.state == null) return; // Guard against null state
+    final formCubit =
+        context.read<TransactionFormCubit>(); // Guard against null state
 
     final state = formCubit.state;
     final defaultCategory = Defaults().defaultCategory;

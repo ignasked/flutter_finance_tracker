@@ -43,7 +43,7 @@ class BulkAddTransactionsScreen extends StatelessWidget {
 
 /// Main view for the BulkAddTransactionsScreen
 class _BulkAddTransactionsView extends StatelessWidget {
-  const _BulkAddTransactionsView({super.key});
+  const _BulkAddTransactionsView();
 
   @override
   Widget build(BuildContext context) {
@@ -345,7 +345,7 @@ class _BottomControlPanel extends StatelessWidget {
                 ),
               ],
               // Add a top border for clear separation from list
-              border: Border(
+              border: const Border(
                   top: BorderSide(color: AppStyle.dividerColor, width: 1)),
             ),
             child: Column(
@@ -401,7 +401,7 @@ class _BottomControlPanel extends StatelessWidget {
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text('Total:', style: AppStyle.captionStyle),
+                          const Text('Total:', style: AppStyle.captionStyle),
                           const SizedBox(width: AppStyle.paddingXSmall),
                           Text(
                             state.totalExpenses.toStringAsFixed(2),
@@ -450,14 +450,15 @@ class _BottomControlPanel extends StatelessWidget {
                       icon: const Icon(Icons.merge_type, size: 18),
                       label: const Text('Merge Similar'),
                       style: AppStyle.textButtonStyle.copyWith(
-                        padding: MaterialStateProperty.all(
+                        padding: WidgetStateProperty.all(
                             const EdgeInsets.symmetric(
                                 horizontal: AppStyle.paddingSmall)),
                         // Grey out if disabled
                         foregroundColor:
-                            MaterialStateProperty.resolveWith((states) {
-                          if (states.contains(MaterialState.disabled))
+                            WidgetStateProperty.resolveWith((states) {
+                          if (states.contains(WidgetState.disabled)) {
                             return AppStyle.textColorSecondary.withOpacity(0.5);
+                          }
                           return AppStyle.primaryColor;
                         }),
                       ),
@@ -486,7 +487,7 @@ class _BottomControlPanel extends StatelessWidget {
                         }
                       },
                       style: AppStyle.textButtonStyle.copyWith(
-                        padding: MaterialStateProperty.all(
+                        padding: WidgetStateProperty.all(
                             const EdgeInsets.symmetric(
                                 horizontal: AppStyle.paddingSmall)),
                       ),
@@ -514,7 +515,7 @@ class _BottomControlPanel extends StatelessWidget {
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.warning_amber_rounded,
+                          const Icon(Icons.warning_amber_rounded,
                               color: AppStyle.warningColor, size: 18),
                           const SizedBox(width: AppStyle.paddingSmall),
                           Expanded(

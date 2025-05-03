@@ -5,7 +5,7 @@
   "entities": [
     {
       "id": "1:1380094922926077824",
-      "lastPropertyId": "13:2686481647713928676",
+      "lastPropertyId": "14:4366251851602547332",
       "name": "Transaction",
       "properties": [
         {
@@ -67,13 +67,20 @@
           "flags": 520,
           "indexId": "4:3173231574842338743",
           "relationTarget": "Account"
+        },
+        {
+          "id": "14:4366251851602547332",
+          "name": "userId",
+          "type": 9,
+          "flags": 2048,
+          "indexId": "5:2320810090527615073"
         }
       ],
       "relations": []
     },
     {
       "id": "2:6364566181600309643",
-      "lastPropertyId": "9:1181372859796335165",
+      "lastPropertyId": "10:1308887976627578461",
       "name": "Category",
       "properties": [
         {
@@ -121,13 +128,18 @@
           "id": "9:1181372859796335165",
           "name": "updatedAt",
           "type": 10
+        },
+        {
+          "id": "10:1308887976627578461",
+          "name": "userId",
+          "type": 9
         }
       ],
       "relations": []
     },
     {
       "id": "3:1793876900561739160",
-      "lastPropertyId": "13:864178891988542051",
+      "lastPropertyId": "14:4503427942151526522",
       "name": "Account",
       "properties": [
         {
@@ -190,13 +202,18 @@
           "id": "13:864178891988542051",
           "name": "updatedAt",
           "type": 10
+        },
+        {
+          "id": "14:4503427942151526522",
+          "name": "userId",
+          "type": 9
         }
       ],
       "relations": []
     }
   ],
   "lastEntityId": "3:1793876900561739160",
-  "lastIndexId": "4:3173231574842338743",
+  "lastIndexId": "5:2320810090527615073",
   "lastRelationId": "0:0",
   "lastSequenceId": "0:0",
   "modelVersion": 5,

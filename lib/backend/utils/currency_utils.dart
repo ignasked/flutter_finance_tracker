@@ -1,7 +1,3 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
-
 class CurrencyUtils {
   static const Map<String, String> predefinedCurrencies = {
     'USD': '\$', // United States Dollar

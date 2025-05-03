@@ -1,10 +1,9 @@
 import 'package:bloc/bloc.dart';
 import 'package:money_owl/backend/models/account.dart';
 import 'package:money_owl/backend/models/category.dart';
-import 'package:money_owl/backend/models/transaction.dart';
 import 'package:money_owl/front/shared/data_management_cubit/date_cubit.dart'; // Import DateCubit
 import 'dart:async'; // Import for StreamSubscription
-import 'package:money_owl/shared/filter_utils.dart'; // Import the utility function
+// Import the utility function
 
 import 'filter_state.dart';
 

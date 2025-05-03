@@ -45,8 +45,8 @@ class Category extends Equatable {
     DateTime? createdAt,
     DateTime? updatedAt,
     this.userId, // Add userId parameter
-  })  : this.createdAt = createdAt ?? DateTime.now(),
-        this.updatedAt = updatedAt ?? (createdAt ?? DateTime.now());
+  })  : createdAt = createdAt ?? DateTime.now(),
+        updatedAt = updatedAt ?? (createdAt ?? DateTime.now());
 
   // Convert to JSON for Supabase
   Map<String, dynamic> toJson() {

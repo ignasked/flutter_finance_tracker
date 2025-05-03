@@ -91,13 +91,20 @@ class SyncService {
       dynamic repository, // Ideally a common base class or interface
       T Function(Map<String, dynamic>) fromJson,
       DateTime lastSyncTime) async {
-    print('Sync Down: Fetching $tableName updated since $lastSyncTime');
+    final currentUserId = _supabaseClient.auth.currentUser?.id;
+    if (currentUserId == null) {
+      print('Sync Down: User not logged in, skipping $tableName.');
+      return; // Don't sync down if not logged in
+    }
+
+    print(
+        'Sync Down: Fetching $tableName for user $currentUserId updated since $lastSyncTime');
     try {
-      // Fetch records updated at or after the last sync time
+      // Fetch records updated at or after the last sync time FOR THE CURRENT USER
       final response = await _supabaseClient
           .from(tableName)
           .select()
-          // Use ISO8601 format for Supabase timestamp queries
+          .eq('user_id', currentUserId) // <-- FILTER BY USER ID
           .gte('updated_at', lastSyncTime.toIso8601String());
 
       // No need to check if response is List, Supabase client returns List<Map> on success
@@ -156,53 +163,68 @@ class SyncService {
       // Ensure T has toJson
       String tableName,
       Future<List<T>> localItemsFuture) async {
+    final currentUserId = _supabaseClient.auth.currentUser?.id;
+    if (currentUserId == null) {
+      print('Sync Up: User not logged in, skipping $tableName.');
+      return; // Don't sync up if not logged in
+    }
+
     try {
+      // The future now likely comes from a repository method that already filters by user ID
       final localItems = await localItemsFuture;
       if (localItems.isEmpty) {
-        print('Sync Up: No local changes detected for $tableName.');
+        print(
+            'Sync Up: No local changes detected for $tableName for user $currentUserId.');
         return;
       }
 
       print(
-          'Sync Up: Pushing ${localItems.length} $tableName changes to Supabase.');
+          'Sync Up: Pushing ${localItems.length} $tableName changes for user $currentUserId to Supabase.');
 
       // Convert local items to JSON maps for Supabase
-      // Assume models have a toJson() method that handles UTC conversion
+      // Ensure toJson() includes the userId and uses UTC timestamps
       final itemsToUpsert = localItems.map((item) => item.toJson()).toList();
 
-      // Upsert: Insert if new (based on primary key), update if exists.
+      // Upsert: Insert if new, update if exists. Supabase matches on primary key.
+      // RLS policies on Supabase will ensure the user can only upsert their own data
+      // if the user_id in the payload matches auth.uid().
       await _supabaseClient.from(tableName).upsert(itemsToUpsert);
       print('Sync Up: Successfully pushed $tableName changes.');
     } catch (e, stacktrace) {
       print('Error syncing up $tableName: $e');
       print('Stacktrace: $stacktrace');
-      // Re-throw to be caught by syncAll
       rethrow;
     }
   }
 
-  // --- Methods to push individual changes immediately (optional) ---
-  // These could be called directly from repository methods after a local change.
-  // Note: This increases network traffic but keeps Supabase more up-to-date between full syncs.
-
   Future<void> pushUpsert<T extends dynamic>(String tableName, T item) async {
-    // Ensure item has toJson method
+    final currentUserId = _supabaseClient.auth.currentUser?.id;
+    if (currentUserId == null) return; // Don't push if not logged in
+    // Ensure item has toJson method and includes the correct userId
+    if (item.userId != currentUserId) {
+      print('Error: Attempting to push item for wrong user.');
+      return; // Or throw an error
+    }
     try {
-      print('Pushing single upsert for $tableName item ${item.id}');
+      print(
+          'Pushing single upsert for $tableName item ${item.id} for user $currentUserId');
       await _supabaseClient.from(tableName).upsert(item.toJson());
     } catch (e) {
       print('Error pushing single upsert for $tableName: $e');
-      // Handle error (e.g., queue for later sync)
     }
   }
 
   Future<void> pushDelete(String tableName, int id) async {
+    final currentUserId = _supabaseClient.auth.currentUser?.id;
+    if (currentUserId == null) return; // Don't push if not logged in
     try {
-      print('Pushing single delete for $tableName item $id');
-      await _supabaseClient.from(tableName).delete().match({'id': id});
+      print(
+          'Pushing single delete for $tableName item $id for user $currentUserId');
+      // RLS policy should prevent deleting others' data, but filtering here is safer.
+      await _supabaseClient.from(tableName).delete().match(
+          {'id': id, 'user_id': currentUserId}); // Match both id and user_id
     } catch (e) {
       print('Error pushing single delete for $tableName: $e');
-      // Handle error
     }
   }
 }

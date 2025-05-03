@@ -43,7 +43,7 @@ Future<void> main() async {
   // Initialize Repositories
   accountRepository = AccountRepository(store);
   categoryRepository = CategoryRepository(store);
-  txRepository = TransactionRepository(store);
+  txRepository = TransactionRepository(store, supabase);
 
   // Initialize Services
   authService = AuthService(supabase); // Instantiate AuthService
@@ -101,13 +101,6 @@ class MyApp extends StatelessWidget {
               context.read<FilterCubit>(), // Provide FilterCubit
             ),
           ),
-          // BlocProvider<TransactionFormCubit>(
-          //   create: (context) => TransactionFormCubit(),
-          // ),
-          // BlocProvider<CsvCubit>(
-          //   create: (context) => CsvCubit(),
-          // ),
-          // LoginCubit and SignupCubit are provided locally in their respective screens
         ],
         child: MaterialApp(
           title: 'Money Owl',
@@ -116,85 +109,32 @@ class MyApp extends StatelessWidget {
             colorScheme: ColorScheme.fromSeed(seedColor: Colors.amber),
             useMaterial3: true,
           ),
-          // Use SupabaseAuthState to handle UI based on auth state
-          home: BlocBuilder<auth_bloc.AuthBloc, auth_bloc.AuthState>(
-            // Use the prefix here for both Bloc and State
-            builder: (context, state) {
-              // Check authentication state
-              if (state.status == auth_bloc.AuthStatus.authenticated) {
-                // Use the prefix here
-                // User is logged in, show the main app (Navigation)
-                return const Navigation();
-              } else {
-                // User is not authenticated, show login UI
-                return Scaffold(
-                  appBar: AppBar(title: const Text('Login / Sign Up')),
-                  body: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      // Wrap with Column
-                      children: [
-                        SupaEmailAuth(
-                          onSignInComplete: (response) {
-                            // AuthBloc listener will handle sync
-                            print('Sign in complete');
-                          },
-                          onSignUpComplete: (response) {
-                            // AuthBloc listener will handle sync if auto-confirm is on
-                            // Or show a message if email confirmation is needed
-                            print('Sign up complete');
-                            if (response.session == null &&
-                                response.user != null) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                      'Please check your email to confirm your account.'),
-                                  duration: Duration(seconds: 5),
-                                ),
-                              );
-                            }
-                          },
-                          onError: (error) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                    'Authentication Error: ${error.toString()}'),
-                                backgroundColor:
-                                    Theme.of(context).colorScheme.error,
-                              ),
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 20), // Add some spacing
-                        SupaSocialsAuth(
-                          socialProviders: const [
-                            OAuthProvider.google,
-                            // Add other providers like OAuthProvider.apple, OAuthProvider.github, etc.
-                          ],
-                          colored: true, // Use colored buttons
-                          redirectUrl:
-                              'owlandroid://com.games_from_garage.money_owl', // Use the correct redirect URL
-                          onSuccess: (Session session) {
-                            // AuthBloc listener will handle sync
-                            print('Social sign in successful');
-                          },
-                          onError: (error) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                    'Social Auth Error: ${error.toString()}'),
-                                backgroundColor:
-                                    Theme.of(context).colorScheme.error,
-                              ),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
+          // Listen for auth state changes to show snackbar on initial auto-login
+          home: BlocListener<auth_bloc.AuthBloc, auth_bloc.AuthState>(
+            // Only listen when the state changes FROM non-authenticated TO authenticated
+            listenWhen: (previous, current) {
+              return previous.status != auth_bloc.AuthStatus.authenticated &&
+                  current.status == auth_bloc.AuthStatus.authenticated;
+            },
+            listener: (context, state) {
+              // Now we know this listener only runs on the specific transition we want
+              ScaffoldMessenger.of(context)
+                ..hideCurrentSnackBar()
+                ..showSnackBar(
+                  const SnackBar(
+                    content: Text('Successfully signed in.'),
+                    behavior: SnackBarBehavior.floating,
+                    duration: Duration(seconds: 5), // Give it a short duration
                   ),
                 );
-              }
             },
+            // The actual UI based on auth state (always shows Navigation now)
+            child: BlocBuilder<auth_bloc.AuthBloc, auth_bloc.AuthState>(
+              builder: (context, state) {
+                // Always show the main navigation.
+                return const Navigation();
+              },
+            ),
           ),
         ),
       ),

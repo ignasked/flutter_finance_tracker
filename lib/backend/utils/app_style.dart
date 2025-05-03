@@ -282,16 +282,16 @@ class AppStyle {
     ColorPalette.expense, // Red
     ColorPalette.info, // Blue
     ColorPalette.income, // Green
-    Color(0xFFFF9800), // Orange
-    Color(0xFF9C27B0), // Purple
-    Color(0xFFFDD835), // Yellow
-    Color(0xFF795548), // Brown
-    Color(0xFFE91E63), // Pink
-    Color(0xFF009688), // Teal
+    const Color(0xFFFF9800), // Orange
+    const Color(0xFF9C27B0), // Purple
+    const Color(0xFFFDD835), // Yellow
+    const Color(0xFF795548), // Brown
+    const Color(0xFFE91E63), // Pink
+    const Color(0xFF009688), // Teal
     primaryColor, // Primary color
-    Color(0xFF9E9E9E), // Grey
-    Color(0xFFFF5722), // Deep Orange
-    Color(0xFF3F51B5), // Indigo
+    const Color(0xFF9E9E9E), // Grey
+    const Color(0xFFFF5722), // Deep Orange
+    const Color(0xFF3F51B5), // Indigo
   ];
 
   static const List<IconData> predefinedIcons = [

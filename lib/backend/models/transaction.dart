@@ -31,6 +31,7 @@ class Transaction extends Equatable {
   final DateTime updatedAt;
 
   // Add userId field
+  @Index() // Index for faster lookups by userId
   final String? userId;
 
   // Add a transient field for metadata (not stored in database)
@@ -59,9 +60,9 @@ class Transaction extends Equatable {
     DateTime? updatedAt,
     this.userId, // Add userId parameter
     this.metadata, // Add metadata parameter
-  })  : this.id = id ?? 0,
-        this.createdAt = createdAt ?? DateTime.now(),
-        this.updatedAt = updatedAt ?? (createdAt ?? DateTime.now()) {
+  })  : id = id ?? 0,
+        createdAt = createdAt ?? DateTime.now(),
+        updatedAt = updatedAt ?? (createdAt ?? DateTime.now()) {
     if (category != null) {
       this.category.target = category;
     }

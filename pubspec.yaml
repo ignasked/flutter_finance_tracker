@@ -19,7 +19,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
-  sdk: '>=3.2.5 <4.0.0'
+  sdk: '>=3.4.3 <4.0.0'
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -38,7 +38,7 @@ dependencies:
   flutter_bloc: ^8.0.0
   formz: ^0.8.0
   intl: any
-  objectbox: ^4.0.3
+  objectbox: ^4.2.0
   objectbox_flutter_libs: any
   path: ^1.8.0
   path_provider: ^2.0.11
@@ -55,8 +55,8 @@ dependencies:
   sticky_headers: ^0.3.0+2
 
 dev_dependencies:
-  build_runner: ^2.4.13
-  objectbox_generator: any
+  build_runner: ^2.4.11
+  objectbox_generator: ^4.2.0 # Match objectbox version
   flutter_launcher_icons: ^0.13.1
 
   # The "flutter_lints" package below contains a set of recommended lints to
@@ -64,9 +64,12 @@ dev_dependencies:
   # activated in the `analysis_options.yaml` file located at the root of your
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
-  flutter_lints: ^2.0.0
+  flutter_lints: ^4.0.0
   flutter_test:
     sdk: flutter
+
+dependency_overrides:
+  path: 1.9.1 # Fix for path issue in objectbox_flutter_libs
 flutter_icons:
   android: true
   ios: true
