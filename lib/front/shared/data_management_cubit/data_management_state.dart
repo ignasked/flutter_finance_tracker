@@ -1,56 +1,75 @@
 part of 'data_management_cubit.dart';
 
 class DataManagementState extends Equatable {
-  final LoadingStatus status;
-  final List<Transaction> allTransactions; // All transactions for the user
+  final List<Transaction> allTransactions;
   final List<Account> allAccounts;
   final List<Category> allCategories;
-  final List<Transaction> displayedTransactions; // Filtered and sorted
-  final TransactionSummaryState
-      summary; // Calculated based on displayedTransactions
+  // --- Add field for filtered raw transactions ---
+  final List<Transaction> filteredTransactions; // Holds the raw filtered list
+  // --- Use ViewModel for display ---
+  final List<TransactionViewModel> displayedTransactions;
+  // --- End Use ViewModel ---
+  final TransactionSummaryState summary;
+  final LoadingStatus status;
   final String? errorMessage;
 
   const DataManagementState({
-    this.status = LoadingStatus.initial,
     this.allTransactions = const [],
-    this.displayedTransactions = const [],
     this.allAccounts = const [],
     this.allCategories = const [],
+    // --- Initialize new field ---
+    this.filteredTransactions = const [], // Initialize as empty
+    // --- Use ViewModel for display ---
+    this.displayedTransactions = const [],
+    // --- End Use ViewModel ---
     this.summary = const TransactionSummaryState(),
+    this.status = LoadingStatus.initial,
     this.errorMessage,
   });
 
   DataManagementState copyWith({
-    LoadingStatus? status,
     List<Transaction>? allTransactions,
-    List<Transaction>? displayedTransactions,
     List<Account>? allAccounts,
     List<Category>? allCategories,
+    // --- Add copyWith parameter ---
+    List<Transaction>? filteredTransactions,
+    // --- Use ViewModel for display ---
+    List<TransactionViewModel>? displayedTransactions,
+    // --- End Use ViewModel ---
     TransactionSummaryState? summary,
+    LoadingStatus? status,
     String? errorMessage,
-    bool clearErrorMessage = false,
+    bool? clearError, // Helper to clear error message
   }) {
     return DataManagementState(
-      status: status ?? this.status,
       allTransactions: allTransactions ?? this.allTransactions,
-      displayedTransactions:
-          displayedTransactions ?? this.displayedTransactions,
       allAccounts: allAccounts ?? this.allAccounts,
       allCategories: allCategories ?? this.allCategories,
+      // --- Use new parameter ---
+      filteredTransactions: filteredTransactions ?? this.filteredTransactions,
+      // --- Use ViewModel for display ---
+      displayedTransactions:
+          displayedTransactions ?? this.displayedTransactions,
+      // --- End Use ViewModel ---
       summary: summary ?? this.summary,
+      status: status ?? this.status,
       errorMessage:
-          clearErrorMessage ? null : errorMessage ?? this.errorMessage,
+          clearError == true ? null : (errorMessage ?? this.errorMessage),
     );
   }
 
   @override
   List<Object?> get props => [
-        status,
         allTransactions,
-        displayedTransactions,
         allAccounts,
         allCategories,
+        // --- Add to props ---
+        filteredTransactions,
+        // --- Use ViewModel for display ---
+        displayedTransactions,
+        // --- End Use ViewModel ---
         summary,
+        status,
         errorMessage,
       ];
 }

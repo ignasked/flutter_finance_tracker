@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_bloc/flutter_bloc.dart'; // Import Bloc for context.read
 import 'package:intl/intl.dart';
-import 'package:sticky_headers/sticky_headers.dart'; // Import sticky_headers
 import 'package:money_owl/backend/models/transaction.dart';
-import 'package:money_owl/backend/models/transaction_result.dart';
-// Assuming TransactionRepository is primarily used within the Cubit now
-// import 'package:money_owl/backend/repositories/transaction_repository.dart';
-import 'package:money_owl/front/shared/data_management_cubit/data_management_cubit.dart';
-import 'package:money_owl/front/transaction_form_screen/transaction_form_screen.dart';
+import 'package:sticky_headers/sticky_headers.dart'; // Import sticky_headers
 import 'package:money_owl/backend/utils/app_style.dart';
+import 'package:money_owl/front/shared/data_management_cubit/data_management_cubit.dart'; // Import Cubit
+import 'package:money_owl/front/transactions_screen/viewmodel/transaction_viewmodel.dart';
+import 'package:money_owl/front/transaction_form_screen/transaction_form_screen.dart'; // Add import
+import 'package:money_owl/backend/models/transaction_result.dart'; // Add import
+import 'package:money_owl/front/transaction_form_screen/cubit/transaction_form_cubit.dart'; // Add import for ActionType
 
 class TransactionListWidget extends StatelessWidget {
-  final List<Transaction> transactions;
+  final List<TransactionViewModel> transactions;
   final bool groupByMonth;
 
   const TransactionListWidget({
@@ -25,7 +25,7 @@ class TransactionListWidget extends StatelessWidget {
     if (transactions.isEmpty) {
       return const Center(
         child: Padding(
-          // Add some padding to the empty message
+          // Use padding from previous style
           padding: EdgeInsets.all(AppStyle.paddingLarge),
           child: Text(
             'No transactions found for the selected period. Try adjusting the filters!',
@@ -36,6 +36,7 @@ class TransactionListWidget extends StatelessWidget {
       );
     }
 
+    // Choose build method based on groupByMonth
     if (groupByMonth) {
       return _buildGroupedList(context);
     } else {
@@ -43,14 +44,14 @@ class TransactionListWidget extends StatelessWidget {
     }
   }
 
-  // --- Build Methods ---
+  // --- Build Methods (Adapted for ViewModel) ---
 
   Widget _buildFlatList(BuildContext context) {
     return ListView.separated(
       itemCount: transactions.length,
       itemBuilder: (context, index) {
         final item = transactions[index];
-        // Use a unique key based on the transaction ID for Dismissible
+        // Use ViewModel's id for the key
         return _buildDismissibleItem(context, item, ValueKey(item.id));
       },
       separatorBuilder: (context, index) => Divider(
@@ -58,7 +59,7 @@ class TransactionListWidget extends StatelessWidget {
         thickness: 1,
         color: AppStyle.dividerColor.withOpacity(0.5), // Softer divider
         indent: AppStyle.paddingMedium +
-            40 +
+            40 + // Avatar radius (20*2)
             AppStyle.paddingMedium, // Indent past avatar
         endIndent: AppStyle.paddingMedium,
       ),
@@ -66,31 +67,31 @@ class TransactionListWidget extends StatelessWidget {
   }
 
   Widget _buildGroupedList(BuildContext context) {
-    Map<String, List<Transaction>> groupedTransactions =
+    // Use adapted grouping method
+    Map<String, List<TransactionViewModel>> groupedTransactions =
         _groupTransactionsByMonth(transactions);
-    var sortedMonthKeys = groupedTransactions.keys
-        .toList(); // Already sorted by _groupTransactionsByMonth
+    var sortedMonthKeys = groupedTransactions.keys.toList();
 
     return ListView.builder(
       itemCount: sortedMonthKeys.length, // Number of months
       itemBuilder: (context, monthIndex) {
         final monthKey = sortedMonthKeys[monthIndex]; // Format: YYYY-MM
         final monthTransactions = groupedTransactions[monthKey]!;
-        final displayMonth = _formatDisplayMonth(monthKey);
+        final displayMonth = _formatDisplayMonth(monthKey); // Use helper
 
         return StickyHeader(
-          header: _buildMonthHeader(context, displayMonth),
+          header:
+              _buildMonthHeader(context, displayMonth), // Use header builder
           content: Column(
-            // Use Column to list items for this month
             children: List.generate(monthTransactions.length, (itemIndex) {
               final item = monthTransactions[itemIndex];
               final isLastItemOfMonth =
                   itemIndex == monthTransactions.length - 1;
-              // Use a unique key based on the transaction ID for Dismissible
+              // Use ViewModel's id for the key
               final itemWidget =
                   _buildDismissibleItem(context, item, ValueKey(item.id));
 
-              // Add divider *unless* it's the last item in the month group
+              // Add divider unless it's the last item in the month group
               if (!isLastItemOfMonth) {
                 return Column(
                   children: [
@@ -100,7 +101,7 @@ class TransactionListWidget extends StatelessWidget {
                       thickness: 1,
                       color: AppStyle.dividerColor.withOpacity(0.5),
                       indent: AppStyle.paddingMedium +
-                          40 +
+                          40 + // Avatar radius (20*2)
                           AppStyle.paddingMedium, // Indent past avatar
                       endIndent: AppStyle.paddingMedium,
                     )
@@ -125,25 +126,26 @@ class TransactionListWidget extends StatelessWidget {
       alignment: Alignment.centerLeft,
       child: Text(
         displayMonth,
+        // Use styles from previous version
         style: AppStyle.subtitleStyle.copyWith(
-          fontWeight: FontWeight.w600, // Make header slightly bolder
+          fontWeight: FontWeight.w600,
           color: AppStyle.textColorSecondary,
         ),
       ),
     );
   }
 
-  // --- Build Dismissible Item ---
+  // --- Build Dismissible Item (Adapted for ViewModel) ---
   Widget _buildDismissibleItem(
-      BuildContext context, Transaction item, Key key) {
-    // Get cubit instance once
+      BuildContext context, TransactionViewModel item, Key key) {
+    // Get cubit instance for deletion confirmation
     final txCubit = context.read<DataManagementCubit>();
 
     return Dismissible(
-      key: key, // Use the provided unique key
+      key: key, // Use the provided unique key (based on item.id)
       direction: DismissDirection.endToStart, // Only allow swipe left to delete
       confirmDismiss: (direction) async {
-        // Show confirmation dialog
+        // Show confirmation dialog (using previous style)
         final bool? confirm = await showDialog<bool>(
           context: context,
           builder: (BuildContext dialogContext) {
@@ -152,11 +154,10 @@ class TransactionListWidget extends StatelessWidget {
               content: const Text(
                   'Are you sure you want to delete this transaction?',
                   style: AppStyle.bodyText),
-              backgroundColor:
-                  AppStyle.cardColor, // Use cardColor for dialog background
+              backgroundColor: AppStyle.cardColor,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(
-                    AppStyle.borderRadiusMedium), // Consistent radius
+                borderRadius:
+                    BorderRadius.circular(AppStyle.borderRadiusMedium),
               ),
               actions: <Widget>[
                 TextButton(
@@ -182,19 +183,17 @@ class TransactionListWidget extends StatelessWidget {
 
         // If confirmed, trigger deletion via Cubit
         if (confirm == true) {
-          // IMPORTANT: Let the Cubit handle repository interaction and state update
-          txCubit.deleteTransaction(item.id);
+          // Call Cubit method directly for deletion
+          txCubit.deleteTransaction(item.id); // Use ViewModel's id
 
-          // Optional: Show snackbar immediately, or wait for state change confirmation
+          // Optional: Show snackbar (using previous style)
           if (context.mounted) {
-            // Check context validity after async gap
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('${item.title} deleted.',
+                content: Text('${item.title} deleted.', // Use ViewModel's title
                     style: AppStyle.bodyText.copyWith(color: Colors.white)),
-                backgroundColor:
-                    AppStyle.textColorPrimary, // Or a success/info color
-                behavior: SnackBarBehavior.floating, // Looks nicer
+                backgroundColor: AppStyle.textColorPrimary,
+                behavior: SnackBarBehavior.floating,
                 shape: RoundedRectangleBorder(
                     borderRadius:
                         BorderRadius.circular(AppStyle.borderRadiusSmall)),
@@ -210,96 +209,121 @@ class TransactionListWidget extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: AppStyle.paddingLarge),
         alignment: Alignment.centerRight,
         child: const Icon(
-          Icons.delete_sweep_outlined, // A slightly different delete icon
+          Icons.delete_sweep_outlined, // Use previous icon
           color: Colors.white,
         ),
       ),
-      child:
-          _buildTransactionTile(context, item, txCubit), // Pass cubit for onTap
+      // Call adapted tile builder
+      child: _buildTransactionTile(context, item),
     );
   }
 
-  // --- Build Transaction Tile (Content of Dismissible) ---
+  // --- Build Transaction Tile (Adapted for ViewModel and Edit Navigation) ---
   Widget _buildTransactionTile(
-      BuildContext context, Transaction item, DataManagementCubit txCubit) {
-    final category = item.category.target;
-    // More user-friendly date format for the tile itself
-    final dateFormat = DateFormat.Md(Localizations.localeOf(context)
-        .languageCode); // e.g., 10/26 or Oct 26 based on locale
+      BuildContext context, TransactionViewModel item) {
+    // No need for dateFormat here, ViewModel has displayDate
 
     return ListTile(
-      // Use ListTileTheme defined in AppStyle for consistent padding/shape if available
-      // contentPadding: EdgeInsets.symmetric(horizontal: AppStyle.paddingMedium, vertical: AppStyle.paddingSmall), // Manual padding if no theme
       leading: CircleAvatar(
         radius: 20, // Standard avatar size
-        backgroundColor: category?.color ??
-            AppStyle.textColorSecondary
-                .withOpacity(0.1), // Use category color or a default
+        backgroundColor: item.categoryColor
+            .withOpacity(0.1), // Use ViewModel's category color
         child: Icon(
-            category?.icon ?? Icons.question_mark, // Use a placeholder icon
-            size: 20,
-            color: Colors.black),
+          item.categoryIcon, // Use ViewModel's category icon
+          size: 20,
+          // Use category color directly if needed, or keep default
+          color: item.categoryColor,
+        ),
       ),
-      title: Text(item.title,
-          style: AppStyle.titleStyle,
+      title: Text(item.title, // Use ViewModel's title
+          style: AppStyle.titleStyle, // Use previous style
           maxLines: 1,
           overflow: TextOverflow.ellipsis),
       subtitle: Text(
-        '${category?.title ?? 'Uncategorized'} • ${dateFormat.format(item.date)}',
-        style: AppStyle.captionStyle,
+        // Combine category name and display date from ViewModel
+        '${item.categoryName} • ${item.displayDate}',
+        style: AppStyle.captionStyle, // Use previous style
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
       trailing: Text(
-        '${item.isIncome ? '+' : '-'}${item.amountAndCurrencyString}',
+        // Use displayAmount directly from ViewModel
+        item.displayAmount,
+        // Use previous styles based on isIncome from ViewModel
         style: item.isIncome
             ? AppStyle.amountIncomeStyle
             : AppStyle.amountExpenseStyle,
       ),
+      // --- UPDATED: onTap logic ---
       onTap: () async {
-        // Navigate to edit screen, passing the transaction object directly
-        final TransactionResult? transactionFormResult =
-            await Navigator.push<TransactionResult>(
-          context,
-          MaterialPageRoute(
-            // Pass the actual transaction, not index
-            builder: (context) => TransactionFormScreen(transaction: item),
-          ),
-        );
+        // Get the DataManagementCubit
+        final dataCubit = context.read<DataManagementCubit>();
+        // Fetch the full Transaction object using the ID from the ViewModel
+        final Transaction? transactionToEdit =
+            await dataCubit.getTransactionForEditing(item.id);
 
-        // Let the Cubit handle the result (which should contain the transaction ID)
-        if (transactionFormResult != null && context.mounted) {
-          context
-              .read<DataManagementCubit>()
-              .handleTransactionFormResult(transactionFormResult);
+        if (transactionToEdit != null && context.mounted) {
+          // Navigate to the form screen
+          final TransactionResult? result =
+              await Navigator.push<TransactionResult>(
+            context,
+            MaterialPageRoute(
+              builder: (_) =>
+                  TransactionFormScreen(transaction: transactionToEdit),
+            ),
+          );
+
+          // Handle the result (update/delete) if the context is still valid
+          if (result != null && context.mounted) {
+            dataCubit.handleTransactionFormResult(result);
+          }
+        } else if (context.mounted) {
+          // Handle case where transaction couldn't be fetched
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error: Could not load transaction details.',
+                  style: AppStyle.bodyText.copyWith(color: Colors.white)),
+              backgroundColor: AppStyle.expenseColor,
+            ),
+          );
         }
       },
-      // Add visual density for tighter packing if desired
-      // visualDensity: VisualDensity.compact,
+      // --- END UPDATED: onTap logic ---
     );
   }
 
-  // --- Helper Methods ---
+  // --- Helper Methods (Adapted for ViewModel) ---
 
-  // Group transactions by month (YYYY-MM format)
-  Map<String, List<Transaction>> _groupTransactionsByMonth(
-      List<Transaction> transactions) {
-    Map<String, List<Transaction>> grouped = {};
-    // Ensure transactions are sorted descending first (most recent month/day first)
+  // Group transactions by month (YYYY-MM format) - Adapted for ViewModel
+  Map<String, List<TransactionViewModel>> _groupTransactionsByMonth(
+      List<TransactionViewModel> transactions) {
+    Map<String, List<TransactionViewModel>> grouped = {};
+    // Ensure transactions are sorted descending first
+    // Use the 'date' field from ViewModel
     transactions.sort((a, b) => b.date.compareTo(a.date));
 
     for (var transaction in transactions) {
+      // Use the 'date' field from ViewModel
       final monthYear = DateFormat('yyyy-MM').format(transaction.date);
       grouped.putIfAbsent(monthYear, () => []).add(transaction);
     }
-    return grouped; // Keys will be naturally sorted if needed, but sorting done above ensures order within months
+    // Sort keys to ensure months are in descending order (most recent first)
+    var sortedKeys = grouped.keys.toList();
+    sortedKeys
+        .sort((a, b) => b.compareTo(a)); // Simple string sort works for YYYY-MM
+
+    // Create a new map with sorted keys
+    Map<String, List<TransactionViewModel>> sortedGrouped = {};
+    for (var key in sortedKeys) {
+      sortedGrouped[key] = grouped[key]!;
+    }
+    return sortedGrouped;
   }
 
-  // Format month key (YYYY-MM) to display format (e.g., October 2023)
+  // Format month key (YYYY-MM) to display format (e.g., October 2023) - No changes needed
   String _formatDisplayMonth(String monthKey) {
     final year = int.parse(monthKey.split('-')[0]);
     final month = int.parse(monthKey.split('-')[1]);
-    // Use DateFormat for locale-aware month name
     return DateFormat('MMMM yyyy').format(DateTime(year, month));
   }
 }

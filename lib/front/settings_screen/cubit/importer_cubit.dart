@@ -209,13 +209,9 @@ class ImporterCubit extends Cubit<ImporterState> {
     // Parse JSON data
     final List<dynamic> jsonList = jsonDecode(jsonData) as List;
 
-    // Create lookup maps for categories (by id)
+    // Create lookup maps (remains the same)
     final categoryIdMap = {for (var cat in availableCategories) cat.id: cat};
-    // Consider adding name map as fallback if needed, but ID is primary
-
-    // Create lookup maps for accounts (by id)
     final accountIdMap = {for (var acc in availableAccounts) acc.id: acc};
-    // Consider adding name map as fallback
 
     // Process each transaction
     final List<Transaction> transactions = [];
@@ -231,74 +227,53 @@ class ImporterCubit extends Cubit<ImporterState> {
             continue;
           }
 
-          // --- Find Category ---
-          Category? category;
-          // CORRECTED: Parse flat category_id
-          final catId = json['category_id'] as int?;
-          if (catId != null) {
-            category = categoryIdMap[catId];
-          }
-          // Add fallback by name if necessary and if name is exported
-          // category ??= categoryNameMap[ (json['category_name'] as String?)?.toLowerCase() ];
-          category ??= Defaults().defaultCategory; // Use default if not found
-
-          // --- Find From Account ---
-          Account? fromAccount;
-          // CORRECTED: Parse flat from_account_id
-          final fromAccId = json['from_account_id'] as int?;
-          if (fromAccId != null) {
-            fromAccount = accountIdMap[fromAccId];
-          }
-          // Add fallback by name if necessary
-          // fromAccount ??= accountNameMap[ (json['from_account_name'] as String?)?.toLowerCase() ];
-          fromAccount ??= Defaults().defaultAccount; // Use default if not found
-
-          // --- Find To Account ---
-          Account? toAccount;
-          // CORRECTED: Parse flat to_account_id
-          final toAccId = json['to_account_id'] as int?;
-          if (toAccId != null) {
-            toAccount = accountIdMap[toAccId];
-          }
-          // Note: No default for toAccount, it's often null for non-transfers
+          // --- Parse IDs ---
+          // CORRECTED: Parse flat category_id, use default ID if null/missing
+          int categoryId =
+              json['category_id'] as int? ?? Defaults().defaultCategory.id;
+          // CORRECTED: Parse flat from_account_id, use default ID if null/missing
+          int fromAccountId =
+              json['from_account_id'] as int? ?? Defaults().defaultAccount.id;
+          // CORRECTED: Parse flat to_account_id (nullable)
+          int? toAccountId = json['to_account_id'] as int?;
 
           // --- Parse other fields ---
-          // Use ?? 0 for ID to handle potential nulls if exporting ID 0 as null
-          final id = json['id'] as int? ?? 0;
+          final id = json['id'] as int? ?? 0; // Use 0 for ObjectBox if missing
+          // --- FIX: Parse UUID ---
+          final uuid = json['uuid'] as String?; // Parse UUID (nullable)
+          // --- END FIX ---
           final title = json['title'] as String? ?? 'Unnamed Transaction';
           final amount = (json['amount'] as num?)?.toDouble() ?? 0.0;
-          // Use nullable _parseDate
-          final date = _parseDate(json['date']) ??
-              DateTime.now(); // Fallback if date parsing fails
+          final date = _parseDate(json['date']) ?? DateTime.now();
           final description = json['description'] as String?;
-          final createdAt = _parseDate(json['createdAt']); // Nullable
-          final updatedAt = _parseDate(json['updatedAt']); // Nullable
+          // --- FIX: Use correct keys from toJson (created_at, updated_at, deleted_at) ---
+          final createdAt = _parseDate(json['created_at']);
+          final updatedAt = _parseDate(json['updated_at']);
+          final deletedAt = _parseDate(json['deleted_at']);
+          // --- END FIX ---
           final userId = json['user_id'] as String?; // Parse userId
-          final deletedAt =
-              _parseDate(json['deleted_at']); // Parse deletedAt (nullable)
           final metadata = json['metadata'] as Map<String, dynamic>?;
 
-          // Create transaction using the constructor, passing found objects
-          final transaction = Transaction(
-            id: id,
+          // --- FIX: Use the factory constructor Transaction.createWithIds ---
+          final transaction = Transaction.createWithIds(
+            id: id, // Pass parsed ID (or 0)
+            uuid: uuid, // Pass parsed UUID (factory handles generation if null)
             title: title,
             amount: amount,
             date: date,
             description: description,
-            category: category, // Pass the Category object
-            fromAccount: fromAccount, // Pass the Account object
-            toAccount: toAccount, // Pass the Account object (can be null)
-            // Pass IDs as well, constructor prioritizes objects but good practice
-            categoryId: category?.id,
-            fromAccountId: fromAccount?.id,
-            toAccountId: toAccount?.id,
-            // Use parsed dates or fallback to now() if parsing failed
-            createdAt: createdAt ?? DateTime.now(),
-            updatedAt: updatedAt ?? DateTime.now(),
+            // Pass the IDs directly
+            categoryId: categoryId,
+            fromAccountId: fromAccountId,
+            toAccountId: toAccountId,
+            // Pass parsed dates or let factory handle defaults
+            createdAt: createdAt,
+            updatedAt: updatedAt,
             userId: userId, // Pass userId
             deletedAt: deletedAt, // Pass deletedAt
             metadata: metadata,
           );
+          // --- END FIX ---
 
           transactions.add(transaction);
         } catch (e, stacktrace) {
@@ -315,114 +290,6 @@ class ImporterCubit extends Cubit<ImporterState> {
       transactions: transactions,
       errorCount: errorCount,
     );
-  }
-
-  /// Process a receipt JSON data to extract transactions
-  Future<Map<String, dynamic>> processReceiptData(
-      Map<String, dynamic> json, List<Category> availableCategories) async {
-    try {
-      emit(state.copyWith(isLoading: true));
-
-      // Extract basic receipt data
-      final transactionName = json['transactionName'] is String
-          ? json['transactionName'] as String
-          : 'Unknown Store';
-
-      final date = _parseDate(json['date']) ?? DateTime.now();
-
-      final totalAmount = json['totalAmountPaid'] is num
-          ? (json['totalAmountPaid'] as num).toDouble()
-          : 0.0;
-
-      // Map to track categories by ID for faster lookup
-      final categoryIdMap = {for (var cat in availableCategories) cat.id: cat};
-
-      // Map to track categories by name for faster lookup (case insensitive)
-      final categoryNameMap = {
-        for (var cat in availableCategories) cat.title.toLowerCase(): cat
-      };
-
-      // Process the transactions
-      List<Transaction> transactions = [];
-      if (json['transactions'] is List) {
-        final transactionsList = json['transactions'] as List;
-
-        for (var item in transactionsList) {
-          if (item is Map<String, dynamic>) {
-            try {
-              // Get transaction data
-              final title = item['title'] is String
-                  ? item['title'] as String
-                  : 'Unnamed Item';
-
-              final amount = item['amount'] is num
-                  ? (item['amount'] as num).toDouble()
-                  : 0.0;
-
-              // Find the right category
-              Category? category = Defaults().defaultCategory;
-
-              // Try by category ID first
-              if (item['categoryId'] is int) {
-                final catId = item['categoryId'] as int;
-                category = categoryIdMap[catId] ?? category;
-              }
-              // Try by category name
-              else if (item['category'] is String) {
-                final catName = (item['category'] as String).toLowerCase();
-                category = categoryNameMap[catName] ?? category;
-              }
-
-              // Create a transaction with all data in place
-              final transaction = Transaction(
-                title: title,
-                amount: amount,
-                date: date,
-                category: category,
-                // Let the BulkAddTransactionsScreen handle account assignment
-                // Additional metadata can be preserved
-                metadata: {'originalJson': item},
-              );
-
-              transactions.add(transaction);
-            } catch (e) {
-              print('Error processing transaction: $e');
-              // Continue with the next transaction
-            }
-          }
-        }
-      }
-
-      // Final structured receipt data
-      final result = {
-        'transactionName': transactionName,
-        'date': date,
-        'totalAmountPaid': totalAmount,
-        'transactions': transactions,
-      };
-
-      emit(state.copyWith(
-        isLoading: false,
-        lastOperation: 'Processed receipt with ${transactions.length} items',
-      ));
-
-      return result;
-    } catch (e) {
-      emit(state.copyWith(
-        isLoading: false,
-        error: e.toString(),
-        lastOperation: 'Receipt processing failed',
-      ));
-
-      // Return empty receipt data structure with the error
-      return {
-        'transactionName': 'Error',
-        'date': DateTime.now(),
-        'totalAmountPaid': 0.0,
-        'transactions': <Transaction>[],
-        'error': e.toString(),
-      };
-    }
   }
 
   /// Clears any error states
@@ -473,50 +340,21 @@ class ImporterCubit extends Cubit<ImporterState> {
   /// Generates JSON data from a list of transactions
   String generateJSONData(List<Transaction> transactions) {
     try {
-      // Convert transactions to list of maps
+      // Convert transactions to list of maps using the model's toJson
       final List<Map<String, dynamic>> transactionMaps = [];
 
-      // Process each transaction
       for (var tx in transactions) {
         try {
-          // Use targetId directly - safer for potentially detached objects
-          final categoryId = tx.category.targetId;
-          final fromAccountId = tx.fromAccount.targetId;
-          final toAccountId = tx.toAccount.targetId; // Add toAccount export
-
-          // Create a transaction JSON object
-          final map = {
-            'id': tx.id,
-            'title': tx.title,
-            'amount': tx.amount,
-            'date': tx.date.toIso8601String(),
-            'description': tx.description,
-            'createdAt': tx.createdAt.toIso8601String(),
-            'updatedAt': tx.updatedAt.toIso8601String(),
-            // Export only the IDs
-            'category_id': categoryId == 0 ? null : categoryId,
-            'from_account_id': fromAccountId == 0 ? null : fromAccountId,
-            'to_account_id':
-                toAccountId == 0 ? null : toAccountId, // Add to_account_id
-            'user_id': tx.userId, // Ensure userId is exported
-            'deleted_at': tx.deletedAt?.toIso8601String(), // Export deleted_at
-          };
-
-          // Add metadata if available
-          if (tx.metadata != null) {
-            map['metadata'] = tx.metadata;
-          }
-
-          transactionMaps.add(map);
+          // --- FIX: Use the model's toJson method ---
+          transactionMaps.add(tx.toJson());
+          // --- END FIX ---
         } catch (e) {
-          // If individual transaction processing fails (less likely now)
-          print('Error processing transaction ${tx.id} for export: $e');
+          print(
+              'Error exporting transaction ID ${tx.id} (UUID: ${tx.uuid}): $e');
           transactionMaps.add({
-            'exportError': 'Failed to process transaction ${tx.id}: $e',
-            'id': tx.id, // Include basic info for identification
-            'title': tx.title,
-            'amount': tx.amount,
-            'date': tx.date.toIso8601String(),
+            'exportError':
+                'Failed to serialize transaction ID ${tx.id} (UUID: ${tx.uuid})',
+            'details': e.toString(),
           });
         }
       }

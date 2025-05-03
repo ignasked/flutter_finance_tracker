@@ -81,7 +81,7 @@ class CategoryManagementScreen extends StatelessWidget {
                 return ListTile(
                   leading: Icon(category.icon, color: category.color),
                   title: Text(category.title),
-                  subtitle: Text(category.descriptionForAI),
+                  subtitle: Text(category.descriptionForAI ?? ''),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [

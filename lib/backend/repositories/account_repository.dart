@@ -289,10 +289,10 @@ class AccountRepository extends BaseRepository<Account> {
     final now = DateTime.now();
 
     for (final item in nullUserItems) {
-      // Check if an account with the same ID already exists for the target user
+      // Check if an account with the same UUID already exists for the target user
       final existingUserItemQuery = box
-          .query(Account_.id
-              .equals(item.id)
+          .query(Account_.uuid // Use UUID for matching
+              .equals(item.uuid)
               .and(Account_.userId.equals(newUserId)))
           .build();
       final existingUserItem = await existingUserItemQuery.findFirstAsync();
@@ -300,7 +300,7 @@ class AccountRepository extends BaseRepository<Account> {
 
       if (existingUserItem != null) {
         print(
-            "Skipping assignment for account ${item.id}: Already exists for user $newUserId.");
+            "Skipping assignment for account UUID ${item.uuid}: Already exists for user $newUserId with ID ${existingUserItem.id}. Consider merging or deleting local item ID ${item.id}.");
         continue;
       }
       updatedItems.add(item.copyWith(
@@ -316,7 +316,7 @@ class AccountRepository extends BaseRepository<Account> {
       return updatedItems.length;
     } else {
       print(
-          "No accounts needed userId assignment after checking for existing entries.");
+          "No accounts needed userId assignment after checking for existing entries by UUID.");
       return 0;
     }
   }

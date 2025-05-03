@@ -260,7 +260,7 @@ class SettingsScreen extends StatelessWidget {
                   final transactions = context
                       .read<DataManagementCubit>()
                       .state
-                      .displayedTransactions;
+                      .filteredTransactions;
                   context
                       .read<ImporterCubit>()
                       .exportTransactions(transactions);
@@ -355,7 +355,7 @@ class SettingsScreen extends StatelessWidget {
 
     try {
       final transactions =
-          context.read<DataManagementCubit>().state.displayedTransactions;
+          context.read<DataManagementCubit>().state.filteredTransactions;
       final importerCubit = context.read<ImporterCubit>();
       final jsonData = await importerCubit.exportTransactions(transactions);
 
@@ -449,14 +449,14 @@ class SettingsScreen extends StatelessWidget {
     final txCubit = context.read<DataManagementCubit>();
     final importerCubit = context.read<ImporterCubit>();
     final txRepo = context.read<TransactionRepository>();
-    final categoryRepository = context.read<CategoryRepository>();
-    final accountRepository = context.read<AccountRepository>();
+    // final categoryRepository = context.read<CategoryRepository>();
+    // final accountRepository = context.read<AccountRepository>();
 
-    final existingTransactions = txCubit.state.displayedTransactions;
+    final existingTransactions = txCubit.state.filteredTransactions;
 
     // Get all available categories and accounts to properly map them during import
-    final availableCategories = await categoryRepository.getAll();
-    final availableAccounts = await accountRepository.getAll();
+    final availableCategories = txCubit.state.allCategories;
+    final availableAccounts = txCubit.state.allAccounts;
 
     final newTransactions = await importerCubit.importTransactions(
       existingTransactions,
@@ -526,14 +526,14 @@ class SettingsScreen extends StatelessWidget {
 
     if (result == 'all') {
       transactionsToAdd = await importerCubit.importTransactions(
-        txCubit.state.displayedTransactions,
+        txCubit.state.filteredTransactions,
         true,
         availableCategories: availableCategories,
         availableAccounts: availableAccounts,
       );
     } else if (result == 'non-duplicates') {
       final allImportedTransactions = await importerCubit.importTransactions(
-        txCubit.state.displayedTransactions,
+        txCubit.state.filteredTransactions,
         false,
         availableCategories: availableCategories,
         availableAccounts: availableAccounts,

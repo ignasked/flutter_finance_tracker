@@ -454,15 +454,17 @@ class CategoryRepository extends BaseRepository<Category> {
   }
 
   /// Helper to check if a category is used by non-deleted transactions.
-  Future<bool> _hasTransactionsForCategory(int categoryId) async {
+  bool _hasTransactionsForCategory(int categoryId) {
     final transactionBox = store.box<Transaction>();
+    // --- FIX: Query using the generated relation field 'category' ---
     final query = transactionBox
-        .query(Transaction_.category
-            .equals(categoryId)
+        .query(Transaction_.category // Use the relation field directly
+            .equals(categoryId) // ObjectBox handles matching the target ID
             .and(Transaction_.deletedAt.isNull())
             .and(_transactionUserIdCondition()))
         .build();
-    final count = query.count();
+    // --- END FIX ---
+    final count = query.count(); // Use async count
     query.close();
     return count > 0;
   }
@@ -500,8 +502,8 @@ class CategoryRepository extends BaseRepository<Category> {
 
     for (final item in nullUserItems) {
       final existingUserItemQuery = box
-          .query(Category_.id
-              .equals(item.id)
+          .query(Category_.uuid
+              .equals(item.uuid)
               .and(Category_.userId.equals(newUserId)))
           .build();
       final existingUserItem = await existingUserItemQuery.findFirstAsync();
@@ -509,7 +511,7 @@ class CategoryRepository extends BaseRepository<Category> {
 
       if (existingUserItem != null) {
         print(
-            "Skipping assignment for category ${item.id}: Already exists for user $newUserId.");
+            "Skipping assignment for category UUID ${item.uuid}: Already exists for user $newUserId with ID ${existingUserItem.id}. Consider merging or deleting local item ID ${item.id}.");
         continue;
       }
       updatedItems.add(item.copyWith(
@@ -525,7 +527,7 @@ class CategoryRepository extends BaseRepository<Category> {
       return updatedItems.length;
     } else {
       print(
-          "No categories needed userId assignment after checking for existing entries.");
+          "No categories needed userId assignment after checking for existing entries by UUID.");
       return 0;
     }
   }

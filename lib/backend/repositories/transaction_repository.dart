@@ -1,8 +1,11 @@
 import 'package:money_owl/backend/models/account.dart';
 import 'package:money_owl/backend/models/category.dart';
+import 'package:money_owl/backend/repositories/account_repository.dart';
 import 'package:money_owl/backend/repositories/base_repository.dart';
 import 'package:money_owl/backend/models/transaction.dart';
+import 'package:money_owl/backend/repositories/category_repository.dart';
 import 'package:money_owl/backend/services/auth_service.dart';
+import 'package:money_owl/backend/utils/defaults.dart';
 import 'package:money_owl/front/shared/filter_cubit/filter_state.dart';
 import 'package:money_owl/objectbox.g.dart';
 import 'package:objectbox/objectbox.dart';
@@ -51,16 +54,16 @@ class TransactionRepository extends BaseRepository<Transaction> {
 
       if (transaction.id == 0) {
         // New transaction
-        // Ensure relationship IDs are passed if objects aren't fully formed yet
         transactionToSave = transaction.copyWith(
           userId: currentUserId,
           createdAt: now,
           updatedAt: now,
           deletedAt: transaction.deletedAt, // Preserve if explicitly set
-          // Pass IDs explicitly in case the transaction object's relations aren't set
           categoryId: transaction.category.targetId,
           fromAccountId: transaction.fromAccount.targetId,
-          toAccountId: transaction.toAccount.targetId,
+          toAccountId: transaction.toAccount.targetId == 0
+              ? null
+              : transaction.toAccount.targetId,
         );
       } else {
         // Existing transaction - fetch directly to handle updates/restores
@@ -68,11 +71,9 @@ class TransactionRepository extends BaseRepository<Transaction> {
         if (existing == null) {
           print(
               "Warning: Attempted to update non-existent transaction ID: ${transaction.id}");
-          // Consider throwing an exception instead of returning potentially incorrect ID
           throw Exception(
               "Cannot update non-existent transaction ID ${transaction.id}");
         }
-        // Ensure the update is happening within the correct user context
         if (existing.userId != currentUserId) {
           print(
               "Error: Attempted to update transaction with mismatched userId context. Existing: ${existing.userId}, Current: $currentUserId");
@@ -82,25 +83,18 @@ class TransactionRepository extends BaseRepository<Transaction> {
 
         // Apply changes from the incoming 'transaction' onto the 'existing' one
         transactionToSave = existing.copyWith(
-          // Apply fields from the incoming 'transaction' object
           title: transaction.title,
           amount: transaction.amount,
           description: transaction.description,
           date: transaction.date,
-          // Explicitly pass the relationship IDs from the incoming 'transaction'.
-          // This ensures the intended state (from the UI/edit) is saved.
           categoryId: transaction.category.targetId,
           fromAccountId: transaction.fromAccount.targetId,
-          toAccountId: transaction.toAccount.targetId,
-          // copyWith preserves existing createdAt if not provided
-          // Update timestamp
+          toAccountId: transaction.toAccount.targetId == 0
+              ? null
+              : transaction.toAccount.targetId,
           updatedAt: now,
-          // Ensure userId is set (should already match existing, but reinforces context)
           userId: currentUserId,
-          metadata: transaction.metadata, // Apply metadata from input
-          // Apply deletedAt status from input. copyWith handles the logic:
-          // If transaction.deletedAt is null, it keeps existing.deletedAt.
-          // If transaction.deletedAt is not null, it uses transaction.deletedAt.
+          metadata: transaction.metadata,
           deletedAt: transaction.deletedAt,
         );
       }
@@ -111,22 +105,17 @@ class TransactionRepository extends BaseRepository<Transaction> {
             "Error: Mismatched userId (${transactionToSave.userId}) during save for current context ($currentUserId). Transaction ID: ${transactionToSave.id}");
         throw Exception("Data integrity error: User ID mismatch before save.");
       }
-      // Use the base repository's put method
       return await super.put(transactionToSave, syncSource: syncSource);
     } else {
       // Syncing down from Supabase
       if (transaction.userId == null) {
         print(
             "Warning: Syncing down transaction with null userId. ID: ${transaction.id}");
-        // Potentially assign current user ID if appropriate for your logic,
-        // but usually Supabase should provide the correct userId.
       }
-      // Ensure timestamps and relations are handled correctly for sync down
       final transactionToSave = transaction.copyWith(
           createdAt: transaction.createdAt.toLocal(),
           updatedAt: transaction.updatedAt.toLocal(),
           deletedAt: transaction.deletedAt?.toLocal(),
-          // Pass IDs explicitly from the synced transaction data
           categoryId: transaction.category.targetId,
           fromAccountId: transaction.fromAccount.targetId,
           toAccountId: transaction.toAccount.targetId);
@@ -206,10 +195,9 @@ class TransactionRepository extends BaseRepository<Transaction> {
     final now = DateTime.now();
 
     for (final item in nullUserItems) {
-      // Check if a transaction with the same ID already exists for the target user
       final existingUserItemQuery = box
-          .query(Transaction_.id
-              .equals(item.id)
+          .query(Transaction_.uuid
+              .equals(item.uuid)
               .and(Transaction_.userId.equals(newUserId)))
           .build();
       final existingUserItem = await existingUserItemQuery.findFirstAsync();
@@ -217,7 +205,7 @@ class TransactionRepository extends BaseRepository<Transaction> {
 
       if (existingUserItem != null) {
         print(
-            "Skipping assignment for transaction ${item.id}: Already exists for user $newUserId.");
+            "Skipping assignment for transaction UUID ${item.uuid}: Already exists for user $newUserId with ID ${existingUserItem.id}. Consider merging or deleting local item ID ${item.id}.");
         continue;
       }
       updatedItems.add(item.copyWith(
@@ -233,7 +221,7 @@ class TransactionRepository extends BaseRepository<Transaction> {
       return updatedItems.length;
     } else {
       print(
-          "No transactions needed userId assignment after checking for existing entries.");
+          "No transactions needed userId assignment after checking for existing entries by UUID.");
       return 0;
     }
   }
@@ -246,7 +234,6 @@ class TransactionRepository extends BaseRepository<Transaction> {
           "Warn: Attempted to remove all transactions for current user, but no user is logged in.");
       return 0;
     }
-    // Fetch non-deleted items first
     final query = box
         .query(Transaction_.userId
             .equals(currentUserId)
@@ -290,31 +277,80 @@ class TransactionRepository extends BaseRepository<Transaction> {
           .map((e) => e.copyWith(
               createdAt: e.createdAt.toLocal(),
               updatedAt: e.updatedAt.toLocal(),
-              deletedAt: e.deletedAt?.toLocal()))
+              deletedAt: e.deletedAt?.toLocal(),
+              categoryId: e.category.targetId,
+              fromAccountId: e.fromAccount.targetId,
+              toAccountId: e.toAccount.targetId))
           .toList();
       return await super.putMany(entitiesToSave, syncSource: syncSource);
     } else {
       final currentUserId = _authService.currentUser?.id;
       final now = DateTime.now();
       final List<Transaction> processedEntities = [];
+
+      final categoryRepo = CategoryRepository(store, _authService);
+      final accountRepo = AccountRepository(store, _authService);
+
       for (final entity in entities) {
         Transaction entityToSave;
+
+        Category? attachedCategory;
+        if (entity.category.targetId != 0) {
+          attachedCategory =
+              await categoryRepo.getById(entity.category.targetId);
+        }
+        attachedCategory ??= Defaults().defaultCategory;
+
+        Account? attachedFromAccount;
+        if (entity.fromAccount.targetId != 0) {
+          attachedFromAccount =
+              await accountRepo.getById(entity.fromAccount.targetId);
+        }
+        attachedFromAccount ??= Defaults().defaultAccount;
+
+        Account? attachedToAccount;
+        if (entity.toAccount.targetId != 0) {
+          attachedToAccount =
+              await accountRepo.getById(entity.toAccount.targetId);
+        }
+
         if (entity.id == 0) {
           entityToSave = entity.copyWith(
             userId: currentUserId,
             createdAt: now,
             updatedAt: now,
-            deletedAt: entity.deletedAt, // Preserve if explicitly set
+            deletedAt: entity.deletedAt,
+            categoryId: attachedCategory.id,
+            fromAccountId: attachedFromAccount.id,
+            toAccountId: attachedToAccount?.id,
           );
         } else {
-          entityToSave = entity.copyWith(
-            userId: currentUserId, // Ensure context
-            updatedAt: now,
-            createdAt:
-                entity.createdAt != DateTime.fromMillisecondsSinceEpoch(0)
-                    ? entity.createdAt
-                    : now,
-          );
+          final existing = await box.getAsync(entity.id);
+          if (existing != null && existing.userId == currentUserId) {
+            entityToSave = existing.copyWith(
+              title: entity.title,
+              amount: entity.amount,
+              description: entity.description,
+              date: entity.date,
+              categoryId: attachedCategory.id,
+              fromAccountId: attachedFromAccount.id,
+              toAccountId: attachedToAccount?.id,
+              metadata: entity.metadata,
+              updatedAt: now,
+              deletedAt: entity.deletedAt,
+              userId: currentUserId,
+            );
+          } else {
+            print(
+                "Warning: Skipping update for transaction ID ${entity.id} in putMany (not found or context mismatch).");
+            continue;
+          }
+        }
+
+        if (entityToSave.userId != currentUserId) {
+          print(
+              "Error: Mismatched userId in putMany for transaction ID ${entityToSave.id}. Skipping.");
+          continue;
         }
         processedEntities.add(entityToSave);
       }
@@ -327,13 +363,11 @@ class TransactionRepository extends BaseRepository<Transaction> {
     Condition<Transaction> queryCondition =
         _userIdCondition().and(_notDeletedCondition());
 
-    // Apply Account Filter
     if (filterState.selectedAccount != null) {
       queryCondition = queryCondition.and(
           Transaction_.fromAccount.equals(filterState.selectedAccount!.id));
     }
 
-    // Apply Category Filter
     if (filterState.selectedCategories.isNotEmpty) {
       final categoryIds =
           filterState.selectedCategories.map((c) => c.id).toList();
@@ -341,7 +375,6 @@ class TransactionRepository extends BaseRepository<Transaction> {
           queryCondition.and(Transaction_.category.oneOf(categoryIds));
     }
 
-    // Apply Date Filter
     if (filterState.startDate != null) {
       if (filterState.singleDay) {
         final startOfDay = DateTime(filterState.startDate!.year,
@@ -362,18 +395,9 @@ class TransactionRepository extends BaseRepository<Transaction> {
       }
     }
 
-    // Apply Amount Filter (Optional)
-    if (filterState.minAmount != null) {
-      // ObjectBox doesn't directly support filtering on absolute value.
-      // Fetch and filter in Dart, or adjust query if possible.
-      // For now, we'll filter after fetching.
-    }
+    if (filterState.minAmount != null) {}
 
-    // Apply Income/Expense Filter (Optional)
-    if (filterState.isIncome != null) {
-      // This requires joining with Category, which is complex in ObjectBox query builder.
-      // Fetch and filter in Dart.
-    }
+    if (filterState.isIncome != null) {}
 
     final query = box
         .query(queryCondition)
@@ -383,16 +407,12 @@ class TransactionRepository extends BaseRepository<Transaction> {
     List<Transaction> results = await query.findAsync();
     query.close();
 
-    // --- Post-fetch filtering for complex conditions ---
-
-    // Amount Filter (Absolute Value)
     if (filterState.minAmount != null) {
       results = results
           .where((t) => t.amount.abs() >= filterState.minAmount!)
           .toList();
     }
 
-    // Income/Expense Filter
     if (filterState.isIncome != null) {
       results =
           results.where((t) => t.isIncome == filterState.isIncome).toList();

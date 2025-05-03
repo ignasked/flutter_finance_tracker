@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:equatable/equatable.dart';
+import 'package:flutter/material.dart'; // Import material for Color/IconData if needed by ViewModel
+import 'package:intl/intl.dart'; // Import intl for DateFormat if needed by ViewModel mapping
 
 import 'package:bloc/bloc.dart';
 import 'package:money_owl/backend/models/account.dart';
@@ -18,6 +20,7 @@ import 'package:money_owl/front/transactions_screen/cubit/transaction_summary_st
 import 'package:money_owl/front/shared/filter_cubit/filter_cubit.dart'; // Import FilterCubit
 import 'package:money_owl/front/shared/filter_cubit/filter_state.dart';
 import 'package:money_owl/front/transaction_form_screen/cubit/transaction_form_cubit.dart';
+import 'package:money_owl/front/transactions_screen/viewmodel/transaction_viewmodel.dart';
 import 'package:money_owl/main.dart'; // Import FilterState
 
 part 'data_management_state.dart'; // Updated part directive
@@ -31,7 +34,6 @@ class DataManagementCubit extends Cubit<DataManagementState> {
       _filterSubscription; // Listener for filter changes
 
   DataManagementCubit(
-    // Renamed constructor
     this._transactionRepository,
     this._accountRepository,
     this._categoryRepository,
@@ -79,48 +81,40 @@ class DataManagementCubit extends Cubit<DataManagementState> {
     return state.allAccounts.where((acc) => acc.isEnabled).toList();
   }
 
-  // Future _applyFiltersQuery(FilterState filterState) async {
-  //   emit(state.copyWith(status: LoadingStatus.loading));
-
-  //   List<Transaction> filteredTx =
-  //       await _transactionRepository.getFiltered(filterState);
-
-  //   emit(state.copyWith(
-  //     displayedTransactions: filteredTx,
-  //     summary: calculateSummary(filteredTx),
-  //     status: LoadingStatus.success, // Ensure status is success after filtering
-  //   ));
-  // }
-
+  // --- REFACTORED _applyFiltersCache ---
   void _applyFiltersCache(FilterState filterState) async {
     emit(state.copyWith(status: LoadingStatus.loading));
-    List<Transaction> filtered = List.from(state.allTransactions);
+    List<Transaction> filteredRaw = List.from(state.allTransactions);
 
-    // Apply Account Filter
+    // --- Apply filters to raw data (filteredRaw) ---
+
+    // Apply Account Filter (Use targetId)
     if (filterState.selectedAccount != null) {
-      filtered = filtered
+      filteredRaw = filteredRaw
           .where((t) =>
-              t.fromAccount.target?.id == filterState.selectedAccount!.id)
+              t.fromAccount.targetId ==
+              filterState.selectedAccount!.id) // Use targetId
           .toList();
     }
 
-    // Apply Category Filter
+    // Apply Category Filter (Use targetId)
     if (filterState.selectedCategories.isNotEmpty) {
       final categoryIds =
           filterState.selectedCategories.map((c) => c.id).toSet();
-      filtered = filtered
-          .where((t) => categoryIds.contains(t.category.target?.id))
+      filteredRaw = filteredRaw
+          .where(
+              (t) => categoryIds.contains(t.category.targetId)) // Use targetId
           .toList();
     }
 
-    // Apply Date Filter
+    // Apply Date Filter (logic remains the same, applied to filteredRaw)
     if (filterState.startDate != null) {
       if (filterState.singleDay) {
         // Filter for a single day (ignore time part)
         final startOfDay = DateTime(filterState.startDate!.year,
             filterState.startDate!.month, filterState.startDate!.day);
         final endOfDay = startOfDay.add(const Duration(days: 1));
-        filtered = filtered
+        filteredRaw = filteredRaw
             .where((t) =>
                 t.date.isAtSameMomentAs(startOfDay) ||
                 (t.date.isAfter(startOfDay) && t.date.isBefore(endOfDay)))
@@ -132,7 +126,7 @@ class DataManagementCubit extends Cubit<DataManagementState> {
             days:
                 1)); // Add 1 day to make endDate inclusive for filtering purposes
 
-        filtered = filtered.where((t) {
+        filteredRaw = filteredRaw.where((t) {
           final transactionDate = t.date;
           bool afterStart = transactionDate.isAtSameMomentAs(rangeStart) ||
               transactionDate.isAfter(rangeStart);
@@ -143,44 +137,83 @@ class DataManagementCubit extends Cubit<DataManagementState> {
       }
     }
 
-    // Apply Amount Filter (Optional)
+    // Apply Amount Filter (Optional, applied to filteredRaw)
     if (filterState.minAmount != null) {
-      filtered = filtered
+      filteredRaw = filteredRaw
           .where((t) => t.amount.abs() >= filterState.minAmount!)
           .toList();
     }
 
-    // Apply Income/Expense Filter (Optional)
+    // Apply Income/Expense Filter (Optional, applied to filteredRaw)
     if (filterState.isIncome != null) {
-      filtered =
-          filtered.where((t) => t.isIncome == filterState.isIncome).toList();
+      filteredRaw =
+          filteredRaw.where((t) => t.isIncome == filterState.isIncome).toList();
     }
 
-    // Sort by Date (Newest First)
-    filtered.sort((a, b) => b.date.compareTo(a.date));
+    // Sort by Date (Newest First) - Sort raw data before mapping
+    filteredRaw.sort((a, b) => b.date.compareTo(a.date));
 
-    // Calculate Summary
-    final summary =
-        await _calculateSummary(filtered, filterState.selectedAccount);
+    // --- Store the filtered raw list temporarily ---
+    // We'll use this for summary calculation
+    final currentFilteredRaw = filteredRaw;
+
+    // --- Map filtered raw data to ViewModels ---
+    final List<TransactionViewModel> viewModels = [];
+    final dateFormat = DateFormat.Md(); // Or your preferred format
+    final accountMap = {for (var acc in state.allAccounts) acc.id: acc};
+    final categoryMap = {for (var cat in state.allCategories) cat.id: cat};
+
+    for (final tx in filteredRaw) {
+      final category = categoryMap[tx.category.targetId];
+      final account = accountMap[tx.fromAccount.targetId];
+
+      final displayAmount =
+          '${tx.isIncome ? '+' : ''}${tx.amount.toStringAsFixed(2)} ${account?.currencySymbolOrCurrency ?? ''}';
+      final categoryName = category?.title ?? 'Uncategorized';
+      final categoryColor = category?.color ?? Colors.grey;
+      final categoryIcon = category?.icon ?? Icons.question_mark;
+      final accountName = account?.name ?? 'Unknown Account';
+
+      viewModels.add(TransactionViewModel(
+        id: tx.id,
+        title: tx.title,
+        displayAmount: displayAmount,
+        categoryName: categoryName,
+        categoryColor: categoryColor,
+        categoryIcon: categoryIcon,
+        displayDate: dateFormat.format(tx.date),
+        date: tx.date, // --- ADDED: Pass the original DateTime ---
+        isIncome: tx.isIncome,
+        accountName: accountName,
+      ));
+    }
+    // --- End Mapping ---
+
+    // Calculate Summary using the filtered RAW data we just prepared
+    final summary = await _calculateSummary(currentFilteredRaw,
+        filterState.selectedAccount); // Use currentFilteredRaw
 
     emit(state.copyWith(
-      displayedTransactions: filtered,
+      // --- Store the filtered raw list in the final state ---
+      filteredTransactions: currentFilteredRaw, // Store the raw list
+      // Emit the ViewModels for display
+      displayedTransactions: viewModels, // Emit the mapped ViewModels
       summary: summary,
-      status: LoadingStatus.success, // Ensure status is success after filtering
+      status: LoadingStatus.success,
     ));
   }
+  // --- END REFACTORED _applyFiltersCache ---
 
+  // --- REFACTORED _applySortByDateCache ---
   void _applySortByDateCache() {
-    emit(state.copyWith(status: LoadingStatus.loading));
-    List<Transaction> sorted = List.from(state.displayedTransactions);
-    sorted.sort((a, b) => b.date.compareTo(a.date)); // Sort by date descending
-    emit(state.copyWith(
-        displayedTransactions: sorted, status: LoadingStatus.success));
+    // Re-applying filters automatically handles sorting raw data and re-mapping
+    _applyFiltersCache(_filterCubit.state);
   }
+  // --- END REFACTORED _applySortByDateCache ---
 
   void recalculateSummary() async {
     final summary = await _calculateSummary(
-        state.displayedTransactions, _filterCubit.state.selectedAccount);
+        state.filteredTransactions, _filterCubit.state.selectedAccount);
     emit(state.copyWith(summary: summary));
   }
 
@@ -231,76 +264,115 @@ class DataManagementCubit extends Cubit<DataManagementState> {
     );
   }
 
-// --- CRUD Operations --- //
+  // --- CRUD Operations (Modify state.allTransactions, then re-filter/map) --- //
 
-  // Add a new transaction
   Future addTransaction(Transaction transaction) async {
     emit(state.copyWith(status: LoadingStatus.loading));
-    txRepository.put(transaction); // Add to repository
-    final updatedAllTransactions = List<Transaction>.from(state.allTransactions)
-      ..add(transaction);
-    emit(state.copyWith(allTransactions: updatedAllTransactions));
-    _applyFiltersCache(_filterCubit.state); // Re-apply filters
-    _applySortByDateCache(); // Re-apply sorting
-    emit(state.copyWith(status: LoadingStatus.success));
+    // Add to repository (ObjectBox assigns ID here if transaction.id is 0)
+    final savedId = await _transactionRepository.put(transaction);
+    // Fetch the saved transaction to ensure we have the correct ID assigned by ObjectBox
+    // and potentially updated fields (like createdAt, updatedAt)
+    final savedTransaction = await _transactionRepository.getById(savedId);
+
+    if (savedTransaction != null) {
+      final updatedAllTransactions =
+          List<Transaction>.from(state.allTransactions)..add(savedTransaction);
+      emit(state.copyWith(allTransactions: updatedAllTransactions));
+      _applyFiltersCache(
+          _filterCubit.state); // Re-apply filters and map to ViewModels
+    } else {
+      print("Error: Failed to fetch saved transaction after adding.");
+      // Optionally revert or show error
+      emit(state.copyWith(
+          status: LoadingStatus.failure,
+          errorMessage: "Failed to add transaction"));
+      // Re-apply filters even on error to reflect current state
+      _applyFiltersCache(_filterCubit.state);
+    }
+    // Status is set within _applyFiltersCache
   }
 
   Future addTransactions(List<Transaction> transactions) async {
     emit(state.copyWith(status: LoadingStatus.loading));
-    txRepository.putMany(transactions); // Add to repository
+    // Add to repository (ObjectBox assigns IDs here)
+    final savedIds = await _transactionRepository.putMany(transactions);
+    // Fetch the saved transactions to ensure we have correct IDs and timestamps
+    // Note: Fetching many by ID might be inefficient, consider alternatives if performance is critical
+    final List<Transaction> savedTransactions = [];
+    for (final id in savedIds) {
+      final tx = await _transactionRepository.getById(id);
+      if (tx != null) savedTransactions.add(tx);
+    }
+
     final updatedAllTransactions = List<Transaction>.from(state.allTransactions)
-      ..addAll(transactions);
+      ..addAll(savedTransactions);
     emit(state.copyWith(allTransactions: updatedAllTransactions));
-    _applyFiltersCache(_filterCubit.state); // Re-apply filters
-    _applySortByDateCache(); // Re-apply sorting
-    emit(state.copyWith(status: LoadingStatus.success));
+    _applyFiltersCache(
+        _filterCubit.state); // Re-apply filters and map to ViewModels
+    // Status is set within _applyFiltersCache
   }
 
-  // Update an existing transaction
   Future updateTransaction(Transaction transaction) async {
     emit(state.copyWith(status: LoadingStatus.loading));
+    // Update in repository (put handles ID check and updates timestamps)
+    final savedId = await _transactionRepository.put(transaction);
+    // Fetch the updated transaction to ensure we have the latest state
+    final updatedTransaction = await _transactionRepository.getById(savedId);
 
-    _transactionRepository.put(transaction); // Update in repository
-    final index =
-        state.allTransactions.indexWhere((t) => t.id == transaction.id);
-    if (index != -1 && index < state.allTransactions.length) {
-      final updatedAllTransactions =
-          List<Transaction>.from(state.allTransactions);
-      updatedAllTransactions[index] = transaction;
-      emit(state.copyWith(allTransactions: updatedAllTransactions));
+    if (updatedTransaction != null) {
+      final index = state.allTransactions
+          .indexWhere((t) => t.id == updatedTransaction.id);
+      if (index != -1) {
+        final updatedAllTransactions =
+            List<Transaction>.from(state.allTransactions);
+        updatedAllTransactions[index] = updatedTransaction;
+        emit(state.copyWith(allTransactions: updatedAllTransactions));
+      } else {
+        // If not found (e.g., was filtered out), add it back? Or log warning.
+        print(
+            "Warning: Updated transaction ID ${updatedTransaction.id} not found in current allTransactions list.");
+        // Optionally add it back if it should be there:
+        // final updatedAllTransactions = List<Transaction>.from(state.allTransactions)..add(updatedTransaction);
+        // emit(state.copyWith(allTransactions: updatedAllTransactions));
+      }
+    } else {
+      print("Error: Failed to fetch updated transaction after saving.");
+      // Optionally revert or show error
     }
-    _applyFiltersCache(_filterCubit.state); // Re-apply filters
-    _applySortByDateCache(); // Re-apply sorting
-
-    emit(state.copyWith(status: LoadingStatus.success));
+    _applyFiltersCache(
+        _filterCubit.state); // Re-apply filters and map to ViewModels
+    // Status is set within _applyFiltersCache
   }
 
-  // Delete a transaction
   Future deleteTransaction(int transactionId) async {
     emit(state.copyWith(status: LoadingStatus.loading));
-
-    txRepository.remove(transactionId); // Remove from repository
-    final updatedAllTransactions = List<Transaction>.from(state.allTransactions)
-      ..removeWhere((t) => t.id == transactionId);
-    emit(state.copyWith(allTransactions: updatedAllTransactions));
-    _applyFiltersCache(_filterCubit.state); // Re-apply filters
-
-    emit(state.copyWith(status: LoadingStatus.success));
+    // Use soft delete from repository
+    final success = await _transactionRepository.remove(transactionId);
+    if (success) {
+      final updatedAllTransactions =
+          List<Transaction>.from(state.allTransactions)
+            ..removeWhere((t) => t.id == transactionId);
+      emit(state.copyWith(allTransactions: updatedAllTransactions));
+    } else {
+      print("Failed to soft delete transaction $transactionId");
+      // Optionally emit failure state
+    }
+    _applyFiltersCache(
+        _filterCubit.state); // Re-apply filters and map to ViewModels
+    // Status is set within _applyFiltersCache (will be success unless error emitted above)
   }
 
   Future deleteAllTransactions() async {
     emit(state.copyWith(status: LoadingStatus.loading));
-
-    // Make async
-    txRepository.removeAll(); // Remove from repository
-    emit(state.copyWith(allTransactions: []));
-    _applyFiltersCache(_filterCubit.state);
-
-    emit(state.copyWith(status: LoadingStatus.success));
+    // Use soft delete for current user
+    await _transactionRepository.removeAllForCurrentUser();
+    emit(state.copyWith(allTransactions: [])); // Clear raw transactions
+    _applyFiltersCache(_filterCubit
+        .state); // Re-apply filters (will result in empty ViewModels)
+    // Status is set within _applyFiltersCache
   }
 
-// --- Transaction Form Result Handling --- //
-
+  // --- Transaction Form Result Handling (Remains the same) --- //
   void handleTransactionFormResult(TransactionResult result) async {
     switch (result.actionType) {
       case ActionType.addNew:
@@ -315,16 +387,40 @@ class DataManagementCubit extends Cubit<DataManagementState> {
     }
   }
 
+  // --- NEW: Method to get raw transaction for editing ---
+  Future<Transaction?> getTransactionForEditing(int id) async {
+    try {
+      // Fetch the full, raw entity from the repository
+      // getById already handles user context and non-deleted status
+      final transaction = await _transactionRepository.getById(id);
+      if (transaction == null) {
+        print(
+            "Error: Transaction $id not found or not accessible for editing.");
+        emit(state.copyWith(
+            status: LoadingStatus.failure,
+            errorMessage: "Failed to load transaction details"));
+      }
+      // You might want to fetch related objects eagerly here if the form needs them immediately
+      // e.g., await transaction?.category.load(); await transaction?.fromAccount.load();
+      // However, the form should ideally accept IDs and load objects itself if needed.
+      return transaction;
+    } catch (e) {
+      print("Error fetching transaction $id for editing: $e");
+      emit(state.copyWith(
+          status: LoadingStatus.failure,
+          errorMessage: "Failed to load transaction details"));
+      return null;
+    }
+  }
+  // --- End NEW Method ---
+
   bool hasTransactionsForCategory(int categoryId) {
-    final transactions = state.allTransactions;
-    return transactions
+    return state.allTransactions
         .any((transaction) => transaction.category.targetId == categoryId);
   }
 
-  // check if any transactions are associated with the account
   bool hasTransactionsForAccount(int accountId) {
-    final transactions = state.allTransactions;
-    return transactions
+    return state.allTransactions
         .any((transaction) => transaction.fromAccount.targetId == accountId);
   }
 

@@ -16,95 +16,86 @@ enum ActionType { addNew, edit, delete }
 class TransactionFormState extends Equatable {
   final TitleInput title;
   final MoneyInput amount;
-  final Category? category; // Selected category
-  final Account? account; // Selected account
+  final Category? category; // Keep Category object for dropdown display
+  final Account? account; // Keep Account object for dropdown display
   final DateTime date;
   final int id;
   final TransactionType selectedType; // Default transaction type
 
   final FormzSubmissionStatus status;
 
-  // Index in original transactionList (for editing only)
-  // final int? editIndex;
-
-  // Transaction that is validated and has been submitted
   final TransactionResult? submittedTransaction;
   final bool isValid; // If form is valid
   final String? errorMessage;
 
-  // Edit, add, or delete transaction from original transactionList
   final ActionType actionType;
 
-  // Add transaction
   TransactionFormState({
     this.title = const TitleInput.pure(),
     this.amount = const MoneyInput.pure(),
-    Category? category,
-    Account? account, // Initialize account
+    DateTime? date, // Accept optional date
+    this.category,
+    this.account,
+    this.selectedType = TransactionType.expense, // Default type
     this.status = FormzSubmissionStatus.initial,
-    this.isValid = false,
-    DateTime? date,
-    this.errorMessage,
-    this.id = 0,
-    this.actionType = ActionType.addNew,
     this.submittedTransaction,
-    // this.editIndex,
-    this.selectedType = TransactionType.expense, // Default to expense
-  })  : date = date ?? DateTime.now(),
-        category = category ?? Defaults().defaultCategory,
-        account = account ?? Defaults().defaultAccount; // Initialize account
+    this.isValid = false, // Default to false for new form
+    this.errorMessage,
+    this.actionType = ActionType.addNew,
+    this.id = 0, // Default ID for new transaction
+  }) : date = date ?? DateTime.now(); // Initialize this.date
 
-  // Edit transaction
   TransactionFormState.edit({
     required Transaction transaction,
     this.errorMessage,
     this.submittedTransaction,
-    // required this.editIndex,
   })  : title = TitleInput.dirty(transaction.title),
-        amount = MoneyInput.dirty(transaction.amount.toString()),
-        category = transaction.category.target, // Use the target Category
-        account = transaction.fromAccount.target, // Use the target Account
-        status = FormzSubmissionStatus.initial,
-        isValid = true,
-        actionType = ActionType.edit,
-        id = transaction.id,
+        amount = MoneyInput.dirty(transaction.amount.abs().toString()),
+        category = transaction.category.target,
+        account = transaction.fromAccount.target,
         date = transaction.date,
-        selectedType =
-            transaction.category.target!.type; // Use the transaction type
+        id = transaction.id,
+        selectedType = transaction.isIncome
+            ? TransactionType.income
+            : TransactionType.expense,
+        status = FormzSubmissionStatus.initial,
+        isValid = true, // Assume valid for edit
+        actionType = ActionType.edit;
 
   TransactionFormState copyWith({
     TitleInput? title,
     MoneyInput? amount,
-    String? transactionType,
     Category? category,
-    Account? account, // Add account to copyWith
+    Account? account,
     DateTime? date,
+    int? id,
+    TransactionType? selectedType,
     FormzSubmissionStatus? status,
+    TransactionResult? submittedTransaction,
     bool? isValid,
     String? errorMessage,
-    int? id,
+    bool? clearError, // Helper
     ActionType? actionType,
-    TransactionResult? submittedTransaction,
-    int? editIndex,
-    TransactionType? selectedType, // Add selectedType to copyWith
   }) {
-    if (category != null) {
-      selectedType = category.type; // Update selectedType based on category
+    TransactionType? finalSelectedType = selectedType ?? this.selectedType;
+    if (category != null && category.type != finalSelectedType) {
+      finalSelectedType = category.type;
     }
+
     return TransactionFormState(
       title: title ?? this.title,
       amount: amount ?? this.amount,
       category: category ?? this.category,
-      account: account ?? this.account, // Copy account
+      account: account ?? this.account,
       date: date ?? this.date,
-      status: status ?? this.status,
-      isValid: isValid ?? this.isValid,
-      errorMessage: errorMessage ?? this.errorMessage,
       id: id ?? this.id,
-      actionType: actionType ?? this.actionType,
+      selectedType: finalSelectedType,
+      status: status ?? this.status,
       submittedTransaction: submittedTransaction ?? this.submittedTransaction,
-      // editIndex: editIndex ?? this.editIndex,
-      selectedType: selectedType ?? this.selectedType, // Copy selectedType
+      isValid: isValid ?? this.isValid,
+      errorMessage:
+          clearError == true ? null : (errorMessage ?? this.errorMessage),
+      actionType: actionType ?? this.actionType,
     );
   }
 
@@ -113,24 +104,21 @@ class TransactionFormState extends Equatable {
         title,
         amount,
         category,
-        account, // Include account in props
+        account,
         date,
+        id,
+        selectedType,
         status,
+        submittedTransaction,
         isValid,
         errorMessage,
-        id,
         actionType,
-        submittedTransaction,
-        // editIndex,
-        selectedType, // Include selectedType in props
       ];
 }
 
 class TransactionFormCubit extends Cubit<TransactionFormState> {
-  // Add transaction cubit
   TransactionFormCubit() : super(TransactionFormState());
 
-  // Edit transaction cubit
   TransactionFormCubit.edit(Transaction editTransaction)
       : super(TransactionFormState.edit(
           transaction: editTransaction,
@@ -170,23 +158,36 @@ class TransactionFormCubit extends Cubit<TransactionFormState> {
     emit(state.copyWith(account: account));
   }
 
-  // Pressed submit button (adding new or editing existing transaction)
   void submitForm() {
-    if (!state.isValid) {
-      emit(state.copyWith(status: FormzSubmissionStatus.failure));
+    if (!state.isValid || state.category == null || state.account == null) {
+      emit(state.copyWith(
+          status: FormzSubmissionStatus.failure,
+          errorMessage: state.category == null
+              ? 'Please select a category.'
+              : state.account == null
+                  ? 'Please select an account.'
+                  : 'Invalid input.'));
       return;
     }
 
     emit(state.copyWith(status: FormzSubmissionStatus.inProgress));
 
     try {
-      final transaction = Transaction(
+      double actualAmount = double.parse(state.amount.value);
+      if (state.selectedType == TransactionType.expense && actualAmount > 0) {
+        actualAmount = -actualAmount;
+      } else if (state.selectedType == TransactionType.income &&
+          actualAmount < 0) {
+        actualAmount = -actualAmount;
+      }
+
+      final transaction = Transaction.createWithIds(
         id: state.id,
         title: state.title.value,
-        amount: double.parse(state.amount.value),
-        category: state.category, // Use the selected Category
-        fromAccount: state.account, // Use the selected Account
+        amount: actualAmount,
         date: state.date,
+        categoryId: state.category!.id,
+        fromAccountId: state.account!.id,
       );
 
       emit(state.copyWith(
@@ -194,11 +195,15 @@ class TransactionFormCubit extends Cubit<TransactionFormState> {
           submittedTransaction: TransactionResult(
             transaction: transaction,
             actionType: state.actionType,
-          ))); //index: state.editIndex
-    } on Exception {
-      emit(state.copyWith(status: FormzSubmissionStatus.failure));
-    } catch (_) {
-      emit(state.copyWith(status: FormzSubmissionStatus.failure));
+          )));
+    } on FormatException {
+      emit(state.copyWith(
+          status: FormzSubmissionStatus.failure,
+          errorMessage: 'Invalid amount format.'));
+    } catch (e) {
+      emit(state.copyWith(
+          status: FormzSubmissionStatus.failure,
+          errorMessage: 'An unexpected error occurred: ${e.toString()}'));
     }
   }
 
@@ -206,22 +211,43 @@ class TransactionFormCubit extends Cubit<TransactionFormState> {
     if (state.actionType == ActionType.edit) {
       emit(state.copyWith(status: FormzSubmissionStatus.inProgress));
 
-      final transaction = Transaction(
-        id: state.id,
-        title: state.title.value,
-        amount: double.parse(state.amount.value),
-        category: state.category, // Use the selected Category
-        fromAccount: state.account, // Use the selected Account
-        date: DateTime.now(),
-      );
+      if (state.category == null || state.account == null) {
+        emit(state.copyWith(
+            status: FormzSubmissionStatus.failure,
+            errorMessage: 'Cannot delete, form state is incomplete.'));
+        return;
+      }
 
-      emit(state.copyWith(
-          status: FormzSubmissionStatus.success,
-          actionType: ActionType.delete,
-          submittedTransaction: TransactionResult(
-            transaction: transaction,
+      try {
+        double actualAmount = double.parse(state.amount.value);
+        if (state.selectedType == TransactionType.expense && actualAmount > 0) {
+          actualAmount = -actualAmount;
+        } else if (state.selectedType == TransactionType.income &&
+            actualAmount < 0) {
+          actualAmount = -actualAmount;
+        }
+
+        final transaction = Transaction.createWithIds(
+          id: state.id,
+          title: state.title.value,
+          amount: actualAmount,
+          date: state.date,
+          categoryId: state.category!.id,
+          fromAccountId: state.account!.id,
+        );
+
+        emit(state.copyWith(
+            status: FormzSubmissionStatus.success,
             actionType: ActionType.delete,
-          ))); //index: state.editIndex
+            submittedTransaction: TransactionResult(
+              transaction: transaction,
+              actionType: ActionType.delete,
+            )));
+      } catch (e) {
+        emit(state.copyWith(
+            status: FormzSubmissionStatus.failure,
+            errorMessage: 'Failed to prepare deletion: ${e.toString()}'));
+      }
     }
   }
 }

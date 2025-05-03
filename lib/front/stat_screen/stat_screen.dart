@@ -28,9 +28,9 @@ class StatScreen extends StatelessWidget {
               // Rebuild ChartCubit whenever displayedTransactions change
               return BlocProvider(
                 // Use key to ensure BlocProvider rebuilds when transactions change
-                key: ValueKey(accountTransactionState.displayedTransactions),
+                key: ValueKey(accountTransactionState.filteredTransactions),
                 create: (_) =>
-                    ChartCubit(accountTransactionState.displayedTransactions),
+                    ChartCubit(accountTransactionState.filteredTransactions),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [

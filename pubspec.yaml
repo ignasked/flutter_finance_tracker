@@ -53,6 +53,7 @@ dependencies:
   supabase_flutter: ^2.9.0 # Check pub.dev for the latest version
   supabase_auth_ui: ^0.5.5
   sticky_headers: ^0.3.0+2
+  uuid: ^4.5.1
 
 dev_dependencies:
   build_runner: ^2.4.11

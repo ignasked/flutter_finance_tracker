@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:image_picker/image_picker.dart';
@@ -24,20 +25,17 @@ class ReceiptAnalysisCubit extends Cubit<ReceiptAnalysisState> {
     emit(ReceiptAnalysisLoading());
 
     try {
-      // Get all available categories for mapping
       final availableCategories =
           await _categoryRepository.getEnabledCategories();
       final categoryNamesString =
           availableCategories.map((category) => category.title).join(', ');
 
-      // Process the receipt with the AI service
       final receiptJson =
           await _mistralService.processReceiptAndExtractTransactions(
               file, format, categoryNamesString);
 
-      // Extract and process the receipt data
       final receiptData =
-          await _processReceiptData(receiptJson, availableCategories);
+          await _processReceiptDataInternal(receiptJson, availableCategories);
 
       emit(ReceiptAnalysisSuccess(receiptData));
     } catch (e) {
@@ -59,9 +57,8 @@ class ReceiptAnalysisCubit extends Cubit<ReceiptAnalysisState> {
         return;
       }
 
-      // Extract and process the receipt data
       final receiptData =
-          await _processReceiptData(receiptJson, availableCategories);
+          await _processReceiptDataInternal(receiptJson, availableCategories);
 
       emit(ReceiptAnalysisSuccess(receiptData));
     } catch (e) {
@@ -69,107 +66,103 @@ class ReceiptAnalysisCubit extends Cubit<ReceiptAnalysisState> {
     }
   }
 
-  /// Takes a receipt JSON and processes it into a structured map with transactions
-  Future<Map<String, dynamic>> _processReceiptData(
+  /// Internal method to process JSON and create Transaction objects
+  Future<Map<String, dynamic>> _processReceiptDataInternal(
       Map<String, dynamic> json, List<Category> availableCategories) async {
-    // Extract basic receipt data
-    final transactionName = json['transactionName'] is String
-        ? json['transactionName'] as String
-        : 'Unknown Store';
+    try {
+      final transactionName = json['transactionName'] is String
+          ? json['transactionName'] as String
+          : 'Unknown Store';
+      final date = _parseDate(json['date']);
+      final totalAmountPaid = json['totalAmountPaid'] is num
+          ? (json['totalAmountPaid'] as num).toDouble()
+          : 0.0;
 
-    final date = _parseDate(json['date']);
+      final categoryIdMap = {for (var cat in availableCategories) cat.id: cat};
+      final categoryNameMap = {
+        for (var cat in availableCategories) cat.title.toLowerCase(): cat
+      };
 
-    final totalAmount = json['totalAmountPaid'] is num
-        ? (json['totalAmountPaid'] as num).toDouble()
-        : 0.0;
+      List<Transaction> transactions = [];
+      if (json['transactions'] is List) {
+        final transactionsList = json['transactions'] as List;
+        for (var item in transactionsList) {
+          if (item is Map<String, dynamic>) {
+            try {
+              final title = item['title'] is String
+                  ? item['title'] as String
+                  : 'Unknown Item';
+              final amount = item['amount'] is num
+                  ? -(item['amount'] as num).abs().toDouble()
+                  : 0.0;
 
-    // Map to track categories by ID for faster lookup
-    final categoryIdMap = {for (var cat in availableCategories) cat.id: cat};
+              Category? category;
+              if (item['categoryId'] is int) {
+                category = categoryIdMap[item['categoryId'] as int];
+              }
+              if (category == null && item['category'] is String) {
+                category =
+                    categoryNameMap[(item['category'] as String).toLowerCase()];
+              }
+              category ??= Defaults().defaultCategory;
 
-    // Map to track categories by name for faster lookup (case insensitive)
-    final categoryNameMap = {
-      for (var cat in availableCategories) cat.title.toLowerCase(): cat
-    };
-
-    // Process the transactions
-    List<Transaction> transactions = [];
-    if (json['transactions'] is List) {
-      final transactionsList = json['transactions'] as List;
-
-      for (var item in transactionsList) {
-        if (item is Map<String, dynamic>) {
-          try {
-            // Get transaction data
-            final title = item['title'] is String
-                ? item['title'] as String
-                : 'Unnamed Item';
-
-            final amount = item['amount'] is num
-                ? (item['amount'] as num).toDouble()
-                : 0.0;
-
-            // Find the right category
-            Category? category = Defaults().defaultCategory;
-
-            // Try by category ID first
-            if (item['categoryId'] is int) {
-              final catId = item['categoryId'] as int;
-              category = categoryIdMap[catId] ?? category;
+              final transaction = Transaction.createWithIds(
+                title: title,
+                amount: amount,
+                date: date,
+                categoryId: category.id,
+                fromAccountId: Defaults().defaultAccount.id,
+                metadata: {'originalJson': item},
+              );
+              transactions.add(transaction);
+            } catch (e) {
+              print('Error processing transaction item: $e');
             }
-            // Try by category name
-            else if (item['category'] is String) {
-              final catName = (item['category'] as String).toLowerCase();
-              category = categoryNameMap[catName] ?? category;
-            }
-
-            // Create a transaction with all data in place
-            final transaction = Transaction(
-              title: title,
-              amount: amount,
-              date: date,
-              category: category,
-              // Let the BulkAddTransactionsScreen handle the account assignment
-              // Additional metadata can be preserved
-              metadata: {'originalJson': item},
-            );
-
-            transactions.add(transaction);
-          } catch (e) {
-            print('Error processing transaction: $e');
-            // Continue with the next transaction
           }
         }
       }
-    }
 
-    // Return structured receipt data
-    return {
-      'transactionName': transactionName,
-      'date': date,
-      'totalAmountPaid': totalAmount,
-      'transactions': transactions,
-    };
+      final result = {
+        'transactionName': transactionName,
+        'date': date,
+        'totalAmountPaid': totalAmountPaid,
+        'transactions': transactions,
+      };
+
+      return result;
+    } catch (e) {
+      print('Error in _processReceiptDataInternal: $e');
+      throw Exception('Failed to process receipt data: $e');
+    }
   }
 
-  /// Helper method to parse a date from various formats
-  DateTime _parseDate(dynamic date) {
-    try {
-      if (date == null) {
+  /// Helper method to parse a date from various formats, defaults to now()
+  DateTime _parseDate(dynamic dateValue) {
+    if (dateValue == null) return DateTime.now();
+
+    if (dateValue is DateTime) {
+      return dateValue;
+    } else if (dateValue is String) {
+      try {
+        return DateTime.parse(dateValue);
+      } catch (_) {
+        print(
+            "Warning: Failed to parse date string '$dateValue', using now().");
         return DateTime.now();
       }
-
-      if (date is String) {
-        return DateTime.parse(date);
+    } else if (dateValue is int) {
+      try {
+        return DateTime.fromMillisecondsSinceEpoch(dateValue);
+      } catch (_) {
+        print(
+            "Warning: Failed to parse date from int '$dateValue', using now().");
+        return DateTime.now();
       }
-
-      if (date is DateTime) {
-        return date;
-      }
-
-      return DateTime.now();
-    } catch (e) {
-      return DateTime.now();
     }
+
+    print(
+        "Warning: Unrecognized date format for value '$dateValue', using now().");
+    return DateTime.now();
   }
 
   /// Helper method to pick an image from camera or gallery

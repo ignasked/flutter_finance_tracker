@@ -1,274 +1,236 @@
 import 'package:equatable/equatable.dart';
 import 'package:money_owl/backend/models/account.dart';
+import 'package:money_owl/backend/models/category.dart';
+import 'package:money_owl/backend/utils/defaults.dart';
 import 'package:money_owl/backend/utils/enums.dart';
+import 'package:money_owl/objectbox.g.dart'; // Ensure this import exists
 import 'package:objectbox/objectbox.dart';
-import 'category.dart'; // Import the Category model
+import 'package:uuid/uuid.dart'; // Import uuid package
 
 @Entity()
 // ignore: must_be_immutable
 /// Represents a financial transaction with details such as title, amount, type (income/expense), category, and date.
 class Transaction extends Equatable {
-  @Id(assignable: true) // <-- Add assignable: true
-  int id; // Remove 'final'
+  @Id()
+  int id;
+
+  @Index() // Index UUID for faster lookups during sync
+  @Unique(onConflict: ConflictStrategy.replace) // Ensure UUID is unique locally
+  String uuid; // Globally unique identifier
 
   final String title;
   final double amount;
-  final String? description; // Optional description
-
-  // Define a relation to the Category model
-  final ToOne<Category> category = ToOne<Category>();
-  final ToOne<Account> fromAccount = ToOne<Account>(); // Source Account
-  final ToOne<Account> toAccount =
-      ToOne<Account>(); // Destination Account (for transfers)
-
+  final String? description;
   @Property(type: PropertyType.date)
   final DateTime date;
-
   @Property(type: PropertyType.date)
-  final DateTime createdAt; // Add 'final' back
-
+  final DateTime createdAt;
   @Property(type: PropertyType.date)
-  final DateTime updatedAt; // Add 'final' back
+  final DateTime? deletedAt; // Nullable: Tracks deletion time (UTC)
+  DateTime updatedAt; // Make mutable for easier updates
 
-  // Add userId field
-  @Index() // Index for faster lookups by userId
-  final String? userId;
+  @Index()
+  String? userId;
 
-  // Add a transient field for metadata (not stored in database)
+  // --- ToOne Relations ---
+  // ObjectBox links these to the targetId stored internally
+  final ToOne<Category> category = ToOne<Category>();
+  final ToOne<Account> fromAccount = ToOne<Account>();
+  final ToOne<Account> toAccount = ToOne<Account>(); //
+
   @Transient()
   Map<String, dynamic>? metadata;
 
-  // Add deletedAt field
-  @Property(type: PropertyType.date)
-  @Index()
-  DateTime? deletedAt; // Nullable: Tracks deletion time (UTC)
-
-  String get amountAndCurrencyString {
-    return '${amount.toStringAsFixed(2)} ${fromAccount.target?.currencySymbolOrCurrency ?? ''}';
-  }
-
-  /// Getter to determine if the transaction is income or expense based on the category
-  bool get isIncome {
-    return category.target?.type == TransactionType.income;
-  }
+  bool get isIncome => amount > 0;
+  bool get isExpense => amount < 0;
+  // Use targetId safely here as it's internal to ToOne
+  bool get isTransfer => toAccount.targetId != 0;
 
   /// Getter to determine if the transaction is deleted
   bool get isDeleted => deletedAt != null;
 
+  // --- Main Constructor (Used by ObjectBox) ---
   Transaction({
-    int? id,
+    this.id = 0, // ObjectBox will assign if 0
+    String? uuid, // Accept optional UUID (e.g., from sync down)
     required this.title,
     required this.amount,
     this.description,
     required this.date,
-    Category? category,
-    int? categoryId, // Added parameter for category ID
-    Account? fromAccount, // Renamed parameter
-    int? fromAccountId, // Added parameter for fromAccount ID
-    Account? toAccount, // Added parameter
-    int? toAccountId, // Added parameter for toAccount ID
     DateTime? createdAt,
     DateTime? updatedAt,
-    this.userId, // Add userId parameter
-    this.metadata, // Add metadata parameter
-    this.deletedAt, // Add deletedAt parameter
-  })  : id = id ?? 0,
+    this.userId,
+    this.metadata,
+    this.deletedAt,
+  })  : uuid = uuid ?? const Uuid().v4(), // Generate UUID if not provided
         createdAt = createdAt ?? DateTime.now(),
-        updatedAt = updatedAt ?? (createdAt ?? DateTime.now()) {
-    if (category != null) {
-      this.category.target = category;
-    } else if (categoryId != null) {
-      this.category.targetId = categoryId;
-    }
+        updatedAt = updatedAt ?? (createdAt ?? DateTime.now());
 
-    if (fromAccount != null) {
-      this.fromAccount.target = fromAccount;
-    } else if (fromAccountId != null) {
-      this.fromAccount.targetId = fromAccountId;
-    }
-
-    if (toAccount != null) {
-      this.toAccount.target = toAccount;
-    } else if (toAccountId != null) {
-      this.toAccount.targetId = toAccountId;
-    }
+  // --- Factory Constructor (for convenience when creating with IDs) ---
+  factory Transaction.createWithIds({
+    int id = 0,
+    String? uuid,
+    required String title,
+    required double amount,
+    String? description,
+    required DateTime date,
+    required int categoryId, // IDs are required here
+    required int fromAccountId,
+    int? toAccountId,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    String? userId,
+    Map<String, dynamic>? metadata,
+    DateTime? deletedAt,
+  }) {
+    // Create instance using the main constructor
+    final transaction = Transaction(
+      id: id,
+      uuid: uuid,
+      title: title,
+      amount: amount,
+      description: description,
+      date: date,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+      userId: userId,
+      metadata: metadata,
+      deletedAt: deletedAt,
+    );
+    // Manually set the target IDs after creation
+    transaction.category.targetId = categoryId;
+    transaction.fromAccount.targetId = fromAccountId;
+    transaction.toAccount.targetId = toAccountId ?? 0;
+    return transaction;
   }
 
-  @override
-  List<Object?> get props => [
-        id,
-        title,
-        amount,
-        // Use target?.id instead of targetId to avoid the initialization error
-        category.targetId,
-        fromAccount.targetId,
-        toAccount.targetId,
-        date,
-        description,
-        createdAt,
-        updatedAt,
-        userId,
-        metadata,
-        deletedAt,
-      ];
-
-  /// Creates a copy of this transaction with updated fields.
+  // --- Updated copyWith to use the factory constructor ---
   Transaction copyWith({
     int? id,
+    String? uuid,
     String? title,
     double? amount,
-    Category? category, // Keep accepting objects for convenience elsewhere
-    int? categoryId, // Add ID parameters for sync logic
-    Account? fromAccount, // Keep accepting objects
-    int? fromAccountId, // Add ID parameters
-    Account? toAccount, // Keep accepting objects
-    int? toAccountId, // Add ID parameters
-    DateTime? date,
     String? description,
-    DateTime? createdAt, // Keep accepting DateTime
-    DateTime? updatedAt, // Keep accepting DateTime
+    DateTime? date,
+    int? categoryId,
+    int? fromAccountId,
+    int? toAccountId,
+    bool? setToAccountIdNull, // Helper to explicitly nullify toAccount
+    DateTime? createdAt,
+    DateTime? updatedAt,
     String? userId,
     Map<String, dynamic>? metadata,
     DateTime? deletedAt,
     bool? setDeletedAtNull,
   }) {
-    // Create the new instance with updated primitive/DateTime fields
-    final updatedTransaction = Transaction(
+    // Determine the final IDs based on parameters and existing targetIds
+    int? finalToAccountId;
+    if (setToAccountIdNull == true) {
+      finalToAccountId = null;
+    } else {
+      // Prioritize explicit ID, then existing targetId
+      finalToAccountId = toAccountId ?? this.toAccount.targetId;
+      if (finalToAccountId == 0) finalToAccountId = null; // Treat 0 as null
+    }
+
+    // Prioritize explicit ID, then existing targetId
+    final finalCategoryId = categoryId ?? this.category.targetId;
+    final finalFromAccountId = fromAccountId ?? this.fromAccount.targetId;
+
+    // Use the factory constructor
+    return Transaction.createWithIds(
       id: id ?? this.id,
+      uuid: uuid ?? this.uuid,
       title: title ?? this.title,
       amount: amount ?? this.amount,
-      date: date ?? this.date,
       description: description ?? this.description,
-      // Use provided timestamps or existing ones
+      date: date ?? this.date,
+      categoryId: finalCategoryId,
+      fromAccountId: finalFromAccountId,
+      toAccountId: finalToAccountId,
       createdAt: createdAt ?? this.createdAt,
-      // Always update 'updatedAt' on copy unless explicitly provided
-      updatedAt: updatedAt ?? DateTime.now(),
+      updatedAt: updatedAt ?? DateTime.now(), // Always update timestamp on copy
       userId: userId ?? this.userId,
       metadata: metadata ?? this.metadata,
       deletedAt:
           setDeletedAtNull == true ? null : (deletedAt ?? this.deletedAt),
-      // Pass relationship objects ONLY if they were explicitly provided
-      // Otherwise, we'll set IDs below
-      category: category,
-      fromAccount: fromAccount,
-      toAccount: toAccount,
-
-      categoryId: categoryId,
-      fromAccountId: fromAccountId,
-      toAccountId: toAccountId,
     );
-
-    // --- Handle Relationship IDs ---
-    // Prioritize passed objects, then passed IDs, then existing IDs.
-
-    // Category
-    // if (category == null) {
-    //   // If no Category object was passed
-    //   updatedTransaction.category.targetId =
-    //       categoryId ?? this.category.targetId;
-    // } // else: constructor already set the target from the passed object
-
-    // // FromAccount
-    // if (fromAccount == null) {
-    //   // If no fromAccount object was passed
-    //   updatedTransaction.fromAccount.targetId =
-    //       fromAccountId ?? this.fromAccount.targetId;
-    // } // else: constructor already set the target
-
-    // // ToAccount
-    // if (toAccount == null) {
-    //   // If no toAccount object was passed
-    //   updatedTransaction.toAccount.targetId =
-    //       toAccountId ?? this.toAccount.targetId;
-    // } // else: constructor already set the target
-
-    return updatedTransaction;
   }
 
+  // --- Updated fromJson Factory to use the factory constructor ---
   factory Transaction.fromJson(Map<String, dynamic> json) {
-    // Use safer type checking with ?? default values to handle missing or malformed data
-    try {
-      final transaction = Transaction(
-        id: json['id'] is int ? json['id'] : 0,
-        title: json['title'] is String ? json['title'] as String : 'Untitled',
-        amount:
-            json['amount'] is num ? (json['amount'] as num).toDouble() : 0.0,
-        description: json['description'] is String
-            ? json['description'] as String?
-            : null,
-        date: json['date'] is String
-            ? DateTime.tryParse(json['date'] as String)?.toLocal() ??
-                DateTime.now()
-            : DateTime.now(),
-        createdAt: json['created_at'] is String
-            ? DateTime.tryParse(json['created_at'] as String)?.toLocal() ??
-                DateTime.now()
-            : DateTime.now(),
-        updatedAt: json['updated_at'] is String
-            ? DateTime.tryParse(json['updated_at'] as String)?.toLocal() ??
-                DateTime.now()
-            : DateTime.now(),
-        userId: json['user_id'] is String ? json['user_id'] as String : null,
-        metadata: json['metadata'] is Map<String, dynamic>
-            ? json['metadata'] as Map<String, dynamic>
-            : null, // Parse metadata
-        deletedAt: json['deleted_at'] == null
-            ? null
-            : DateTime.tryParse(json['deleted_at'] as String)
-                ?.toLocal(), // Add deletedAt (local)
-      );
+    // Helper to parse dates safely
+    DateTime? parseDate(dynamic value) =>
+        value == null ? null : DateTime.tryParse(value as String)?.toLocal();
 
-      // Safely assign relationship IDs with null checks
-      // Check both standard format (from_account_id) and camelCase format (fromAccountId)
-      if (json['from_account_id'] is int) {
-        transaction.fromAccount.targetId = json['from_account_id'] as int;
-      } else if (json['fromAccountId'] is int) {
-        transaction.fromAccount.targetId = json['fromAccountId'] as int;
-      }
+    // Parse IDs directly from JSON
+    final categoryIdFromJson = (json['category_id'] as num?)?.toInt() ??
+        Defaults().defaultCategory.id; // Fallback ID
+    final fromAccountIdFromJson = (json['from_account_id'] as num?)?.toInt() ??
+        Defaults().defaultAccount.id; // Fallback ID
+    final toAccountIdFromJson =
+        (json['to_account_id'] as num?)?.toInt(); // Nullable
 
-      // Check both snake_case and camelCase formats for category_id
-      if (json['category_id'] is int) {
-        transaction.category.targetId = json['category_id'] as int;
-      } else if (json['categoryId'] is int) {
-        transaction.category.targetId = json['categoryId'] as int;
-      }
-
-      if (json['to_account_id'] is int) {
-        transaction.toAccount.targetId = json['to_account_id'] as int;
-      } else if (json['toAccountId'] is int) {
-        transaction.toAccount.targetId = json['toAccountId'] as int;
-      }
-
-      return transaction;
-    } catch (e) {
-      // Log the error for debugging
-      print('Error parsing transaction JSON: $e');
-      print('Problematic JSON: $json');
-
-      // Return a minimal valid transaction to prevent crashes
-      return Transaction(
-        title: 'Error: Invalid Data',
-        amount: 0,
-        date: DateTime.now(),
-      );
-    }
+    // Use the factory constructor
+    return Transaction.createWithIds(
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      uuid: json['uuid'] as String?,
+      title: json['title'] as String? ?? 'Unknown Title',
+      amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
+      description: json['description'] as String?,
+      date: parseDate(json['date']) ?? DateTime.now(),
+      categoryId: categoryIdFromJson,
+      fromAccountId: fromAccountIdFromJson,
+      toAccountId: toAccountIdFromJson,
+      createdAt: parseDate(json['created_at']),
+      updatedAt: parseDate(json['updated_at']),
+      userId: json['user_id'] as String?,
+      metadata: json['metadata'] as Map<String, dynamic>?,
+      deletedAt: parseDate(json['deleted_at']),
+    );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id == 0 ? null : id,
+      'uuid': uuid,
       'title': title,
       'description': description,
       'amount': amount,
-      'category_id': category.targetId,
-      'from_account_id': fromAccount.targetId,
-      'to_account_id': toAccount.targetId,
+      'category_id': category.targetId == 0 ? null : category.targetId,
+      'from_account_id':
+          fromAccount.targetId == 0 ? null : fromAccount.targetId,
+      'to_account_id': toAccount.targetId == 0 ? null : toAccount.targetId,
       'date': date.toUtc().toIso8601String(),
       'created_at': createdAt.toUtc().toIso8601String(),
-      'updated_at': updatedAt.toUtc().toIso8601String(),
-      'user_id': userId, // Include userId in JSON
-      'metadata': metadata, // Include metadata in JSON
-      'deleted_at': deletedAt?.toUtc().toIso8601String(), // Add deletedAt (UTC)
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+      'user_id': userId,
+      'metadata': metadata,
+      'deleted_at': deletedAt?.toUtc().toIso8601String(),
     };
+  }
+
+  @override
+  List<Object?> get props => [
+        id,
+        uuid,
+        title,
+        amount,
+        description,
+        date,
+        createdAt,
+        updatedAt,
+        userId,
+        metadata,
+        deletedAt,
+        category.targetId,
+        fromAccount.targetId,
+        toAccount.targetId,
+      ];
+
+  @override
+  String toString() {
+    return 'Transaction{id: $id, uuid: $uuid, title: $title, amount: $amount, date: $date, '
+        'catId: ${category.targetId}, fromAccId: ${fromAccount.targetId}, toAccId: ${toAccount.targetId}, '
+        'userId: $userId, deletedAt: $deletedAt}';
   }
 }
