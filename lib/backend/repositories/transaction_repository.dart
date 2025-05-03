@@ -51,11 +51,16 @@ class TransactionRepository extends BaseRepository<Transaction> {
 
       if (transaction.id == 0) {
         // New transaction
+        // Ensure relationship IDs are passed if objects aren't fully formed yet
         transactionToSave = transaction.copyWith(
           userId: currentUserId,
           createdAt: now,
           updatedAt: now,
           deletedAt: transaction.deletedAt, // Preserve if explicitly set
+          // Pass IDs explicitly in case the transaction object's relations aren't set
+          categoryId: transaction.category.targetId,
+          fromAccountId: transaction.fromAccount.targetId,
+          toAccountId: transaction.toAccount.targetId,
         );
       } else {
         // Existing transaction - fetch directly to handle updates/restores
@@ -63,42 +68,68 @@ class TransactionRepository extends BaseRepository<Transaction> {
         if (existing == null) {
           print(
               "Warning: Attempted to update non-existent transaction ID: ${transaction.id}");
-          return transaction.id; // Or throw?
+          // Consider throwing an exception instead of returning potentially incorrect ID
+          throw Exception(
+              "Cannot update non-existent transaction ID ${transaction.id}");
         }
+        // Ensure the update is happening within the correct user context
         if (existing.userId != currentUserId) {
           print(
               "Error: Attempted to update transaction with mismatched userId context. Existing: ${existing.userId}, Current: $currentUserId");
           throw Exception(
               "Cannot modify data belonging to a different user context.");
         }
-        transactionToSave = transaction.copyWith(
-          userId: currentUserId,
+
+        // Apply changes from the incoming 'transaction' onto the 'existing' one
+        transactionToSave = existing.copyWith(
+          // Apply fields from the incoming 'transaction' object
+          title: transaction.title,
+          amount: transaction.amount,
+          description: transaction.description,
+          date: transaction.date,
+          // Explicitly pass the relationship IDs from the incoming 'transaction'.
+          // This ensures the intended state (from the UI/edit) is saved.
+          categoryId: transaction.category.targetId,
+          fromAccountId: transaction.fromAccount.targetId,
+          toAccountId: transaction.toAccount.targetId,
+          // copyWith preserves existing createdAt if not provided
+          // Update timestamp
           updatedAt: now,
-          createdAt:
-              transaction.createdAt != DateTime.fromMillisecondsSinceEpoch(0)
-                  ? transaction.createdAt
-                  : existing.createdAt,
-          // copyWith handles deletedAt logic (including setDeletedAtNull)
+          // Ensure userId is set (should already match existing, but reinforces context)
+          userId: currentUserId,
+          metadata: transaction.metadata, // Apply metadata from input
+          // Apply deletedAt status from input. copyWith handles the logic:
+          // If transaction.deletedAt is null, it keeps existing.deletedAt.
+          // If transaction.deletedAt is not null, it uses transaction.deletedAt.
+          deletedAt: transaction.deletedAt,
         );
       }
 
+      // Final check before saving
       if (transactionToSave.userId != currentUserId) {
         print(
-            "Error: Mismatched userId (${transactionToSave.userId}) during save for current context ($currentUserId).");
-        throw Exception("Data integrity error: User ID mismatch.");
+            "Error: Mismatched userId (${transactionToSave.userId}) during save for current context ($currentUserId). Transaction ID: ${transactionToSave.id}");
+        throw Exception("Data integrity error: User ID mismatch before save.");
       }
+      // Use the base repository's put method
       return await super.put(transactionToSave, syncSource: syncSource);
     } else {
       // Syncing down from Supabase
       if (transaction.userId == null) {
         print(
             "Warning: Syncing down transaction with null userId. ID: ${transaction.id}");
+        // Potentially assign current user ID if appropriate for your logic,
+        // but usually Supabase should provide the correct userId.
       }
+      // Ensure timestamps and relations are handled correctly for sync down
       final transactionToSave = transaction.copyWith(
           createdAt: transaction.createdAt.toLocal(),
           updatedAt: transaction.updatedAt.toLocal(),
-          deletedAt:
-              transaction.deletedAt?.toLocal()); // Ensure deletedAt is local
+          deletedAt: transaction.deletedAt?.toLocal(),
+          // Pass IDs explicitly from the synced transaction data
+          categoryId: transaction.category.targetId,
+          fromAccountId: transaction.fromAccount.targetId,
+          toAccountId: transaction.toAccount.targetId);
       return await super.put(transactionToSave, syncSource: syncSource);
     }
   }

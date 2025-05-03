@@ -50,6 +50,11 @@ Future<void> main() async {
       CategoryRepository(store, authService); // Inject AuthService
   txRepository = TransactionRepository(store, authService); // Already injected
 
+  print("Initializing repositories...");
+  await accountRepository.init();
+  await categoryRepository.init();
+  print("Repositories initialized.");
+
   // Initialize Services
   syncService = SyncService(
     supabaseClient: supabase,

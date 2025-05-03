@@ -448,6 +448,7 @@ class SettingsScreen extends StatelessWidget {
 
     final txCubit = context.read<DataManagementCubit>();
     final importerCubit = context.read<ImporterCubit>();
+    final txRepo = context.read<TransactionRepository>();
     final categoryRepository = context.read<CategoryRepository>();
     final accountRepository = context.read<AccountRepository>();
 
@@ -470,7 +471,8 @@ class SettingsScreen extends StatelessWidget {
       await _showDuplicatesDialog(
           context, availableCategories, availableAccounts);
     } else if (newTransactions != null && newTransactions.isNotEmpty) {
-      txCubit.addTransactions(newTransactions);
+      await txRepo.putMany(newTransactions);
+      await txCubit.refreshData();
     }
   }
 
@@ -482,6 +484,7 @@ class SettingsScreen extends StatelessWidget {
     if (!context.mounted) return;
 
     final txCubit = context.read<DataManagementCubit>();
+    final txRepo = context.read<TransactionRepository>();
     final importerCubit = context.read<ImporterCubit>();
     final duplicatesCount = importerCubit.state.duplicates.length;
 
@@ -531,7 +534,7 @@ class SettingsScreen extends StatelessWidget {
     } else if (result == 'non-duplicates') {
       final allImportedTransactions = await importerCubit.importTransactions(
         txCubit.state.displayedTransactions,
-        true,
+        false,
         availableCategories: availableCategories,
         availableAccounts: availableAccounts,
       );
@@ -548,7 +551,8 @@ class SettingsScreen extends StatelessWidget {
     if (!context.mounted) return;
 
     if (transactionsToAdd != null && transactionsToAdd.isNotEmpty) {
-      txCubit.addTransactions(transactionsToAdd.cast());
+      await txRepo.putMany(transactionsToAdd.cast());
+      await txCubit.refreshData();
     }
   }
 
@@ -625,7 +629,7 @@ class SettingsScreen extends StatelessWidget {
       content:
           'This action cannot be undone. Are you sure you want to delete ALL categories? Default categories will be recreated.',
       onConfirm: () {
-        context.read<CategoryRepository>().removeAll();
+        context.read<CategoryRepository>().removeAllForCurrentUser();
       },
     );
   }

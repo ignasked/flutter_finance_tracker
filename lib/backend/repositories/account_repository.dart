@@ -13,15 +13,32 @@ import 'package:money_owl/backend/models/transaction.dart';
 class AccountRepository extends BaseRepository<Account> {
   final AuthService _authService;
 
-  AccountRepository(Store store, this._authService) : super(store) {
-    _initializeDefaultAccounts();
-    _setDefaultAccount();
+  AccountRepository(Store store, this._authService) : super(store);
+
+  Future<void> init() async {
+    await _initializeDefaultAccounts();
+    await _setDefaultAccount(); // Ensure this is also awaited if needed
   }
 
   Future<void> _setDefaultAccount() async {
+    // Use getById which respects user context and deleted status
     final defaultAcc = await getById(1);
     if (defaultAcc != null) {
       Defaults().defaultAccount = defaultAcc;
+    } else {
+      // Fallback logic if default ID 1 isn't found after init
+      final userCondition = _userIdCondition();
+      final anyAccountQuery =
+          box.query(userCondition.and(_notDeletedCondition())).build();
+      final fallbackAccount = await anyAccountQuery.findFirstAsync();
+      anyAccountQuery.close();
+      if (fallbackAccount != null) {
+        Defaults().defaultAccount = fallbackAccount;
+        print(
+            "Set fallback default account during init: ${fallbackAccount.name}");
+      } else {
+        print("Error during init: No accounts available to set as default.");
+      }
     }
   }
 
@@ -34,13 +51,18 @@ class AccountRepository extends BaseRepository<Account> {
   Future<void> _initializeDefaultAccounts() async {
     final isFirstLaunch = await _isFirstLaunch();
     if (!isFirstLaunch) {
-      final defaultAcc = await getById(1);
+      // Still need to set the default account if it exists
+      final defaultAcc = await getById(1); // Check non-deleted default
       if (defaultAcc != null) {
         Defaults().defaultAccount = defaultAcc;
       }
       return;
     }
-    final defaultAccounts = [
+
+    print("First launch detected, initializing default accounts...");
+
+    // 1. Define default accounts
+    final defaultAccountsData = [
       Account(
         name: 'Bank Account',
         typeValue: AccountType.bank.index,
@@ -61,29 +83,59 @@ class AccountRepository extends BaseRepository<Account> {
       ),
     ];
 
-    for (Account defaultAccount in defaultAccounts) {
-      final supabase = Supabase.instance.client;
-      defaultAccount =
-          defaultAccount.copyWith(userId: supabase.auth.currentUser?.id);
+    // 2. Get existing account names for the current context in one query
+    final userCondition =
+        _userIdCondition(); // Get condition for current user/local
+    final existingNamesQuery = box.query(userCondition).build();
+    // Use findIds() and then getMany() or just find() if memory is not a concern
+    final existingAccounts = await existingNamesQuery.findAsync();
+    existingNamesQuery.close();
+    final existingNames = existingAccounts.map((a) => a.name).toSet();
 
-      final query =
-          box.query(Account_.name.equals(defaultAccount.name)).build();
-      final exists = query.find().isNotEmpty;
-      query.close();
-
-      if (!exists) {
-        try {
-          await put(defaultAccount);
-          print('Added default account: ${defaultAccount.name}');
-        } catch (e) {
-          print('Error adding default account ${defaultAccount.name}: $e');
-        }
+    // 3. Filter default accounts that don't exist yet
+    final List<Account> accountsToAdd = [];
+    for (final defaultAccount in defaultAccountsData) {
+      if (!existingNames.contains(defaultAccount.name)) {
+        // Prepare for batch insertion (userId and timestamps will be set by putMany)
+        accountsToAdd.add(defaultAccount);
       }
     }
 
+    // 4. Batch insert the missing accounts
+    if (accountsToAdd.isNotEmpty) {
+      try {
+        // Use putMany which handles setting userId and timestamps for local source
+        await putMany(accountsToAdd, syncSource: SyncSource.local);
+        print('Added ${accountsToAdd.length} default accounts in batch.');
+      } catch (e) {
+        print('Error adding default accounts in batch: $e');
+        // Handle potential batch errors if necessary
+      }
+    } else {
+      print("All default accounts already exist for the current context.");
+    }
+
+    // 5. Set the default account (assuming ID 1 is still the intended default)
+    // Use getById which respects the user context and deleted status
     final defaultAcc = await getById(1);
     if (defaultAcc != null) {
       Defaults().defaultAccount = defaultAcc;
+      print("Default account set.");
+    } else {
+      print(
+          "Warning: Default account (ID 1) not found or not accessible after initialization.");
+      // Attempt to find *any* account if the default (ID 1) isn't available
+      final anyAccountQuery =
+          box.query(userCondition.and(_notDeletedCondition())).build();
+      final fallbackAccount = await anyAccountQuery.findFirstAsync();
+      anyAccountQuery.close();
+      if (fallbackAccount != null) {
+        Defaults().defaultAccount = fallbackAccount;
+        print("Set fallback default account: ${fallbackAccount.name}");
+      } else {
+        print("Error: No accounts available to set as default.");
+        // Consider creating a fallback 'Cash' account here if none exist
+      }
     }
   }
 

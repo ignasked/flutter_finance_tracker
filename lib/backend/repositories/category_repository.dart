@@ -12,9 +12,12 @@ import 'package:money_owl/backend/services/auth_service.dart';
 class CategoryRepository extends BaseRepository<Category> {
   final AuthService _authService;
 
-  CategoryRepository(Store store, this._authService) : super(store) {
-    _initializeDefaultCategories();
-    _setDefaultCategory();
+  CategoryRepository(Store store, this._authService) : super(store);
+
+  /// Asynchronous initialization method
+  Future<void> init() async {
+    await _initializeDefaultCategories();
+    await _setDefaultCategory(); // Ensure this is also awaited
   }
 
   /// Factory method for asynchronous initialization
@@ -25,9 +28,24 @@ class CategoryRepository extends BaseRepository<Category> {
 
   /// Helper method to set default category asynchronously
   Future<void> _setDefaultCategory() async {
+    // Use getById which respects user context and deleted status
     final defaultCategory = await getById(1);
     if (defaultCategory != null) {
       Defaults().defaultCategory = defaultCategory;
+    } else {
+      // Fallback logic if default ID 1 isn't found after init
+      final userCondition = _userIdCondition();
+      final anyCategoryQuery =
+          box.query(userCondition.and(_notDeletedCondition())).build();
+      final fallbackCategory = await anyCategoryQuery.findFirstAsync();
+      anyCategoryQuery.close();
+      if (fallbackCategory != null) {
+        Defaults().defaultCategory = fallbackCategory;
+        print(
+            "Set fallback default category during init: ${fallbackCategory.title}");
+      } else {
+        print("Error during init: No categories available to set as default.");
+      }
     }
   }
 
@@ -93,15 +111,18 @@ class CategoryRepository extends BaseRepository<Category> {
   Future<void> _initializeDefaultCategories() async {
     final isFirstLaunch = await _isFirstLaunch();
     if (!isFirstLaunch) {
-      final defaultCategoryExists = await box.getAsync(1);
-      if (defaultCategoryExists != null &&
-          defaultCategoryExists.deletedAt == null) {
-        Defaults().defaultCategory = defaultCategoryExists;
+      // Still need to set the default category if it exists
+      final defaultCategory = await getById(1); // Check non-deleted default
+      if (defaultCategory != null) {
+        Defaults().defaultCategory = defaultCategory;
       }
       return;
     }
 
-    final defaultCategories = [
+    print("First launch detected, initializing default categories...");
+
+    // 1. Define default categories (as before)
+    final defaultCategoriesData = [
       Category(
         title: 'Food',
         descriptionForAI: 'Expenses related to food and dining',
@@ -248,28 +269,59 @@ class CategoryRepository extends BaseRepository<Category> {
       ),
     ];
 
-    for (final defaultCategory in defaultCategories) {
-      final query = box
-          .query(Category_.title
-              .equals(defaultCategory.title)
-              .and(_userIdCondition()))
-          .build();
-      final existing = await query.findFirstAsync();
-      query.close();
+    // 2. Get existing category titles for the current context in one query
+    final userCondition =
+        _userIdCondition(); // Get condition for current user/local
+    final existingTitlesQuery = box.query(userCondition).build();
+    // Use findIds() and then getMany() or just find() if memory is not a concern
+    final existingCategories = await existingTitlesQuery.findAsync();
+    existingTitlesQuery.close();
+    final existingTitles = existingCategories.map((c) => c.title).toSet();
 
-      if (existing == null) {
-        try {
-          await put(defaultCategory, syncSource: SyncSource.local);
-          print('Added default category: ${defaultCategory.title}');
-        } catch (e) {
-          print('Error adding default category ${defaultCategory.title}: $e');
-        }
+    // 3. Filter default categories that don't exist yet
+    final List<Category> categoriesToAdd = [];
+    for (final defaultCategory in defaultCategoriesData) {
+      if (!existingTitles.contains(defaultCategory.title)) {
+        // Prepare for batch insertion (userId and timestamps will be set by putMany)
+        categoriesToAdd.add(defaultCategory);
       }
     }
 
+    // 4. Batch insert the missing categories
+    if (categoriesToAdd.isNotEmpty) {
+      try {
+        // Use putMany which handles setting userId and timestamps for local source
+        await putMany(categoriesToAdd, syncSource: SyncSource.local);
+        print('Added ${categoriesToAdd.length} default categories in batch.');
+      } catch (e) {
+        print('Error adding default categories in batch: $e');
+        // Handle potential batch errors if necessary
+      }
+    } else {
+      print("All default categories already exist for the current context.");
+    }
+
+    // 5. Set the default category (assuming ID 1 is still the intended default)
+    // Use getById which respects the user context and deleted status
     final defaultCategory = await getById(1);
     if (defaultCategory != null) {
       Defaults().defaultCategory = defaultCategory;
+      print("Default category set.");
+    } else {
+      print(
+          "Warning: Default category (ID 1) not found or not accessible after initialization.");
+      // Attempt to find *any* category if the default (ID 1) isn't available
+      final anyCategoryQuery =
+          box.query(userCondition.and(_notDeletedCondition())).build();
+      final fallbackCategory = await anyCategoryQuery.findFirstAsync();
+      anyCategoryQuery.close();
+      if (fallbackCategory != null) {
+        Defaults().defaultCategory = fallbackCategory;
+        print("Set fallback default category: ${fallbackCategory.title}");
+      } else {
+        print("Error: No categories available to set as default.");
+        // Consider creating a fallback 'Uncategorized' category here if none exist
+      }
     }
   }
 

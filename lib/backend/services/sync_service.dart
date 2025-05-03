@@ -133,18 +133,50 @@ class SyncService {
               print(
                   'Sync Down: Updating $tableName item ${remoteItem.id} (Remote: $remoteUpdatedAtUTC > Local: $localUpdatedAtUTC)');
 
-              // Create a new instance using copyWith, preserving local createdAt
-              // and applying remote updatedAt (converted to local).
-              // Also pass relationship IDs from the remote item.
-              final itemToSave = remoteItem.copyWith(
-                createdAt: localItem.createdAt, // Keep original creation time
-                updatedAt: remoteItem.updatedAt
-                    .toLocal(), // Use remote update time (local TZ)
-                // Pass relationship IDs explicitly to copyWith
-                categoryId: remoteItem.category.targetId,
-                fromAccountId: remoteItem.fromAccount.targetId,
-                toAccountId: remoteItem.toAccount.targetId,
-              );
+              // --- Type-specific copyWith ---
+              dynamic
+                  itemToSave; // Use dynamic or a common base class/interface if you have one
+
+              if (tableName == 'transactions') {
+                // Cast to Transaction to access specific fields/methods safely
+                final remoteTx = remoteItem as Transaction;
+                final localTx = localItem as Transaction;
+                itemToSave = remoteTx.copyWith(
+                  createdAt: localTx.createdAt, // Keep original creation time
+                  updatedAt: remoteTx.updatedAt
+                      .toLocal(), // Use remote update time (local TZ)
+                  // Pass relationship IDs explicitly for Transactions
+                  categoryId: remoteTx.category.targetId,
+                  fromAccountId: remoteTx.fromAccount.targetId,
+                  toAccountId: remoteTx.toAccount.targetId,
+                );
+              } else if (tableName == 'accounts') {
+                // Cast to Account
+                final remoteAcc = remoteItem as Account;
+                final localAcc = localItem as Account;
+                itemToSave = remoteAcc.copyWith(
+                  createdAt: localAcc.createdAt,
+                  updatedAt: remoteAcc.updatedAt.toLocal(),
+                  // No category/account relations on Account model
+                );
+              } else if (tableName == 'categories') {
+                // Cast to Category
+                final remoteCat = remoteItem as Category;
+                final localCat = localItem as Category;
+                itemToSave = remoteCat.copyWith(
+                  createdAt: localCat.createdAt,
+                  updatedAt: remoteCat.updatedAt.toLocal(),
+                  // No category/account relations on Category model
+                );
+              } else {
+                // Fallback or error for unknown table types
+                print(
+                    "Error: Unknown table type '$tableName' in _syncDown update logic.");
+                // Optionally, use a basic copyWith if a common interface exists
+                // itemToSave = remoteItem.copyWith(createdAt: localItem.createdAt, updatedAt: remoteItem.updatedAt.toLocal());
+                continue; // Skip saving if type is unknown
+              }
+              // --- End Type-specific copyWith ---
 
               await repository.put(itemToSave, syncSource: SyncSource.supabase);
             } else {
@@ -167,9 +199,7 @@ class SyncService {
 
   /// Generic method to upload locally modified data to Supabase.
   Future<void> _syncUp<T extends dynamic>(
-      // Ensure T has toJson
-      String tableName,
-      Future<List<T>> localItemsFuture) async {
+      String tableName, Future<List<T>> localItemsFuture) async {
     final currentUserId = _supabaseClient.auth.currentUser?.id;
     if (currentUserId == null) {
       print('Sync Up: User not logged in, skipping $tableName.');
@@ -177,7 +207,6 @@ class SyncService {
     }
 
     try {
-      // The future now likely comes from a repository method that already filters by user ID
       final localItems = await localItemsFuture;
       if (localItems.isEmpty) {
         print(
@@ -188,20 +217,120 @@ class SyncService {
       print(
           'Sync Up: Pushing ${localItems.length} $tableName changes for user $currentUserId to Supabase.');
 
-      // Convert local items to JSON maps for Supabase
-      // Ensure toJson() includes the userId and uses UTC timestamps
-      final itemsToUpsert = localItems.map((item) => item.toJson()).toList();
+      // Separate new (ID=0) from existing items
+      // Ensure items have a mutable 'id' field for this to work
+      final List<T> itemsToInsert =
+          localItems.where((item) => item.id == 0).toList();
+      final List<T> itemsToUpdate =
+          localItems.where((item) => item.id != 0).toList();
 
-      // Upsert: Insert if new, update if exists. Supabase matches on primary key.
-      // RLS policies on Supabase will ensure the user can only upsert their own data
-      // if the user_id in the payload matches auth.uid().
-      await _supabaseClient.from(tableName).upsert(itemsToUpsert);
+      // Process updates first (less critical to get returning ID)
+      if (itemsToUpdate.isNotEmpty) {
+        final itemsJson = itemsToUpdate.map((item) => item.toJson()).toList();
+        print(
+            'Sync Up: Upserting ${itemsToUpdate.length} existing $tableName items.');
+        // Consider adding .select() if you need confirmation/updated data for edits too
+        await _supabaseClient.from(tableName).upsert(itemsJson);
+      }
+
+      // Process inserts and get the returned data with new IDs
+      if (itemsToInsert.isNotEmpty) {
+        final itemsJson = itemsToInsert.map((item) => item.toJson()).toList();
+        print(
+            'Sync Up: Upserting ${itemsToInsert.length} new $tableName items.');
+        // Use .select() to get the results back, including the generated IDs
+        final response =
+            await _supabaseClient.from(tableName).upsert(itemsJson).select();
+
+        // --- Update local items with Supabase IDs ---
+        // This is crucial for Accounts and Categories before syncing Transactions
+        if (response.isNotEmpty &&
+            (tableName == 'accounts' || tableName == 'categories')) {
+          final repository = _getRepositoryForTable(tableName);
+          if (repository != null && response.length == itemsToInsert.length) {
+            List<T> itemsToUpdateLocally = [];
+            // Assuming response order matches itemsToInsert order
+            for (var i = 0; i < response.length; i++) {
+              final remoteData = response[i] as Map<String, dynamic>;
+              final originalLocalItem = itemsToInsert[i]; // The one with ID 0
+
+              // Create a new object from the response data using fromJson
+              // Need a helper to get the correct fromJson based on T or tableName
+              final T confirmedItem =
+                  _fromJsonForTable<T>(tableName, remoteData);
+
+              // Update the ID on the original local object directly
+              // Requires 'id' field to be mutable in Account and Category models
+              if (originalLocalItem.id == 0) {
+                // Double check it's the new item
+                originalLocalItem.id = confirmedItem.id; // Update the ID!
+
+                // Optionally update other fields like updatedAt if needed
+                // originalLocalItem.updatedAt = confirmedItem.updatedAt;
+
+                itemsToUpdateLocally.add(originalLocalItem);
+                print(
+                    'Sync Up: Updated local ID for new $tableName from 0 to ${confirmedItem.id}');
+              } else {
+                print(
+                    'Sync Up Warning: Mismatched item during local ID update for $tableName.');
+              }
+            }
+            // Perform batch update in ObjectBox
+            if (itemsToUpdateLocally.isNotEmpty) {
+              // Ensure repositories have putMany that accepts syncSource
+              await repository.putMany(itemsToUpdateLocally,
+                  syncSource: SyncSource.supabase);
+              print(
+                  'Sync Up: Saved local ID updates for ${itemsToUpdateLocally.length} new $tableName items.');
+            }
+          } else if (response.length != itemsToInsert.length) {
+            print(
+                'Sync Up Error: Mismatched response length (${response.length}) vs items inserted (${itemsToInsert.length}) for $tableName. Cannot update local IDs reliably.');
+          }
+        } else if (response.isEmpty && itemsToInsert.isNotEmpty) {
+          print(
+              'Sync Up Warning: Upsert for new $tableName items returned empty response.');
+        }
+        // --- End Update local items ---
+      }
       print('Sync Up: Successfully pushed $tableName changes.');
     } catch (e, stacktrace) {
       print('Error syncing up $tableName: $e');
       print('Stacktrace: $stacktrace');
-      rethrow;
+      // Don't rethrow if it's a foreign key constraint during transaction sync,
+      // as accounts/categories might have synced successfully.
+      // Rethrow for other errors.
+      if (!(tableName == 'transactions' &&
+          e is PostgrestException &&
+          e.code == '23503')) {
+        rethrow;
+      } else {
+        print(
+            'Sync Up: Foreign key violation for $tableName likely due to missing related item. Check sync order and ID mapping.');
+      }
     }
+  }
+
+  // Helper to get repository (ensure it returns the correct type)
+  dynamic _getRepositoryForTable(String tableName) {
+    if (tableName == 'transactions') return _transactionRepository;
+    if (tableName == 'accounts') return _accountRepository;
+    if (tableName == 'categories') return _categoryRepository;
+    return null;
+  }
+
+  // Helper needed in _syncUp to call the correct fromJson
+  T _fromJsonForTable<T>(String tableName, Map<String, dynamic> json) {
+    if (tableName == 'accounts') {
+      return Account.fromJson(json) as T;
+    } else if (tableName == 'categories') {
+      return Category.fromJson(json) as T;
+    } else if (tableName == 'transactions') {
+      // Although not strictly needed for ID update logic, include for completeness
+      return Transaction.fromJson(json) as T;
+    }
+    throw Exception("Cannot find fromJson for table: $tableName");
   }
 
   Future<void> pushUpsert<T extends dynamic>(String tableName, T item) async {

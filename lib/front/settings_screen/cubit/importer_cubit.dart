@@ -209,17 +209,13 @@ class ImporterCubit extends Cubit<ImporterState> {
     // Parse JSON data
     final List<dynamic> jsonList = jsonDecode(jsonData) as List;
 
-    // Create lookup maps for categories (by id and name)
+    // Create lookup maps for categories (by id)
     final categoryIdMap = {for (var cat in availableCategories) cat.id: cat};
-    final categoryNameMap = {
-      for (var cat in availableCategories) cat.title.toLowerCase(): cat
-    };
+    // Consider adding name map as fallback if needed, but ID is primary
 
-    // Create lookup maps for accounts (by id and name)
+    // Create lookup maps for accounts (by id)
     final accountIdMap = {for (var acc in availableAccounts) acc.id: acc};
-    final accountNameMap = {
-      for (var acc in availableAccounts) acc.name.toLowerCase(): acc
-    };
+    // Consider adding name map as fallback
 
     // Process each transaction
     final List<Transaction> transactions = [];
@@ -235,71 +231,81 @@ class ImporterCubit extends Cubit<ImporterState> {
             continue;
           }
 
-          // Extract category from JSON
+          // --- Find Category ---
           Category? category;
-
-          // First try to get category by ID
-          if (json['category'] != null &&
-              json['category'] is Map &&
-              json['category']['id'] != null) {
-            final catId = json['category']['id'] as int;
+          // CORRECTED: Parse flat category_id
+          final catId = json['category_id'] as int?;
+          if (catId != null) {
             category = categoryIdMap[catId];
           }
+          // Add fallback by name if necessary and if name is exported
+          // category ??= categoryNameMap[ (json['category_name'] as String?)?.toLowerCase() ];
+          category ??= Defaults().defaultCategory; // Use default if not found
 
-          // If no category found by ID, try by name
-          if (category == null &&
-              json['category'] != null &&
-              json['category'] is Map &&
-              json['category']['title'] != null) {
-            final catName = (json['category']['title'] as String).toLowerCase();
-            category = categoryNameMap[catName];
+          // --- Find From Account ---
+          Account? fromAccount;
+          // CORRECTED: Parse flat from_account_id
+          final fromAccId = json['from_account_id'] as int?;
+          if (fromAccId != null) {
+            fromAccount = accountIdMap[fromAccId];
           }
+          // Add fallback by name if necessary
+          // fromAccount ??= accountNameMap[ (json['from_account_name'] as String?)?.toLowerCase() ];
+          fromAccount ??= Defaults().defaultAccount; // Use default if not found
 
-          // If still no category, use default
-          category ??= Defaults().defaultCategory;
-
-          // Extract account from JSON
-          Account? account;
-
-          // First try to get account by ID
-          if (json['fromAccount'] != null &&
-              json['fromAccount'] is Map &&
-              json['fromAccount']['id'] != null) {
-            final accId = json['fromAccount']['id'] as int;
-            account = accountIdMap[accId];
+          // --- Find To Account ---
+          Account? toAccount;
+          // CORRECTED: Parse flat to_account_id
+          final toAccId = json['to_account_id'] as int?;
+          if (toAccId != null) {
+            toAccount = accountIdMap[toAccId];
           }
+          // Note: No default for toAccount, it's often null for non-transfers
 
-          // If no account found by ID, try by name
-          if (account == null &&
-              json['fromAccount'] != null &&
-              json['fromAccount'] is Map &&
-              json['fromAccount']['name'] != null) {
-            final accName =
-                (json['fromAccount']['name'] as String).toLowerCase();
-            account = accountNameMap[accName];
-          }
+          // --- Parse other fields ---
+          // Use ?? 0 for ID to handle potential nulls if exporting ID 0 as null
+          final id = json['id'] as int? ?? 0;
+          final title = json['title'] as String? ?? 'Unnamed Transaction';
+          final amount = (json['amount'] as num?)?.toDouble() ?? 0.0;
+          // Use nullable _parseDate
+          final date = _parseDate(json['date']) ??
+              DateTime.now(); // Fallback if date parsing fails
+          final description = json['description'] as String?;
+          final createdAt = _parseDate(json['createdAt']); // Nullable
+          final updatedAt = _parseDate(json['updatedAt']); // Nullable
+          final userId = json['user_id'] as String?; // Parse userId
+          final deletedAt =
+              _parseDate(json['deleted_at']); // Parse deletedAt (nullable)
+          final metadata = json['metadata'] as Map<String, dynamic>?;
 
-          // If still no account, use default
-          account ??= Defaults().defaultAccount;
-
-          // Create transaction with properly linked relations
+          // Create transaction using the constructor, passing found objects
           final transaction = Transaction(
-            id: json['id'] as int? ?? 0,
-            title: json['title'] as String? ?? 'Unnamed Transaction',
-            amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
-            date: _parseDate(json['date']),
-            description: json['description'] as String?,
-            category: category,
-            fromAccount: account,
-            createdAt: _parseDate(json['createdAt']),
-            updatedAt: _parseDate(json['updatedAt']),
-            metadata: json['metadata'] as Map<String, dynamic>?,
+            id: id,
+            title: title,
+            amount: amount,
+            date: date,
+            description: description,
+            category: category, // Pass the Category object
+            fromAccount: fromAccount, // Pass the Account object
+            toAccount: toAccount, // Pass the Account object (can be null)
+            // Pass IDs as well, constructor prioritizes objects but good practice
+            categoryId: category?.id,
+            fromAccountId: fromAccount?.id,
+            toAccountId: toAccount?.id,
+            // Use parsed dates or fallback to now() if parsing failed
+            createdAt: createdAt ?? DateTime.now(),
+            updatedAt: updatedAt ?? DateTime.now(),
+            userId: userId, // Pass userId
+            deletedAt: deletedAt, // Pass deletedAt
+            metadata: metadata,
           );
 
           transactions.add(transaction);
-        } catch (e) {
+        } catch (e, stacktrace) {
           errorCount++;
-          print('Error parsing transaction: $e');
+          print('Error parsing imported transaction JSON: $e');
+          print('Problematic JSON: $json');
+          print('Stacktrace: $stacktrace');
           // Skip problematic transactions
         }
       }
@@ -322,7 +328,7 @@ class ImporterCubit extends Cubit<ImporterState> {
           ? json['transactionName'] as String
           : 'Unknown Store';
 
-      final date = _parseDate(json['date']);
+      final date = _parseDate(json['date']) ?? DateTime.now();
 
       final totalAmount = json['totalAmountPaid'] is num
           ? (json['totalAmountPaid'] as num).toDouble()
@@ -435,8 +441,8 @@ class ImporterCubit extends Cubit<ImporterState> {
   }
 
   // Helper method to parse a date from various formats
-  DateTime _parseDate(dynamic dateValue) {
-    if (dateValue == null) return DateTime.now();
+  DateTime? _parseDate(dynamic dateValue) {
+    if (dateValue == null) return null;
 
     if (dateValue is DateTime) {
       return dateValue;
@@ -444,57 +450,20 @@ class ImporterCubit extends Cubit<ImporterState> {
       try {
         return DateTime.parse(dateValue);
       } catch (_) {
-        try {
-          // Try different date formats if standard parsing fails
-          final formats = [
-            'yyyy-MM-dd',
-            'yyyy/MM/dd',
-            'dd-MM-yyyy',
-            'dd/MM/yyyy',
-            'MM/dd/yyyy'
-          ];
-
-          for (final format in formats) {
-            try {
-              // This is a simplified approach; in a real app, you might use a proper
-              // date formatting library like intl for this
-              if (format == 'yyyy-MM-dd' && dateValue.contains('-')) {
-                final parts = dateValue.split('-');
-                if (parts.length == 3) {
-                  return DateTime(int.parse(parts[0]), int.parse(parts[1]),
-                      int.parse(parts[2]));
-                }
-              } else if (format.contains('/') && dateValue.contains('/')) {
-                final parts = dateValue.split('/');
-                if (parts.length == 3) {
-                  // Handle different date formats
-                  if (format.startsWith('dd')) {
-                    return DateTime(int.parse(parts[2]), int.parse(parts[1]),
-                        int.parse(parts[0]));
-                  } else if (format.startsWith('MM')) {
-                    return DateTime(int.parse(parts[2]), int.parse(parts[0]),
-                        int.parse(parts[1]));
-                  } else {
-                    return DateTime(int.parse(parts[0]), int.parse(parts[1]),
-                        int.parse(parts[2]));
-                  }
-                }
-              }
-            } catch (_) {
-              // Continue to next format
-            }
-          }
-        } catch (_) {}
-
-        // If all parsing attempts fail, return current date
-        return DateTime.now();
+        print("Warning: Failed to parse date string '$dateValue'");
+        return null;
       }
     } else if (dateValue is int) {
-      // Assume milliseconds since epoch
-      return DateTime.fromMillisecondsSinceEpoch(dateValue);
+      try {
+        return DateTime.fromMillisecondsSinceEpoch(dateValue);
+      } catch (_) {
+        print("Warning: Failed to parse date from int '$dateValue'");
+        return null;
+      }
     }
 
-    return DateTime.now();
+    print("Warning: Unrecognized date format for value '$dateValue'");
+    return null;
   }
 
   //
@@ -507,14 +476,15 @@ class ImporterCubit extends Cubit<ImporterState> {
       // Convert transactions to list of maps
       final List<Map<String, dynamic>> transactionMaps = [];
 
-      // Process each transaction with error handling
+      // Process each transaction
       for (var tx in transactions) {
         try {
-          // Check if category relation is initialized
-          final category = tx.category.target;
-          final fromAccount = tx.fromAccount.target;
+          // Use targetId directly - safer for potentially detached objects
+          final categoryId = tx.category.targetId;
+          final fromAccountId = tx.fromAccount.targetId;
+          final toAccountId = tx.toAccount.targetId; // Add toAccount export
 
-          // Create a transaction JSON object with proper error handling for relations
+          // Create a transaction JSON object
           final map = {
             'id': tx.id,
             'title': tx.title,
@@ -523,22 +493,13 @@ class ImporterCubit extends Cubit<ImporterState> {
             'description': tx.description,
             'createdAt': tx.createdAt.toIso8601String(),
             'updatedAt': tx.updatedAt.toIso8601String(),
-            // Safely add category with null check
-            'category': category != null
-                ? {
-                    'id': category.id,
-                    'title': category.title,
-                    'type': category.type.toString().split('.').last,
-                  }
-                : null,
-            // Safely add fromAccount with null check
-            'fromAccount': fromAccount != null
-                ? {
-                    'id': fromAccount.id,
-                    'name': fromAccount.name,
-                    'currency': fromAccount.currency,
-                  }
-                : null,
+            // Export only the IDs
+            'category_id': categoryId == 0 ? null : categoryId,
+            'from_account_id': fromAccountId == 0 ? null : fromAccountId,
+            'to_account_id':
+                toAccountId == 0 ? null : toAccountId, // Add to_account_id
+            'user_id': tx.userId, // Ensure userId is exported
+            'deleted_at': tx.deletedAt?.toIso8601String(), // Export deleted_at
           };
 
           // Add metadata if available
@@ -548,11 +509,11 @@ class ImporterCubit extends Cubit<ImporterState> {
 
           transactionMaps.add(map);
         } catch (e) {
-          // If individual transaction processing fails, add an error entry
-          print('Error processing transaction ${tx.id}: $e');
+          // If individual transaction processing fails (less likely now)
+          print('Error processing transaction ${tx.id} for export: $e');
           transactionMaps.add({
             'exportError': 'Failed to process transaction ${tx.id}: $e',
-            'id': tx.id,
+            'id': tx.id, // Include basic info for identification
             'title': tx.title,
             'amount': tx.amount,
             'date': tx.date.toIso8601String(),

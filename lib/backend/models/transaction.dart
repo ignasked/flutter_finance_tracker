@@ -62,26 +62,35 @@ class Transaction extends Equatable {
     this.description,
     required this.date,
     Category? category,
+    int? categoryId, // Added parameter for category ID
     Account? fromAccount, // Renamed parameter
+    int? fromAccountId, // Added parameter for fromAccount ID
     Account? toAccount, // Added parameter
+    int? toAccountId, // Added parameter for toAccount ID
     DateTime? createdAt,
     DateTime? updatedAt,
     this.userId, // Add userId parameter
     this.metadata, // Add metadata parameter
     this.deletedAt, // Add deletedAt parameter
   })  : id = id ?? 0,
-        // Initialize final fields in initializer list
         createdAt = createdAt ?? DateTime.now(),
         updatedAt = updatedAt ?? (createdAt ?? DateTime.now()) {
-    // Constructor body remains the same for relationship assignment
     if (category != null) {
       this.category.target = category;
+    } else if (categoryId != null) {
+      this.category.targetId = categoryId;
     }
+
     if (fromAccount != null) {
       this.fromAccount.target = fromAccount;
+    } else if (fromAccountId != null) {
+      this.fromAccount.targetId = fromAccountId;
     }
+
     if (toAccount != null) {
       this.toAccount.target = toAccount;
+    } else if (toAccountId != null) {
+      this.toAccount.targetId = toAccountId;
     }
   }
 
@@ -91,9 +100,9 @@ class Transaction extends Equatable {
         title,
         amount,
         // Use target?.id instead of targetId to avoid the initialization error
-        category.target?.id,
-        fromAccount.target?.id,
-        toAccount.target?.id,
+        category.targetId,
+        fromAccount.targetId,
+        toAccount.targetId,
         date,
         description,
         createdAt,
@@ -143,31 +152,35 @@ class Transaction extends Equatable {
       category: category,
       fromAccount: fromAccount,
       toAccount: toAccount,
+
+      categoryId: categoryId,
+      fromAccountId: fromAccountId,
+      toAccountId: toAccountId,
     );
 
     // --- Handle Relationship IDs ---
     // Prioritize passed objects, then passed IDs, then existing IDs.
 
     // Category
-    if (category == null) {
-      // If no Category object was passed
-      updatedTransaction.category.targetId =
-          categoryId ?? this.category.targetId;
-    } // else: constructor already set the target from the passed object
+    // if (category == null) {
+    //   // If no Category object was passed
+    //   updatedTransaction.category.targetId =
+    //       categoryId ?? this.category.targetId;
+    // } // else: constructor already set the target from the passed object
 
-    // FromAccount
-    if (fromAccount == null) {
-      // If no fromAccount object was passed
-      updatedTransaction.fromAccount.targetId =
-          fromAccountId ?? this.fromAccount.targetId;
-    } // else: constructor already set the target
+    // // FromAccount
+    // if (fromAccount == null) {
+    //   // If no fromAccount object was passed
+    //   updatedTransaction.fromAccount.targetId =
+    //       fromAccountId ?? this.fromAccount.targetId;
+    // } // else: constructor already set the target
 
-    // ToAccount
-    if (toAccount == null) {
-      // If no toAccount object was passed
-      updatedTransaction.toAccount.targetId =
-          toAccountId ?? this.toAccount.targetId;
-    } // else: constructor already set the target
+    // // ToAccount
+    // if (toAccount == null) {
+    //   // If no toAccount object was passed
+    //   updatedTransaction.toAccount.targetId =
+    //       toAccountId ?? this.toAccount.targetId;
+    // } // else: constructor already set the target
 
     return updatedTransaction;
   }
@@ -247,10 +260,9 @@ class Transaction extends Equatable {
       'title': title,
       'description': description,
       'amount': amount,
-      'category_id': category.target != null ? category.targetId : null,
-      'from_account_id':
-          fromAccount.target != null ? fromAccount.targetId : null,
-      'to_account_id': toAccount.target != null ? toAccount.targetId : null,
+      'category_id': category.targetId,
+      'from_account_id': fromAccount.targetId,
+      'to_account_id': toAccount.targetId,
       'date': date.toUtc().toIso8601String(),
       'created_at': createdAt.toUtc().toIso8601String(),
       'updated_at': updatedAt.toUtc().toIso8601String(),
