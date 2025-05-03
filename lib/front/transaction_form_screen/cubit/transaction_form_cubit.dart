@@ -33,17 +33,19 @@ class TransactionFormState extends Equatable {
   TransactionFormState({
     this.title = const TitleInput.pure(),
     this.amount = const MoneyInput.pure(),
-    DateTime? date, // Accept optional date
-    this.category,
-    this.account,
-    this.selectedType = TransactionType.expense, // Default type
+    Category? category,
+    Account? account,
     this.status = FormzSubmissionStatus.initial,
-    this.submittedTransaction,
-    this.isValid = false, // Default to false for new form
+    this.isValid = false,
+    DateTime? date,
     this.errorMessage,
+    this.id = 0,
     this.actionType = ActionType.addNew,
-    this.id = 0, // Default ID for new transaction
-  }) : date = date ?? DateTime.now(); // Initialize this.date
+    this.submittedTransaction,
+    this.selectedType = TransactionType.expense,
+  })  : date = date ?? DateTime.now(),
+        category = category ?? Defaults().defaultCategory,
+        account = account ?? Defaults().defaultAccount;
 
   TransactionFormState.edit({
     required Transaction transaction,
@@ -53,29 +55,29 @@ class TransactionFormState extends Equatable {
         amount = MoneyInput.dirty(transaction.amount.abs().toString()),
         category = transaction.category.target,
         account = transaction.fromAccount.target,
-        date = transaction.date,
+        status = FormzSubmissionStatus.initial,
+        isValid = true,
+        actionType = ActionType.edit,
         id = transaction.id,
+        date = transaction.date,
         selectedType = transaction.isIncome
             ? TransactionType.income
-            : TransactionType.expense,
-        status = FormzSubmissionStatus.initial,
-        isValid = true, // Assume valid for edit
-        actionType = ActionType.edit;
+            : TransactionType.expense;
 
   TransactionFormState copyWith({
     TitleInput? title,
     MoneyInput? amount,
+    String? transactionType,
     Category? category,
     Account? account,
     DateTime? date,
-    int? id,
-    TransactionType? selectedType,
     FormzSubmissionStatus? status,
-    TransactionResult? submittedTransaction,
     bool? isValid,
     String? errorMessage,
-    bool? clearError, // Helper
+    int? id,
     ActionType? actionType,
+    TransactionResult? submittedTransaction,
+    TransactionType? selectedType,
   }) {
     TransactionType? finalSelectedType = selectedType ?? this.selectedType;
     if (category != null && category.type != finalSelectedType) {
@@ -88,14 +90,13 @@ class TransactionFormState extends Equatable {
       category: category ?? this.category,
       account: account ?? this.account,
       date: date ?? this.date,
-      id: id ?? this.id,
-      selectedType: finalSelectedType,
       status: status ?? this.status,
-      submittedTransaction: submittedTransaction ?? this.submittedTransaction,
       isValid: isValid ?? this.isValid,
-      errorMessage:
-          clearError == true ? null : (errorMessage ?? this.errorMessage),
+      errorMessage: errorMessage ?? this.errorMessage,
+      id: id ?? this.id,
       actionType: actionType ?? this.actionType,
+      submittedTransaction: submittedTransaction ?? this.submittedTransaction,
+      selectedType: finalSelectedType,
     );
   }
 
@@ -106,13 +107,13 @@ class TransactionFormState extends Equatable {
         category,
         account,
         date,
-        id,
-        selectedType,
         status,
-        submittedTransaction,
         isValid,
         errorMessage,
+        id,
         actionType,
+        submittedTransaction,
+        selectedType,
       ];
 }
 

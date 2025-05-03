@@ -1,48 +1,56 @@
 part of 'bulk_transactions_cubit.dart';
 
 class BulkTransactionsState extends Equatable {
-  final List<Transaction> transactions;
-  final List<Transaction> originalTransactions;
-  final double totalExpenses;
-  final double receiptTotalAmount;
-  final String storeName;
+  final List<Transaction> transactions; // Raw transaction data
+  final List<TransactionViewModel>
+      displayedTransactions; // ViewModels for display
+  final List<Transaction>
+      originalTransactions; // For restoring pre-merge/discount state
   final DateTime selectedDate;
   final Account? selectedAccount;
-  final String? warningMessage;
-  final bool discountsApplied;
+  final String storeName;
+  final double receiptTotalAmount;
+  final double calculatedTotalExpenses;
+  final bool discountsApplied; // Flag if discounts have been processed
 
   const BulkTransactionsState({
     required this.transactions,
+    this.displayedTransactions = const [], // Initialize as empty
     required this.originalTransactions,
     required this.selectedDate,
+    this.selectedAccount,
     required this.storeName,
     required this.receiptTotalAmount,
-    this.totalExpenses = 0.0,
-    this.selectedAccount,
-    this.warningMessage,
+    this.calculatedTotalExpenses = 0.0,
     this.discountsApplied = false,
   });
 
   BulkTransactionsState copyWith({
     List<Transaction>? transactions,
+    List<TransactionViewModel>? displayedTransactions, // Add copyWith support
     List<Transaction>? originalTransactions,
-    double? totalExpenses,
-    double? receiptTotalAmount,
-    String? storeName,
     DateTime? selectedDate,
     Account? selectedAccount,
-    String? warningMessage,
+    // Use ValueGetter to allow setting account to null explicitly
+    ValueGetter<Account?>? selectedAccountGetter,
+    String? storeName,
+    double? receiptTotalAmount,
+    double? calculatedTotalExpenses,
     bool? discountsApplied,
   }) {
     return BulkTransactionsState(
       transactions: transactions ?? this.transactions,
+      displayedTransactions: displayedTransactions ??
+          this.displayedTransactions, // Add to copyWith
       originalTransactions: originalTransactions ?? this.originalTransactions,
-      totalExpenses: totalExpenses ?? this.totalExpenses,
-      receiptTotalAmount: receiptTotalAmount ?? this.receiptTotalAmount,
-      storeName: storeName ?? this.storeName,
       selectedDate: selectedDate ?? this.selectedDate,
-      selectedAccount: selectedAccount ?? this.selectedAccount,
-      warningMessage: warningMessage,
+      selectedAccount: selectedAccountGetter != null
+          ? selectedAccountGetter()
+          : (selectedAccount ?? this.selectedAccount),
+      storeName: storeName ?? this.storeName,
+      receiptTotalAmount: receiptTotalAmount ?? this.receiptTotalAmount,
+      calculatedTotalExpenses:
+          calculatedTotalExpenses ?? this.calculatedTotalExpenses,
       discountsApplied: discountsApplied ?? this.discountsApplied,
     );
   }
@@ -50,13 +58,13 @@ class BulkTransactionsState extends Equatable {
   @override
   List<Object?> get props => [
         transactions,
+        displayedTransactions, // Add to props
         originalTransactions,
-        totalExpenses,
-        receiptTotalAmount,
-        storeName,
         selectedDate,
         selectedAccount,
-        warningMessage,
+        storeName,
+        receiptTotalAmount,
+        calculatedTotalExpenses,
         discountsApplied,
       ];
 }

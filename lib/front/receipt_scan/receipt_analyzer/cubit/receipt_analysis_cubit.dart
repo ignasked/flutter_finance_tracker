@@ -8,6 +8,7 @@ import 'package:money_owl/backend/models/transaction.dart';
 import 'package:money_owl/backend/repositories/category_repository.dart';
 import 'package:money_owl/backend/services/mistral_service.dart';
 import 'package:money_owl/backend/utils/defaults.dart';
+import 'package:money_owl/backend/utils/enums.dart';
 import 'package:money_owl/backend/utils/receipt_format.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -75,7 +76,7 @@ class ReceiptAnalysisCubit extends Cubit<ReceiptAnalysisState> {
           : 'Unknown Store';
       final date = _parseDate(json['date']);
       final totalAmountPaid = json['totalAmountPaid'] is num
-          ? (json['totalAmountPaid'] as num).toDouble()
+          ? -(json['totalAmountPaid'] as num).toDouble()
           : 0.0;
 
       final categoryIdMap = {for (var cat in availableCategories) cat.id: cat};
@@ -92,8 +93,8 @@ class ReceiptAnalysisCubit extends Cubit<ReceiptAnalysisState> {
               final title = item['title'] is String
                   ? item['title'] as String
                   : 'Unknown Item';
-              final amount = item['amount'] is num
-                  ? -(item['amount'] as num).abs().toDouble()
+              double amount = item['amount'] is num
+                  ? (((item['amount'] as num).toDouble() * 100).round() / 100)
                   : 0.0;
 
               Category? category;
@@ -105,6 +106,14 @@ class ReceiptAnalysisCubit extends Cubit<ReceiptAnalysisState> {
                     categoryNameMap[(item['category'] as String).toLowerCase()];
               }
               category ??= Defaults().defaultCategory;
+
+              // --- Adjust amount sign based on category type ---
+              if (category.type == TransactionType.income && amount < 0) {
+                amount = -amount; // Make income positive
+              } else if (category.type == TransactionType.expense &&
+                  amount > 0) {
+                amount = -amount; // Make expense negative
+              }
 
               final transaction = Transaction.createWithIds(
                 title: title,

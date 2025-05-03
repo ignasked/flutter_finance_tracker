@@ -1,27 +1,23 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:money_owl/backend/models/account.dart';
 import 'package:money_owl/backend/utils/app_style.dart';
-import 'package:money_owl/front/shared/data_management_cubit/data_management_cubit.dart'; // Import AppStyle
 
 class AccountDropdown extends StatelessWidget {
   final Account? selectedAccount;
-  final ValueChanged<Account?> onAccountChanged;
+  final ValueChanged<Account?> onChanged;
+  final List<Account> accounts;
 
   const AccountDropdown({
     Key? key,
     required this.selectedAccount,
-    required this.onAccountChanged,
+    required this.onChanged,
+    required this.accounts,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final accounts =
-        context.read<DataManagementCubit>().getEnabledAccountsCache();
-
     if (accounts.isEmpty) {
-      return const Text('No accounts available. Please add an account first.',
-          style: AppStyle.bodyText);
+      return const Text('No accounts available.', style: AppStyle.bodyText);
     }
 
     Account? validSelectedAccount = selectedAccount != null &&
@@ -58,7 +54,7 @@ class AccountDropdown extends StatelessWidget {
           ),
         );
       }).toList(),
-      onChanged: onAccountChanged,
+      onChanged: onChanged,
       decoration: AppStyle.getInputDecoration(
         labelText: 'Account',
       ),

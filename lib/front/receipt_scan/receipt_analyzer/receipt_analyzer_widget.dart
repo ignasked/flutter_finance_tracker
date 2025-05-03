@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:money_owl/backend/models/transaction.dart';
 import 'package:money_owl/backend/repositories/category_repository.dart';
+import 'package:money_owl/backend/repositories/account_repository.dart'; // Import AccountRepository
 import 'package:money_owl/backend/services/file_picker_service.dart';
 import 'package:money_owl/backend/services/mistral_service.dart';
 import 'package:money_owl/backend/utils/app_style.dart';
@@ -84,21 +85,23 @@ class ReceiptAnalyzerWidget extends StatelessWidget {
       return;
     }
 
+    // Get repositories to pass to BulkAdd screen
+    final categoryRepo = context.read<CategoryRepository>();
+    final accountRepo = context.read<AccountRepository>();
+
     // Navigate to the bulk add transactions screen
     final addedTransactions = await Navigator.push<List<Transaction>?>(
       context,
       MaterialPageRoute(
         builder: (_) => BulkAddTransactionsScreen(
-          transactionName: receiptData['transactionName'] is String
-              ? receiptData['transactionName'] as String
-              : "Unknown Store",
-          date: receiptData['date'] is DateTime
-              ? receiptData['date'] as DateTime
-              : DateTime.now(),
-          totalExpensesFromReceipt: receiptData['totalAmountPaid'] is num
-              ? (receiptData['totalAmountPaid'] as num).toDouble()
-              : 0.0,
+          transactionName:
+              receiptData['transactionName'] as String? ?? "Unknown Store",
+          date: receiptData['date'] as DateTime? ?? DateTime.now(),
+          totalExpensesFromReceipt:
+              (receiptData['totalAmountPaid'] as num?)?.toDouble() ?? 0.0,
           transactions: transactions,
+          categoryRepository: categoryRepo,
+          accountRepository: accountRepo,
         ),
       ),
     );

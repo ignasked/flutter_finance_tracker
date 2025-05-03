@@ -7,6 +7,7 @@ import 'package:money_owl/backend/utils/app_style.dart';
 import 'package:money_owl/backend/utils/enums.dart';
 import 'package:money_owl/front/transaction_form_screen/cubit/transaction_form_cubit.dart';
 import 'package:intl/intl.dart';
+import 'package:money_owl/front/shared/data_management_cubit/data_management_cubit.dart'; // Add import for DataManagementCubit
 import 'package:money_owl/front/transaction_form_screen/widgets/account_dropdown.dart';
 import 'package:money_owl/front/transaction_form_screen/widgets/category_dropdown.dart';
 
@@ -298,9 +299,18 @@ class _TransactionForm extends StatelessWidget {
                           buildWhen: (previous, current) =>
                               previous.account != current.account,
                           builder: (context, state) {
+                            // --- FIX: Fetch accounts list ---
+                            final accountsList = context
+                                .read<DataManagementCubit>()
+                                .getEnabledAccountsCache();
+                            // --- END FIX ---
+
                             return AccountDropdown(
                               selectedAccount: state.account,
-                              onAccountChanged: (account) {
+                              // --- FIX: Pass the fetched accounts list ---
+                              accounts: accountsList,
+                              // --- END FIX ---
+                              onChanged: (account) {
                                 if (account != null) {
                                   context
                                       .read<TransactionFormCubit>()

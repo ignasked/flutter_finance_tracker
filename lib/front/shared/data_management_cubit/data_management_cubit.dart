@@ -267,7 +267,6 @@ class DataManagementCubit extends Cubit<DataManagementState> {
   // --- CRUD Operations (Modify state.allTransactions, then re-filter/map) --- //
 
   Future addTransaction(Transaction transaction) async {
-    emit(state.copyWith(status: LoadingStatus.loading));
     // Add to repository (ObjectBox assigns ID here if transaction.id is 0)
     final savedId = await _transactionRepository.put(transaction);
     // Fetch the saved transaction to ensure we have the correct ID assigned by ObjectBox
@@ -345,7 +344,6 @@ class DataManagementCubit extends Cubit<DataManagementState> {
   }
 
   Future deleteTransaction(int transactionId) async {
-    emit(state.copyWith(status: LoadingStatus.loading));
     // Use soft delete from repository
     final success = await _transactionRepository.remove(transactionId);
     if (success) {
