@@ -452,6 +452,11 @@ class DataManagementCubit extends Cubit<DataManagementState> {
         .any((transaction) => transaction.fromAccount.targetId == accountId);
   }
 
+  void updateDefaultCurrency() {
+    // This should trigger necessary recalculations/refreshes within the Cubit
+    recalculateSummary(); // Example: Recalculate summary based on new default
+  }
+
   @override
   Future<void> close() {
     _filterSubscription.cancel(); // Cancel the listener

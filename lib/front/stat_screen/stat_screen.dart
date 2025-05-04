@@ -16,9 +16,8 @@ import 'package:flutter/foundation.dart'; // For listEquals
 // Enum to manage category chart type
 enum CategoryChartType { expense, income }
 
-// --- ADD ENUM FOR CHART VIEW ---
+// Enum to manage category chart view
 enum CategoryChartView { pie, list, bar }
-// --- END ADD ---
 
 class StatScreen extends StatefulWidget {
   const StatScreen({super.key});
@@ -29,9 +28,7 @@ class StatScreen extends StatefulWidget {
 
 class _StatScreenState extends State<StatScreen> {
   Set<CategoryChartType> _selectedCategoryType = {CategoryChartType.expense};
-  // --- ADD STATE FOR CHART VIEW ---
   CategoryChartView _categoryChartView = CategoryChartView.pie;
-  // --- END ADD ---
 
   @override
   Widget build(BuildContext context) {
@@ -42,26 +39,26 @@ class _StatScreenState extends State<StatScreen> {
           padding: const EdgeInsets.symmetric(
               horizontal: AppStyle.paddingMedium), // Horizontal padding only
           child: BlocBuilder<DataManagementCubit, DataManagementState>(
-            // Consider adding buildWhen if DataManagementState updates very frequently
-            // buildWhen: (p, c) => p.filteredTransactions != c.filteredTransactions, // Example
             builder: (context, dataState) {
-              // Generate a key based on transactions to force ChartCubit rebuild
-              // Using hashCode might be more efficient than joining UUIDs if list is large
-              final chartCubitKey =
-                  ValueKey(dataState.filteredTransactions.hashCode);
-              // final chartCubitKey = ValueKey(dataState.filteredTransactions.map((t) => t.uuid).join(','));
+              // Get FilterState and Determine Currency Symbol
+              final filterState = context.watch<FilterCubit>().state;
+              final String currencySymbol =
+                  filterState.selectedAccount?.currencySymbolOrCurrency ??
+                      Defaults().defaultCurrencySymbol;
+
+              final chartCubitKey = ValueKey(
+                  '${dataState.filteredTransactions.hashCode}-${filterState.hashCode}'); // Include filterState in key
 
               return BlocProvider(
                 key: chartCubitKey,
                 create: (_) => ChartCubit(
                     allTransactions: dataState.allTransactions,
                     filteredTransactions: dataState.filteredTransactions,
-                    filterState: context.read<FilterCubit>().state),
+                    filterState: filterState), // Pass current filterState
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // --- Fixed Top Section ---
-                    // Add vertical padding here if needed, or let Summary/Date handle it
+                    // Fixed Top Section
                     const Padding(
                       padding: EdgeInsets.only(
                           top: AppStyle.paddingMedium), // Add top padding
@@ -73,10 +70,9 @@ class _StatScreenState extends State<StatScreen> {
                         height:
                             AppStyle.paddingSmall), // More space before charts
 
-                    // --- Scrollable Chart Section ---
+                    // Scrollable Chart Section
                     Expanded(
                       child: SingleChildScrollView(
-                        // Add vertical padding for scrollable content
                         padding: const EdgeInsets.only(
                             bottom: AppStyle.paddingMedium),
                         child: BlocBuilder<ChartCubit, ChartState>(
@@ -124,33 +120,28 @@ class _StatScreenState extends State<StatScreen> {
                             // Chart layout within the scrollable area
                             return Column(
                               children: [
-                                // --- Balance Chart Card ---
+                                // Balance Chart Card
                                 if (hasBalanceData)
                                   _buildChartCard(
                                     context: context,
                                     title: 'Balance Over Time',
-                                    // Optional: Add subtitle or info icon
                                     child: SizedBox(
-                                      height:
-                                          220, // Increased height for better view
+                                      height: 220,
                                       child: _buildBalanceLineChart(
-                                          context, chartState),
+                                          context, chartState, currencySymbol),
                                     ),
                                   ),
 
                                 if (hasBalanceData && hasCategoryData)
                                   const SizedBox(
-                                      height: AppStyle
-                                          .paddingMedium), // Consistent space
+                                      height: AppStyle.paddingMedium),
 
-                                // --- Category Chart Card ---
+                                // Category Chart Card
                                 if (hasCategoryData)
                                   _buildChartCard(
                                     context: context,
-                                    // Title is handled inside _buildCategorySection now
-                                    // title: 'Spending & Income',
                                     child: _buildCategorySection(
-                                        context, chartState),
+                                        context, chartState, currencySymbol),
                                   ),
                               ],
                             );
@@ -203,49 +194,40 @@ class _StatScreenState extends State<StatScreen> {
   }
 
   // Section for Category Chart + Controls
-  Widget _buildCategorySection(BuildContext context, ChartState chartState) {
-    // Determine available data types
+  Widget _buildCategorySection(
+      BuildContext context, ChartState chartState, String currencySymbol) {
     final hasIncomeData = chartState.categoryData.any((d) => d.amount > 0);
     final hasExpenseData = chartState.categoryData.any((d) => d.amount < 0);
 
-    // Build segments only for available data types
     List<ButtonSegment<CategoryChartType>> segments = [];
     if (hasExpenseData) {
       segments.add(const ButtonSegment<CategoryChartType>(
           value: CategoryChartType.expense,
-          icon: Icon(Icons.arrow_upward, size: 18))); // Smaller icon
+          icon: Icon(Icons.arrow_upward, size: 18)));
     }
     if (hasIncomeData) {
       segments.add(const ButtonSegment<CategoryChartType>(
           value: CategoryChartType.income,
-          icon: Icon(Icons.arrow_downward, size: 18))); // Smaller icon
+          icon: Icon(Icons.arrow_downward, size: 18)));
     }
 
-    // Auto-switch selection if current type has no data but the other does
     CategoryChartType currentEffectiveType = _selectedCategoryType.first;
     if (segments.isNotEmpty) {
-      // Only adjust if there's at least one valid segment
       if ((currentEffectiveType == CategoryChartType.expense &&
               !hasExpenseData &&
               hasIncomeData) ||
           (currentEffectiveType == CategoryChartType.income &&
               !hasIncomeData &&
               hasExpenseData)) {
-        // Update the state *after* the build phase completes
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
-            // Ensure widget is still mounted
             setState(() {
-              _selectedCategoryType = {
-                segments.first.value
-              }; // Select the first available type
+              _selectedCategoryType = {segments.first.value};
             });
           }
         });
-        // Use the newly selected type for the current build pass
         currentEffectiveType = segments.first.value;
       } else if (!segments.any((s) => s.value == currentEffectiveType)) {
-        // Handle case where current selection is no longer valid at all
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
             setState(() {
@@ -261,18 +243,14 @@ class _StatScreenState extends State<StatScreen> {
         ? 'Expenses by Category'
         : 'Income by Source';
 
-    // --- Prepare data source once ---
     final bool isExpense = currentEffectiveType == CategoryChartType.expense;
     final dataSource = chartState.categoryData
-        // --- ADDED NULL CHECK for category ---
         .where((d) =>
             d.category != null && (isExpense ? d.amount < 0 : d.amount > 0))
-        // --- Use ! on category now that it's guaranteed non-null ---
         .map((d) => ChartData(d.category!, d.amount.abs()))
-        .where((d) => d.amount > 0.01) // Filter out negligible amounts
+        .where((d) => d.amount > 0.01)
         .toList();
-    dataSource.sort((a, b) => b.amount.compareTo(a.amount)); // Sort descending
-    // --- End Prepare data source ---
+    dataSource.sort((a, b) => b.amount.compareTo(a.amount));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -284,48 +262,41 @@ class _StatScreenState extends State<StatScreen> {
           child: Text(chartTitle, style: AppStyle.titleStyle),
         ),
 
-        // --- Row for Toggles ---
+        // Row for Toggles
         Padding(
           padding: const EdgeInsets.only(bottom: AppStyle.paddingMedium),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.center, // Center toggles
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Income/Expense Toggle (only if choice exists)
               if (segments.length > 1)
                 Flexible(
-                  // Allow button to shrink if needed
                   child: _buildCategoryTypeSelector(context, segments),
                 ),
               if (segments.length > 1)
-                const SizedBox(
-                    width: AppStyle.paddingMedium), // Space between toggles
-
-              // Chart View Toggle (Pie/List/Bar)
+                const SizedBox(width: AppStyle.paddingMedium),
               Flexible(
-                // Allow button to shrink if needed
                 child: _buildChartViewSelector(),
               ),
             ],
           ),
         ),
-        // --- End Row for Toggles ---
 
-        // --- Conditional Chart/List Area ---
+        // Conditional Chart/List Area
         SizedBox(
-          // Adjust height based on view? Or use a consistent height?
-          // Using fixed height for now, might need adjustment for list view.
           height: 250,
-          child: _buildCategoryView(
-              context, chartState, currentEffectiveType, dataSource),
+          child: _buildCategoryView(context, chartState, currentEffectiveType,
+              dataSource, currencySymbol),
         ),
-        // --- End Conditional Area ---
       ],
     );
   }
 
-  // --- ADDED: Widget to build the current category view ---
-  Widget _buildCategoryView(BuildContext context, ChartState chartState,
-      CategoryChartType type, List<ChartData> dataSource) {
+  Widget _buildCategoryView(
+      BuildContext context,
+      ChartState chartState,
+      CategoryChartType type,
+      List<ChartData> dataSource,
+      String currencySymbol) {
     if (dataSource.isEmpty) {
       return Center(
         child: Padding(
@@ -341,58 +312,47 @@ class _StatScreenState extends State<StatScreen> {
 
     switch (_categoryChartView) {
       case CategoryChartView.pie:
-        // Pass the pre-filtered/sorted data source to avoid recalculation
-        return _buildPieChart(context, chartState, type, dataSource);
+        return _buildPieChart(
+            context, chartState, type, dataSource, currencySymbol);
       case CategoryChartView.list:
-        return _buildCategoryList(context, dataSource, type);
+        return _buildCategoryList(context, dataSource, type, currencySymbol);
       case CategoryChartView.bar:
-        return _buildCategoryBarChart(context, dataSource, type);
+        return _buildCategoryBarChart(
+            context, dataSource, type, currencySymbol);
     }
   }
-  // --- END ADDED ---
 
-  // --- ADDED: Category Type Selector (Income/Expense) ---
   Widget _buildCategoryTypeSelector(
       BuildContext context, List<ButtonSegment<CategoryChartType>> segments) {
-    // Ensure segments is not empty before building
     if (segments.isEmpty) {
-      return const SizedBox.shrink(); // Return empty if no segments available
+      return const SizedBox.shrink();
     }
 
     return SegmentedButton<CategoryChartType>(
-      segments: segments, // Use the dynamically generated segments
-      selected: _selectedCategoryType, // Use the state variable for selection
+      segments: segments,
+      selected: _selectedCategoryType,
       onSelectionChanged: (Set<CategoryChartType> newSelection) {
-        // Update state only if a valid selection is made
         if (newSelection.isNotEmpty) {
           setState(() {
             _selectedCategoryType = newSelection;
-            // Reset the chart view to default (e.g., pie) when switching type? Optional.
-            // _categoryChartView = CategoryChartView.pie;
           });
         }
       },
       style: SegmentedButton.styleFrom(
-        // Use AppStyle for consistency
-        backgroundColor: AppStyle.cardColor, // Match card background
-        foregroundColor: AppStyle.textColorSecondary, // Default text/icon color
-        selectedForegroundColor:
-            AppStyle.primaryColor, // Selected text/icon color
-        selectedBackgroundColor: AppStyle.primaryColor
-            .withOpacity(0.1), // Subtle background for selected
-        // Adjust padding if needed
+        backgroundColor: AppStyle.cardColor,
+        foregroundColor: AppStyle.textColorSecondary,
+        selectedForegroundColor: AppStyle.primaryColor,
+        selectedBackgroundColor: AppStyle.primaryColor.withOpacity(0.1),
         padding: const EdgeInsets.symmetric(
             horizontal: AppStyle.paddingSmall,
             vertical: AppStyle.paddingSmall / 2),
-        textStyle: AppStyle.captionStyle, // Use caption style for labels
+        textStyle: AppStyle.captionStyle,
       ),
-      showSelectedIcon: false, // Keep it clean, rely on background/text color
-      multiSelectionEnabled: false, // Only one type selected at a time
+      showSelectedIcon: false,
+      multiSelectionEnabled: false,
     );
   }
-  // --- END ADDED ---
 
-  // --- ADDED: Chart View Selector ---
   Widget _buildChartViewSelector() {
     return SegmentedButton<CategoryChartView>(
       segments: const <ButtonSegment<CategoryChartView>>[
@@ -414,65 +374,78 @@ class _StatScreenState extends State<StatScreen> {
         }
       },
       style: SegmentedButton.styleFrom(
-        // Simpler styling for view toggle
         selectedBackgroundColor: AppStyle.primaryColor.withOpacity(0.2),
         selectedForegroundColor: AppStyle.primaryColor,
         foregroundColor: AppStyle.textColorSecondary,
-        textStyle:
-            const TextStyle(fontSize: 0), // Hide default text if only icons
-        padding: const EdgeInsets.symmetric(
-            horizontal: AppStyle.paddingSmall), // Adjust padding
+        textStyle: const TextStyle(fontSize: 0),
+        padding: const EdgeInsets.symmetric(horizontal: AppStyle.paddingSmall),
       ),
       showSelectedIcon: false,
       multiSelectionEnabled: false,
     );
   }
-  // --- END ADDED ---
 
-  // Modify _buildPieChart to accept the dataSource
-  Widget _buildPieChart(BuildContext context, ChartState chartState,
-      CategoryChartType type, List<ChartData> dataSource) {
-    // Keep the isEmpty check (although _buildCategoryView handles it too)
+  Widget _buildPieChart(
+      BuildContext context,
+      ChartState chartState,
+      CategoryChartType type,
+      List<ChartData> dataSource,
+      String currencySymbol) {
     if (dataSource.isEmpty) {
-      // ... existing empty state ...
-      print("PieChart: dataSource is empty."); // Add log
-      // Return the empty state widget here as well for safety
+      print("PieChart: dataSource is empty.");
       return Center(child: Text('No data for pie chart'));
     }
 
-    // --- ADD LOGGING HERE ---
-    print("PieChart DataSource Check:");
-    for (var item in dataSource) {
-      print("  Category: ${item.category}, Amount: ${item.amount}");
-      if (item.category == null) {
-        // Explicit null check just in case
-        print("  *** ERROR: Found null category in dataSource! ***");
-      }
-    }
-    // --- END LOGGING ---
+    final SelectionBehavior selectionBehavior = SelectionBehavior(
+      enable: true,
+      selectedColor: AppStyle.primaryColor,
+      unselectedColor: Colors.grey.withOpacity(0.5),
+      selectedOpacity: 0.8,
+      unselectedOpacity: 0.4,
+    );
 
     return SfCircularChart(
-      // ... existing pie chart config ...
+      selectionGesture: ActivationMode.singleTap,
+      tooltipBehavior: TooltipBehavior(
+        enable: true,
+        activationMode: ActivationMode.singleTap,
+        format: 'point.x : point.y',
+        decimalPlaces: 0,
+        textStyle:
+            AppStyle.captionStyle.copyWith(color: ColorPalette.onPrimary),
+        color: AppStyle.secondaryColor,
+        elevation: 2,
+        canShowMarker: false,
+      ),
       series: <CircularSeries>[
         PieSeries<ChartData, String>(
-          dataSource: dataSource, // Use passed-in data source
-          xValueMapper: (ChartData data, _) =>
-              data.category, // Assumes non-null
+          dataSource: dataSource,
+          xValueMapper: (ChartData data, _) => data.category,
           yValueMapper: (ChartData data, _) => data.amount,
           pointColorMapper: (ChartData data, _) =>
               _getColorForCategory(data.category, context),
-          // ... rest of PieSeries config ...
+          selectionBehavior: selectionBehavior,
+          dataLabelSettings: const DataLabelSettings(
+            isVisible: true,
+            labelPosition: ChartDataLabelPosition.outside,
+            connectorLineSettings: ConnectorLineSettings(
+              type: ConnectorType.curve,
+              length: '10%',
+            ),
+            textStyle: AppStyle.captionStyle,
+          ),
+          radius: '80%',
+          enableTooltip: true,
         ),
       ],
-      // ... existing tooltipBehavior, margin ...
+      margin: const EdgeInsets.all(0),
     );
   }
 
-  // --- ADDED: Category List Builder ---
   Widget _buildCategoryList(BuildContext context, List<ChartData> dataSource,
-      CategoryChartType type) {
+      CategoryChartType type, String currencySymbol) {
     final currencyFormat = NumberFormat.simpleCurrency(
-      name: Defaults().defaultCurrencySymbol,
+      name: currencySymbol,
       decimalDigits: 0,
     );
     final total = dataSource.fold<double>(0, (sum, item) => sum + item.amount);
@@ -485,7 +458,7 @@ class _StatScreenState extends State<StatScreen> {
         final color = _getColorForCategory(item.category, context);
 
         return ListTile(
-          dense: true, // Make list items more compact
+          dense: true,
           leading: Icon(Icons.circle, color: color, size: 12),
           title: Text(item.category, style: AppStyle.bodyText),
           trailing: Text(
@@ -493,27 +466,26 @@ class _StatScreenState extends State<StatScreen> {
             style: AppStyle.captionStyle
                 .copyWith(color: AppStyle.textColorSecondary),
           ),
-          // Optional: Add onTap for drill-down later
-          // onTap: () { /* Handle tap */ },
         );
       },
     );
   }
-  // --- END ADDED ---
 
-  // --- ADDED: Category Bar Chart Builder ---
-  Widget _buildCategoryBarChart(BuildContext context,
-      List<ChartData> dataSource, CategoryChartType type) {
+  Widget _buildCategoryBarChart(
+      BuildContext context,
+      List<ChartData> dataSource,
+      CategoryChartType type,
+      String currencySymbol) {
     return SfCartesianChart(
       primaryXAxis: CategoryAxis(
         majorGridLines: const MajorGridLines(width: 0),
         axisLine: const AxisLine(width: 0),
         labelStyle: AppStyle.captionStyle.copyWith(fontSize: 10),
-        labelIntersectAction:
-            AxisLabelIntersectAction.rotate45, // Rotate labels if they overlap
+        labelIntersectAction: AxisLabelIntersectAction.rotate45,
       ),
       primaryYAxis: NumericAxis(
-        numberFormat: NumberFormat.compactSimpleCurrency(decimalDigits: 0),
+        numberFormat: NumberFormat.compactSimpleCurrency(
+            name: currencySymbol, decimalDigits: 0),
         labelStyle: AppStyle.captionStyle.copyWith(fontSize: 10),
         axisLine: const AxisLine(width: 0),
         majorTickLines: const MajorTickLines(size: 0),
@@ -528,22 +500,18 @@ class _StatScreenState extends State<StatScreen> {
           pointColorMapper: (ChartData data, _) =>
               _getColorForCategory(data.category, context),
           borderRadius: const BorderRadius.only(
-            // Add slight rounding to bars
             topLeft: Radius.circular(AppStyle.borderRadiusSmall / 2),
             topRight: Radius.circular(AppStyle.borderRadiusSmall / 2),
           ),
           dataLabelSettings: DataLabelSettings(
-              // Show value on top of bar
               isVisible: true,
               textStyle: AppStyle.captionStyle.copyWith(fontSize: 9),
               labelAlignment: ChartDataLabelAlignment.top,
-              // Use builder for compact formatting if needed
               builder: (dynamic data, dynamic point, dynamic series,
                   int pointIndex, int seriesIndex) {
                 final ChartData chartData = data as ChartData;
-                // Only show label if amount is significant enough to avoid clutter
                 if (chartData.amount < (dataSource.first.amount * 0.05))
-                  return const SizedBox.shrink(); // Hide if < 5% of max
+                  return const SizedBox.shrink();
                 return Text(
                   NumberFormat.compact().format(chartData.amount),
                   style: AppStyle.captionStyle.copyWith(
@@ -554,42 +522,21 @@ class _StatScreenState extends State<StatScreen> {
         )
       ],
       tooltipBehavior: TooltipBehavior(
-        // Simple tooltip for bar chart
         enable: true,
+        format: 'point.x : point.y',
+        decimalPlaces: 0,
         textStyle:
             AppStyle.captionStyle.copyWith(color: ColorPalette.onPrimary),
         color: AppStyle.secondaryColor,
         canShowMarker: false,
-        // Use builder for consistent formatting with pie chart
-        builder: (dynamic data, dynamic point, dynamic series, int pointIndex,
-            int seriesIndex) {
-          final ChartData chartData = data as ChartData;
-          final String formattedValue = NumberFormat.simpleCurrency(
-            name: Defaults().defaultCurrencySymbol,
-            decimalDigits: 0,
-          ).format(chartData.amount);
-          return Container(
-            padding: const EdgeInsets.all(AppStyle.paddingSmall / 2),
-            decoration: BoxDecoration(
-              color: AppStyle.secondaryColor,
-              borderRadius: BorderRadius.circular(AppStyle.borderRadiusSmall),
-            ),
-            child: Text(
-              '${chartData.category}: $formattedValue',
-              style:
-                  AppStyle.captionStyle.copyWith(color: ColorPalette.onPrimary),
-            ),
-          );
-        },
       ),
       plotAreaBorderWidth: 0,
       margin: const EdgeInsets.only(top: 5, right: 5),
     );
   }
-  // --- END ADDED ---
 
-  // Updated Balance Line Chart Builder
-  Widget _buildBalanceLineChart(BuildContext context, ChartState chartState) {
+  Widget _buildBalanceLineChart(
+      BuildContext context, ChartState chartState, String currencySymbol) {
     double? axisMinimum;
     double? axisMaximum;
     if (chartState.balanceData.isNotEmpty) {
@@ -602,26 +549,25 @@ class _StatScreenState extends State<StatScreen> {
       double range = maxBalance - minBalance;
       double padding = (range.abs() < 0.01)
           ? (maxBalance.abs() * 0.1).clamp(5.0, 100.0)
-          : range * 0.15; // Increased padding %
+          : range * 0.15;
       if (padding < 5.0 && range.abs() < 0.01 && maxBalance.abs() < 1)
-        padding = 5.0; // Ensure min padding if balance is near 0
+        padding = 5.0;
       axisMinimum = minBalance - padding;
       axisMaximum = maxBalance + padding;
     }
 
     final LinearGradient chartGradient = LinearGradient(
       colors: <Color>[
-        AppStyle.primaryColor.withOpacity(0.3), // Slightly less intense start
-        AppStyle.backgroundColor.withOpacity(0.0) // Fade fully to background
+        AppStyle.primaryColor.withOpacity(0.3),
+        AppStyle.backgroundColor.withOpacity(0.0)
       ],
       begin: Alignment.topCenter,
       end: Alignment.bottomCenter,
     );
 
     return SfCartesianChart(
-      // Removed title, handled by _buildChartCard
       primaryXAxis: DateTimeAxis(
-        dateFormat: DateFormat('d MMM'), // Compact date format
+        dateFormat: DateFormat('d MMM'),
         intervalType: DateTimeIntervalType.auto,
         majorGridLines: const MajorGridLines(width: 0),
         axisLine: const AxisLine(width: 0),
@@ -629,49 +575,44 @@ class _StatScreenState extends State<StatScreen> {
         edgeLabelPlacement: EdgeLabelPlacement.shift,
       ),
       primaryYAxis: NumericAxis(
-        numberFormat: NumberFormat.compactSimpleCurrency(decimalDigits: 0),
+        numberFormat: NumberFormat.compactSimpleCurrency(
+            name: currencySymbol, decimalDigits: 0),
         labelStyle: AppStyle.captionStyle.copyWith(fontSize: 10),
         axisLine: const AxisLine(width: 0),
         majorTickLines: const MajorTickLines(size: 0),
         majorGridLines: MajorGridLines(
-            width: 1,
-            color:
-                AppStyle.dividerColor.withOpacity(0.3)), // Lighter grid lines
+            width: 1, color: AppStyle.dividerColor.withOpacity(0.3)),
         minimum: axisMinimum,
         maximum: axisMaximum,
-        // Opposed position can sometimes save space if X-axis labels are long
-        // opposedPosition: true,
       ),
       series: <CartesianSeries<LineChartData, DateTime>>[
         SplineAreaSeries<LineChartData, DateTime>(
-          // Using SplineAreaSeries
           name: 'Balance',
-          splineType: SplineType.monotonic, // Smoother spline
+          splineType: SplineType.monotonic,
           dataSource: chartState.balanceData,
           xValueMapper: (data, _) => data.date,
           yValueMapper: (data, _) => data.balance,
-          gradient: chartGradient, // Apply gradient fill
-          borderColor: AppStyle.primaryColor, // Line color
-          borderWidth: 2.5, // Slightly thicker line
-          markerSettings:
-              const MarkerSettings(isVisible: false), // Hide markers on line
+          gradient: chartGradient,
+          borderColor: AppStyle.primaryColor,
+          borderWidth: 2.5,
+          markerSettings: const MarkerSettings(isVisible: false),
           enableTooltip: true,
         ),
       ],
       trackballBehavior: TrackballBehavior(
           enable: true,
           lineWidth: 1.5,
-          lineColor: AppStyle.secondaryColor, // Trackball line color
+          lineColor: AppStyle.secondaryColor,
           activationMode: ActivationMode.singleTap,
           tooltipSettings: InteractiveTooltip(
             enable: true,
-            format: 'point.x : point.y', // Use format string
+            format: 'point.x : point.y',
+            decimalPlaces: 0,
             textStyle:
                 AppStyle.captionStyle.copyWith(color: ColorPalette.onPrimary),
-            color:
-                AppStyle.secondaryColor.withOpacity(0.9), // Darker tooltip bg
-            borderColor: Colors.transparent, // No border around tooltip itself
-            borderRadius: AppStyle.borderRadiusSmall, // Rounded corners
+            color: AppStyle.secondaryColor.withOpacity(0.9),
+            borderColor: Colors.transparent,
+            borderRadius: AppStyle.borderRadiusSmall,
           ),
           markerSettings: const TrackballMarkerSettings(
               markerVisibility: TrackballVisibilityMode.visible,
@@ -685,24 +626,18 @@ class _StatScreenState extends State<StatScreen> {
     );
   }
 
-  // Helper to get category color (ensure access to categories)
   Color _getColorForCategory(String categoryTitle, BuildContext context) {
-    // Access categories from DataManagementCubit's state
     try {
-      // Use context.read inside build methods or helpers called directly from build
-      // Be cautious if calling this from callbacks where context might be outdated
       final categories =
           context.read<DataManagementCubit>().state.allCategories;
       final category = categories.firstWhere(
         (cat) => cat.title == categoryTitle,
-        // Provide orElse for safety if category might genuinely not exist
-        orElse: () =>
-            Defaults().defaultCategory, // Fallback to a default category
+        orElse: () => Defaults().defaultCategory,
       );
       return category.color;
     } catch (e) {
       print("Error finding category '$categoryTitle': $e");
-      return AppStyle.accentColor; // Fallback
+      return AppStyle.accentColor;
     }
   }
 }

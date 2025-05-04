@@ -4,6 +4,10 @@ import 'dart:io';
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:money_owl/backend/models/account.dart';
+import 'package:money_owl/backend/repositories/account_repository.dart'; // Import AccountRepository
+import 'package:money_owl/backend/repositories/category_repository.dart'; // Import CategoryRepository
+import 'package:money_owl/backend/repositories/transaction_repository.dart'; // Import TransactionRepository
+import 'package:money_owl/front/shared/data_management_cubit/data_management_cubit.dart'; // Import DataManagementCubit
 import 'package:path_provider/path_provider.dart';
 import 'package:money_owl/backend/models/category.dart';
 import 'package:money_owl/backend/models/transaction.dart';
@@ -183,6 +187,60 @@ class ImporterCubit extends Cubit<ImporterState> {
         lastOperation: errorMsg,
       ));
       return null;
+    }
+  }
+
+  /// Deletes all user-specific data (transactions, custom categories, custom accounts)
+  /// and resets to default categories and accounts.
+  Future<void> deleteAllData(
+    TransactionRepository txRepo,
+    CategoryRepository catRepo,
+    AccountRepository accRepo,
+    DataManagementCubit dataCubit, // Pass DataManagementCubit to refresh
+  ) async {
+    emit(state.copyWith(isLoading: true, error: null, lastOperation: null));
+    try {
+      // 1. Remove all user transactions
+      await txRepo.removeAllForCurrentUser();
+
+      // 2. Remove non-default categories and accounts in parallel
+      await Future.wait([
+        catRepo.removeNonDefaultForCurrentUser(),
+        accRepo.removeNonDefaultForCurrentUser(),
+      ]);
+
+      // 3. Re-add default categories and accounts in parallel
+      // Ensure default data is available in repositories or Defaults
+      await Future.wait([
+        accRepo.putMany(accRepo.defaultAccountsData),
+        catRepo.putMany(catRepo.defaultCategoriesData),
+      ]);
+
+      // 4. Re-initialize repositories (if needed by their implementation)
+      // This might re-fetch defaults or reset internal state
+      await Future.wait([
+        catRepo.init(),
+        accRepo.init(),
+      ]);
+
+      // 5. Refresh DataManagementCubit to reflect changes
+      await dataCubit
+          .refreshData(); // Call refreshData which handles loading/success state
+
+      emit(state.copyWith(
+        isLoading: false,
+        lastOperation: 'All user data deleted successfully.',
+      ));
+    } catch (e, stackTrace) {
+      print("Error deleting all data: $e\n$stackTrace");
+      final errorMsg = 'Failed to delete all data: ${e.toString()}';
+      emit(state.copyWith(
+        isLoading: false,
+        error: errorMsg,
+        lastOperation: errorMsg, // Also set lastOperation to error for listener
+      ));
+      // Re-throw the error if you want calling code to potentially handle it too
+      // throw;
     }
   }
 
