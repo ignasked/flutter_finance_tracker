@@ -15,6 +15,7 @@ import 'package:money_owl/front/settings_screen/account_management_screen.dart';
 import 'package:money_owl/front/settings_screen/cubit/importer_cubit.dart';
 import 'package:money_owl/front/settings_screen/category_management_screen.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../common/loading_widget.dart';
 import 'package:money_owl/backend/utils/app_style.dart';
 
@@ -84,11 +85,11 @@ class SettingsScreen extends StatelessWidget {
               children: [
                 // --- Data Management Section ---
                 _buildSectionHeader('Data Management'),
+                _buildImportButton(),
+                const SizedBox(height: AppStyle.paddingSmall),
                 _buildExportButton(),
                 const SizedBox(height: AppStyle.paddingSmall),
                 _buildDeleteAllDataButton(context),
-                const SizedBox(height: AppStyle.paddingSmall),
-                _buildImportButton(),
                 const SizedBox(height: AppStyle.paddingMedium),
                 const Divider(
                     height: AppStyle.paddingMedium,
@@ -272,8 +273,8 @@ class SettingsScreen extends StatelessWidget {
                     strokeWidth: 2,
                     color: ColorPalette.onPrimary,
                   ))
-              : const Icon(Icons.download, color: ColorPalette.onPrimary),
-          label: const Text("Export Transactions"),
+              : const Icon(Icons.import_export, color: ColorPalette.onPrimary),
+          label: const Text("Export Data"),
         );
       },
     );
@@ -303,8 +304,8 @@ class SettingsScreen extends StatelessWidget {
                     strokeWidth: 2,
                     color: ColorPalette.onPrimary,
                   ))
-              : const Icon(Icons.upload, color: ColorPalette.onPrimary),
-          label: const Text("Import Transactions"),
+              : const Icon(Icons.import_export, color: ColorPalette.onPrimary),
+          label: const Text("Import Data"),
         );
       },
     );
@@ -340,7 +341,6 @@ class SettingsScreen extends StatelessWidget {
 
   Future<void> _showFinancialAnalysis(BuildContext context) async {
     if (!context.mounted) return;
-
     showLoadingPopup(context, message: 'Analyzing your data...');
 
     try {
@@ -453,13 +453,19 @@ class SettingsScreen extends StatelessWidget {
       availableAccounts: availableAccounts,
     );
 
-    if (!context.mounted) return;
-
     if (newTransactions == null && importerCubit.state.duplicates.isNotEmpty) {
+      if (!context.mounted) return;
       await _showDuplicatesDialog(
           context, availableCategories, availableAccounts);
     } else if (newTransactions != null && newTransactions.isNotEmpty) {
-      await txCubit.addTransactions(newTransactions);
+      if (context.mounted) {
+        showLoadingPopup(context, message: 'Importing data...');
+      }
+      await txRepo.putMany(newTransactions);
+      await txCubit.refreshData();
+      if (context.mounted) {
+        hideLoadingPopup(context);
+      }
     }
   }
 
@@ -539,7 +545,7 @@ class SettingsScreen extends StatelessWidget {
 
     if (transactionsToAdd != null && transactionsToAdd.isNotEmpty) {
       await txRepo.putMany(transactionsToAdd.cast());
-      await txCubit.refreshData();
+      await txCubit.refreshTransactions();
     }
   }
 
@@ -613,17 +619,26 @@ class SettingsScreen extends StatelessWidget {
 
           await txRepo.removeAllForCurrentUser();
 
-          await {
-            catRepo.removeAllForCurrentUser(),
-            accRepo.removeAllForCurrentUser()
-          };
+          await Future.wait({
+            catRepo.removeNonDefaultForCurrentUser(),
+            accRepo.removeNonDefaultForCurrentUser()
+          });
 
-          await {
+          await Future.wait({
+            accRepo.putMany(accRepo.defaultAccountsData),
+            catRepo.putMany(catRepo.defaultCategoriesData),
+          });
+
+          // final prefs = await SharedPreferences.getInstance();
+          // await prefs.setBool('isFirstLaunchAccounts', true);
+          // await prefs.setBool('isFirstLaunchCategories', true);
+
+          await Future.wait({
             catRepo.init(),
             accRepo.init(),
-          };
+          });
 
-          await dataCubit.refreshData();
+          await dataCubit.refreshTransactions();
 
           if (context.mounted) {
             hideLoadingPopup(context);

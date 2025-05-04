@@ -20,6 +20,27 @@ class AccountRepository extends BaseRepository<Account> {
     await _setDefaultAccount(); // Ensure this is also awaited if needed
   }
 
+  get defaultAccountsData => [
+        Account(
+          name: 'Bank Account',
+          typeValue: AccountType.bank.index,
+          currency: 'USD',
+          currencySymbol: '\$',
+          balance: 0.0,
+          colorValue: Colors.blue.value,
+          iconCodePoint: Icons.account_balance.codePoint,
+        ),
+        Account(
+          name: 'Cash',
+          typeValue: AccountType.cash.index,
+          currency: 'USD',
+          currencySymbol: '\$',
+          balance: 0.0,
+          colorValue: Colors.green.value,
+          iconCodePoint: Icons.account_balance_wallet.codePoint,
+        )
+      ];
+
   Future<void> _setDefaultAccount() async {
     // Use getById which respects user context and deleted status
     final defaultAcc = await getById(1);
@@ -60,28 +81,6 @@ class AccountRepository extends BaseRepository<Account> {
     }
 
     print("First launch detected, initializing default accounts...");
-
-    // 1. Define default accounts
-    final defaultAccountsData = [
-      Account(
-        name: 'Bank Account',
-        typeValue: AccountType.bank.index,
-        currency: 'USD',
-        currencySymbol: '\$',
-        balance: 0.0,
-        colorValue: Colors.blue.value,
-        iconCodePoint: Icons.account_balance.codePoint,
-      ),
-      Account(
-        name: 'Cash',
-        typeValue: AccountType.cash.index,
-        currency: 'USD',
-        currencySymbol: '\$',
-        balance: 0.0,
-        colorValue: Colors.green.value,
-        iconCodePoint: Icons.account_balance_wallet.codePoint,
-      ),
-    ];
 
     // 2. Get existing account names for the current context in one query
     final userCondition =
@@ -249,6 +248,31 @@ class AccountRepository extends BaseRepository<Account> {
     }
   }
 
+  /// Fetch multiple non-deleted accounts by their IDs for the current context.
+  Future<List<Account>> getManyByIds(List<int> ids) async {
+    if (ids.isEmpty) return [];
+    // Remove duplicates and 0 if present
+    final uniqueIds = ids.where((id) => id != 0).toSet().toList();
+    if (uniqueIds.isEmpty) return [];
+
+    try {
+      final query = box
+          .query(Account_.id.oneOf(uniqueIds) // Use oneOf for batch query
+                  &
+                  _userIdCondition() &
+                  _notDeletedCondition() // Ensure they are not deleted
+              )
+          .build();
+      final results = await query.findAsync();
+      query.close();
+      return results;
+    } catch (e) {
+      final context = _authService.currentUser?.id ?? 'local (unauthenticated)';
+      print('Error fetching multiple accounts for context $context: $e');
+      return [];
+    }
+  }
+
   /// Soft removes an account by ID if it belongs to the current context.
   /// Returns true if successful, false otherwise.
   @override
@@ -323,7 +347,7 @@ class AccountRepository extends BaseRepository<Account> {
 
   /// Soft deletes all accounts for the currently logged-in user.
   /// If no user is logged in, soft deletes accounts with a null userId.
-  Future<int> removeAllForCurrentUser() async {
+  Future<int> removeNonDefaultForCurrentUser() async {
     final currentUserId = _authService.currentUser?.id;
 
     // Define the base condition based on user authentication state
@@ -333,8 +357,9 @@ class AccountRepository extends BaseRepository<Account> {
 
     // Define common conditions
     final Condition<Account> notDeletedCondition = Account_.deletedAt.isNull();
+
     final Condition<Account> notDefaultCondition =
-        Account_.id.notEquals(Defaults().defaultAccount.id);
+        Account_.id.greaterThan(defaultAccountsData.length);
 
     // Combine all conditions using the '&' operator
     final Condition<Account> finalCondition =

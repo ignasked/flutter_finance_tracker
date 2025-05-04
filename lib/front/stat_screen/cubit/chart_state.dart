@@ -24,7 +24,7 @@ class ChartState extends Equatable {
 }
 
 class ChartData {
-  final String category;
+  final String category; // MUST be non-nullable String
   final double amount;
 
   ChartData(this.category, this.amount);

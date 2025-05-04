@@ -107,6 +107,158 @@ class CategoryRepository extends BaseRepository<Category> {
     return enabledCategories.map((category) => category.title).join(', ');
   }
 
+  get defaultCategoriesData => [
+        Category(
+          title: 'Food',
+          descriptionForAI: 'Expenses related to food and dining',
+          colorValue: AppStyle.predefinedColors[3].value, // Orange
+          iconCodePoint: AppStyle.predefinedIcons[7].codePoint, // Restaurant
+          typeValue: TransactionType.expense.index,
+        ),
+        Category(
+          title: 'Transportation',
+          descriptionForAI:
+              'Expenses related to transportation like fuel, public transit, taxis',
+          colorValue: AppStyle.predefinedColors[1].value, // Blue
+          iconCodePoint:
+              AppStyle.predefinedIcons[2].codePoint, // Directions Car
+          typeValue: TransactionType.expense.index,
+        ),
+        Category(
+          title: 'Accomodation',
+          descriptionForAI: 'Expenses related to housing, rent, hotels',
+          colorValue: AppStyle.predefinedColors[6].value, // Brown
+          iconCodePoint: AppStyle.predefinedIcons[9].codePoint, // Home
+          typeValue: TransactionType.expense.index,
+        ),
+        Category(
+          title: 'Groceries',
+          descriptionForAI:
+              'Expenses related to grocery shopping and household supplies',
+          colorValue: AppStyle.predefinedColors[2].value, // Green
+          iconCodePoint: AppStyle.predefinedIcons[8].codePoint, // Shopping Cart
+          typeValue: TransactionType.expense.index,
+        ),
+        Category(
+          title: 'Junk Food',
+          descriptionForAI: 'Expenses related to snacks and fast food',
+          colorValue: AppStyle.predefinedColors[0].value, // Red
+          iconCodePoint: AppStyle.predefinedIcons[1].codePoint, // Fast Food
+          typeValue: TransactionType.expense.index,
+        ),
+        Category(
+          title: 'Services',
+          descriptionForAI:
+              'Expenses related to various services and subscriptions',
+          colorValue: AppStyle.predefinedColors[11].value, // Indigo
+          iconCodePoint:
+              AppStyle.predefinedIcons[10].codePoint, // Miscellaneous Services
+          typeValue: TransactionType.expense.index,
+        ),
+        Category(
+          title: 'Fitness',
+          descriptionForAI:
+              'Expenses related to gym memberships and fitness activities',
+          colorValue: AppStyle.predefinedColors[10].value, // Deep Orange
+          iconCodePoint:
+              AppStyle.predefinedIcons[11].codePoint, // Fitness Center
+          typeValue: TransactionType.expense.index,
+        ),
+        Category(
+          title: 'Entertainment',
+          descriptionForAI:
+              'Expenses related to entertainment and leisure activities',
+          colorValue: AppStyle.predefinedColors[4].value, // Purple
+          iconCodePoint:
+              AppStyle.predefinedIcons[12].codePoint, // Sports Esports
+          typeValue: TransactionType.expense.index,
+        ),
+        Category(
+          title: 'Healthcare',
+          descriptionForAI:
+              'Expenses related to medical care and health services',
+          colorValue: AppStyle.predefinedColors[0].value, // Red
+          iconCodePoint:
+              AppStyle.predefinedIcons[5].codePoint, // Local Hospital
+          typeValue: TransactionType.expense.index,
+        ),
+        Category(
+          title: 'Utilities',
+          descriptionForAI:
+              'Expenses related to utilities like electricity, water, internet',
+          colorValue: AppStyle.predefinedColors[1].value, // Blue
+          iconCodePoint: AppStyle.predefinedIcons[13].codePoint, // Power
+          typeValue: TransactionType.expense.index,
+        ),
+        Category(
+          title: 'Clothing',
+          descriptionForAI: 'Expenses related to clothes and accessories',
+          colorValue: AppStyle.predefinedColors[5].value, // Pink
+          iconCodePoint: AppStyle.predefinedIcons[6].codePoint, // Shopping Bag
+          typeValue: TransactionType.expense.index,
+        ),
+        Category(
+          title: 'Deposit',
+          descriptionForAI: 'Money deposited or saved from bottle returns',
+          colorValue: AppStyle.predefinedColors[7].value, // Amber
+          iconCodePoint: AppStyle.predefinedIcons[14].codePoint, // Recycling
+          typeValue: TransactionType.expense.index,
+        ),
+        Category(
+          title: 'Other Expenses',
+          descriptionForAI:
+              'Miscellaneous expenses that don\'t fit other categories',
+          colorValue: AppStyle.predefinedColors[8].value, // Grey
+          iconCodePoint: AppStyle.predefinedIcons[15].codePoint, // More Horiz
+          typeValue: TransactionType.expense.index,
+        ),
+        Category(
+          title: 'Salary',
+          descriptionForAI: 'Regular income from employment',
+          colorValue: AppStyle.predefinedColors[2].value, // Green
+          iconCodePoint: AppStyle.predefinedIcons[16].codePoint, // Work
+          typeValue: TransactionType.income.index,
+        ),
+        Category(
+          title: 'Gifts',
+          descriptionForAI: 'Recieved gifts',
+          colorValue: AppStyle.predefinedColors[5].value, // Pink
+          iconCodePoint:
+              AppStyle.predefinedIcons[17].codePoint, // Card Giftcard
+          typeValue: TransactionType.income.index,
+        ),
+        Category(
+          title: 'Side Hustle',
+          descriptionForAI: 'Income from side jobs or freelance work',
+          colorValue: AppStyle.predefinedColors[9].value, // Teal
+          iconCodePoint:
+              AppStyle.predefinedIcons[18].codePoint, // Business Center
+          typeValue: TransactionType.income.index,
+        ),
+        Category(
+          title: 'Other Income',
+          descriptionForAI:
+              'Miscellaneous income that doesn\'t fit other categories',
+          colorValue: AppStyle.predefinedColors[8].value, // Grey
+          iconCodePoint: AppStyle.predefinedIcons[15].codePoint, // More Horiz
+          typeValue: TransactionType.income.index,
+        ),
+        Category(
+          title: 'Discount for item',
+          descriptionForAI: 'Money saved through discounts and rebates',
+          colorValue: AppStyle.predefinedColors[2].value, // Green
+          iconCodePoint: AppStyle.predefinedIcons[19].codePoint, // Local Offer
+          typeValue: TransactionType.income.index,
+        ),
+        Category(
+          title: 'Overall discount',
+          descriptionForAI: 'Money saved through discounts and rebates',
+          colorValue: AppStyle.predefinedColors[2].value, // Green
+          iconCodePoint: AppStyle.predefinedIcons[19].codePoint, // Local Offer
+          typeValue: TransactionType.income.index,
+        ),
+      ];
+
   /// Initialize default categories if they don't exist (ignores deleted status for check)
   Future<void> _initializeDefaultCategories() async {
     final isFirstLaunch = await _isFirstLaunch();
@@ -120,154 +272,6 @@ class CategoryRepository extends BaseRepository<Category> {
     }
 
     print("First launch detected, initializing default categories...");
-
-    // 1. Define default categories (as before)
-    final defaultCategoriesData = [
-      Category(
-        title: 'Food',
-        descriptionForAI: 'Expenses related to food and dining',
-        colorValue: AppStyle.predefinedColors[3].value, // Orange
-        iconCodePoint: AppStyle.predefinedIcons[7].codePoint, // Restaurant
-        typeValue: TransactionType.expense.index,
-      ),
-      Category(
-        title: 'Transportation',
-        descriptionForAI:
-            'Expenses related to transportation like fuel, public transit, taxis',
-        colorValue: AppStyle.predefinedColors[1].value, // Blue
-        iconCodePoint: AppStyle.predefinedIcons[2].codePoint, // Directions Car
-        typeValue: TransactionType.expense.index,
-      ),
-      Category(
-        title: 'Accomodation',
-        descriptionForAI: 'Expenses related to housing, rent, hotels',
-        colorValue: AppStyle.predefinedColors[6].value, // Brown
-        iconCodePoint: AppStyle.predefinedIcons[9].codePoint, // Home
-        typeValue: TransactionType.expense.index,
-      ),
-      Category(
-        title: 'Groceries',
-        descriptionForAI:
-            'Expenses related to grocery shopping and household supplies',
-        colorValue: AppStyle.predefinedColors[2].value, // Green
-        iconCodePoint: AppStyle.predefinedIcons[8].codePoint, // Shopping Cart
-        typeValue: TransactionType.expense.index,
-      ),
-      Category(
-        title: 'Junk Food',
-        descriptionForAI: 'Expenses related to snacks and fast food',
-        colorValue: AppStyle.predefinedColors[0].value, // Red
-        iconCodePoint: AppStyle.predefinedIcons[1].codePoint, // Fast Food
-        typeValue: TransactionType.expense.index,
-      ),
-      Category(
-        title: 'Services',
-        descriptionForAI:
-            'Expenses related to various services and subscriptions',
-        colorValue: AppStyle.predefinedColors[11].value, // Indigo
-        iconCodePoint:
-            AppStyle.predefinedIcons[10].codePoint, // Miscellaneous Services
-        typeValue: TransactionType.expense.index,
-      ),
-      Category(
-        title: 'Fitness',
-        descriptionForAI:
-            'Expenses related to gym memberships and fitness activities',
-        colorValue: AppStyle.predefinedColors[10].value, // Deep Orange
-        iconCodePoint: AppStyle.predefinedIcons[11].codePoint, // Fitness Center
-        typeValue: TransactionType.expense.index,
-      ),
-      Category(
-        title: 'Entertainment',
-        descriptionForAI:
-            'Expenses related to entertainment and leisure activities',
-        colorValue: AppStyle.predefinedColors[4].value, // Purple
-        iconCodePoint: AppStyle.predefinedIcons[12].codePoint, // Sports Esports
-        typeValue: TransactionType.expense.index,
-      ),
-      Category(
-        title: 'Healthcare',
-        descriptionForAI:
-            'Expenses related to medical care and health services',
-        colorValue: AppStyle.predefinedColors[0].value, // Red
-        iconCodePoint: AppStyle.predefinedIcons[5].codePoint, // Local Hospital
-        typeValue: TransactionType.expense.index,
-      ),
-      Category(
-        title: 'Utilities',
-        descriptionForAI:
-            'Expenses related to utilities like electricity, water, internet',
-        colorValue: AppStyle.predefinedColors[1].value, // Blue
-        iconCodePoint: AppStyle.predefinedIcons[13].codePoint, // Power
-        typeValue: TransactionType.expense.index,
-      ),
-      Category(
-        title: 'Clothing',
-        descriptionForAI: 'Expenses related to clothes and accessories',
-        colorValue: AppStyle.predefinedColors[5].value, // Pink
-        iconCodePoint: AppStyle.predefinedIcons[6].codePoint, // Shopping Bag
-        typeValue: TransactionType.expense.index,
-      ),
-      Category(
-        title: 'Deposit',
-        descriptionForAI: 'Money deposited or saved from bottle returns',
-        colorValue: AppStyle.predefinedColors[7].value, // Amber
-        iconCodePoint: AppStyle.predefinedIcons[14].codePoint, // Recycling
-        typeValue: TransactionType.expense.index,
-      ),
-      Category(
-        title: 'Other Expenses',
-        descriptionForAI:
-            'Miscellaneous expenses that don\'t fit other categories',
-        colorValue: AppStyle.predefinedColors[8].value, // Grey
-        iconCodePoint: AppStyle.predefinedIcons[15].codePoint, // More Horiz
-        typeValue: TransactionType.expense.index,
-      ),
-      Category(
-        title: 'Salary',
-        descriptionForAI: 'Regular income from employment',
-        colorValue: AppStyle.predefinedColors[2].value, // Green
-        iconCodePoint: AppStyle.predefinedIcons[16].codePoint, // Work
-        typeValue: TransactionType.income.index,
-      ),
-      Category(
-        title: 'Gifts',
-        descriptionForAI: 'Recieved gifts',
-        colorValue: AppStyle.predefinedColors[5].value, // Pink
-        iconCodePoint: AppStyle.predefinedIcons[17].codePoint, // Card Giftcard
-        typeValue: TransactionType.income.index,
-      ),
-      Category(
-        title: 'Side Hustle',
-        descriptionForAI: 'Income from side jobs or freelance work',
-        colorValue: AppStyle.predefinedColors[9].value, // Teal
-        iconCodePoint:
-            AppStyle.predefinedIcons[18].codePoint, // Business Center
-        typeValue: TransactionType.income.index,
-      ),
-      Category(
-        title: 'Other Income',
-        descriptionForAI:
-            'Miscellaneous income that doesn\'t fit other categories',
-        colorValue: AppStyle.predefinedColors[8].value, // Grey
-        iconCodePoint: AppStyle.predefinedIcons[15].codePoint, // More Horiz
-        typeValue: TransactionType.income.index,
-      ),
-      Category(
-        title: 'Discount for item',
-        descriptionForAI: 'Money saved through discounts and rebates',
-        colorValue: AppStyle.predefinedColors[2].value, // Green
-        iconCodePoint: AppStyle.predefinedIcons[19].codePoint, // Local Offer
-        typeValue: TransactionType.income.index,
-      ),
-      Category(
-        title: 'Overall discount',
-        descriptionForAI: 'Money saved through discounts and rebates',
-        colorValue: AppStyle.predefinedColors[2].value, // Green
-        iconCodePoint: AppStyle.predefinedIcons[19].codePoint, // Local Offer
-        typeValue: TransactionType.income.index,
-      ),
-    ];
 
     // 2. Get existing category titles for the current context in one query
     final userCondition =
@@ -441,6 +445,31 @@ class CategoryRepository extends BaseRepository<Category> {
     }
   }
 
+  /// Fetch multiple non-deleted categories by their IDs for the current context.
+  Future<List<Category>> getManyByIds(List<int> ids) async {
+    if (ids.isEmpty) return [];
+    // Remove duplicates and 0 if present
+    final uniqueIds = ids.where((id) => id != 0).toSet().toList();
+    if (uniqueIds.isEmpty) return [];
+
+    try {
+      final query = box
+          .query(Category_.id.oneOf(uniqueIds) // Use oneOf for batch query
+                  &
+                  _userIdCondition() &
+                  _notDeletedCondition() // Ensure they are not deleted
+              )
+          .build();
+      final results = await query.findAsync();
+      query.close();
+      return results;
+    } catch (e) {
+      final context = _authService.currentUser?.id ?? 'local (unauthenticated)';
+      print('Error fetching multiple categories for context $context: $e');
+      return [];
+    }
+  }
+
   /// Soft removes a category by ID if it belongs to the current context.
   @override
   Future<bool> remove(int id) async {
@@ -532,44 +561,57 @@ class CategoryRepository extends BaseRepository<Category> {
     }
   }
 
-  /// Soft deletes all categories for the currently logged-in user.
-  /// If no user is logged in, soft deletes categories with a null userId.
-  Future<int> removeAllForCurrentUser() async {
+  /// Soft deletes all categories for the currently logged-in user that are NOT considered default (ID > 18).
+  /// If no user is logged in, performs the same logic for categories with a null userId.
+  Future<int> removeNonDefaultForCurrentUser() async {
     final currentUserId = _authService.currentUser?.id;
 
-    // If user is logged in, target their ID. If not logged in, target null userId.
-    final queryBuilder = currentUserId != null
-        ? box.query(Category_.userId.equals(currentUserId) &
-            Category_.deletedAt.isNull() &
-            Category_.id
-                .notEquals(Defaults().defaultCategory.id)) // Exclude default
-        : box.query(Category_.userId
-                .isNull() & // <-- Target null userId if not logged in
-            Category_.deletedAt.isNull() &
-            Category_.id
-                .notEquals(Defaults().defaultCategory.id)); // Exclude default
+    // Define the base condition based on user authentication state
+    final Condition<Category> userCondition = currentUserId != null
+        ? Category_.userId.equals(currentUserId)
+        : Category_.userId.isNull();
 
-    final categoriesToDelete = await queryBuilder.build().findAsync();
+    // Define common conditions
+    final Condition<Category> notDeletedCondition =
+        Category_.deletedAt.isNull();
+    // --- MODIFIED: Condition to target non-default IDs ---
+    final Condition<Category> nonDefaultIdCondition =
+        Category_.id.greaterThan(defaultCategoriesData.length);
+    // --- END MODIFICATION ---
+
+    // Combine all conditions using the '&' operator
+    final Condition<Category> finalCondition = userCondition &
+        notDeletedCondition &
+        nonDefaultIdCondition; // Use the new ID condition
+
+    // Build the query with the combined condition
+    final query = box.query(finalCondition).build(); // Build the Query object
+
+    final categoriesToDelete = await query.findAsync(); // Find using the Query
+    query.close(); // Close the Query object after finding
+
     if (categoriesToDelete.isEmpty) {
       print(
-          "No categories found to delete for user: ${currentUserId ?? 'unauthenticated'}");
+          "No non-default categories (ID > 18) found to delete for user: ${currentUserId ?? 'unauthenticated'}");
       return 0;
     }
 
     int successCount = 0;
     int skippedCount = 0;
     for (final item in categoriesToDelete) {
-      if (await remove(item.id)) {
+      // Use super.softRemove directly as the check for transactions is complex here
+      // and we are explicitly deleting non-defaults.
+      // If you need the transaction check, call `remove(item.id)` instead.
+      if (await super.softRemove(item.id)) {
         successCount++;
       } else {
+        // This might happen if softRemove fails for other reasons
         skippedCount++;
       }
     }
     print(
-        "Soft removed $successCount categories for user ${currentUserId ?? 'unauthenticated'}." +
-            (skippedCount > 0
-                ? " Skipped $skippedCount due to active transactions."
-                : ""));
+        "Soft removed $successCount non-default categories (ID > 18) for user ${currentUserId ?? 'unauthenticated'}." +
+            (skippedCount > 0 ? " Skipped $skippedCount." : ""));
     return successCount;
   }
 

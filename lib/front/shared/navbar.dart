@@ -18,6 +18,7 @@ class _NavigationState extends State<Navigation> {
   Widget build(BuildContext context) {
     return Scaffold(
       bottomNavigationBar: NavigationBar(
+        height: 65, // Set a custom height for the navigation bar
         onDestinationSelected: (int index) {
           setState(() {
             currentPageIndex = index;
@@ -39,7 +40,8 @@ class _NavigationState extends State<Navigation> {
           ),
           NavigationDestination(
             selectedIcon: Icon(Icons.show_chart,
-                color: AppStyle.primaryColor), // Use AppStyle primary color
+                color:
+                    Color.fromARGB(255, 3, 3, 3)), // Use AppStyle primary color
             icon: Icon(Icons.show_chart_outlined,
                 color: AppStyle
                     .textColorSecondary), // Use AppStyle secondary text color

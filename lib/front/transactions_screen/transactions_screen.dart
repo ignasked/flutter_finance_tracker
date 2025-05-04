@@ -32,12 +32,12 @@ class TransactionsScreen extends StatelessWidget {
                   // Transaction Summary
                   const SummaryBarWidget(),
                   const SizedBox(
-                      height: AppStyle.paddingMedium), // Use AppStyle padding
+                      height: AppStyle.paddingSmall), // Use AppStyle padding
 
                   // Date Selector
                   const DateBarWidget(),
                   const SizedBox(
-                      height: AppStyle.paddingMedium), // Use AppStyle padding
+                      height: AppStyle.paddingSmall), // Use AppStyle padding
 
                   // Transaction List or Empty Message
                   Expanded(
@@ -45,12 +45,40 @@ class TransactionsScreen extends StatelessWidget {
                             LoadingStatus.loading // Use LoadingStatus
                         ? const Center(child: CircularProgressIndicator())
                         : state.displayedTransactions.isEmpty
-                            ? const Center(
-                                child: Text(
-                                  'No transactions for this period.',
-                                  style: AppStyle.bodyText, // Use AppStyle
+                            // --- USE DETAILED EMPTY STATE WIDGET ---
+                            ? Container(
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: AppStyle.paddingXLarge *
+                                        1.5), // Adjusted padding slightly
+                                alignment: Alignment.center,
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                        Icons
+                                            .receipt_long_outlined, // Changed Icon
+                                        size: 60,
+                                        color: AppStyle.textColorSecondary
+                                            .withOpacity(0.5)),
+                                    const SizedBox(
+                                        height: AppStyle.paddingMedium),
+                                    const Text(
+                                      'No Transactions Found', // Updated Text
+                                      style: AppStyle.titleStyle,
+                                      textAlign: TextAlign.center,
+                                    ),
+                                    const SizedBox(
+                                        height: AppStyle.paddingSmall),
+                                    Text(
+                                      'Try adjusting the date range or add a new transaction.', // Updated Text
+                                      style: AppStyle.bodyText.copyWith(
+                                          color: AppStyle.textColorSecondary),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ],
                                 ),
                               )
+                            // --- END EMPTY STATE WIDGET ---
                             : TransactionListWidget(
                                 transactions: state.displayedTransactions,
                                 groupByMonth: true, // Group by month by default

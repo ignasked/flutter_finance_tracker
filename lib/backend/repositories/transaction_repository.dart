@@ -269,11 +269,12 @@ class TransactionRepository extends BaseRepository<Transaction> {
         "Use removeAllForCurrentUser() to soft-delete user-specific data.");
   }
 
-  /// Override putMany to handle syncSource correctly.
+  /// Override putMany to handle syncSource correctly and optimize relation lookups.
   @override
   Future<List<int>> putMany(List<Transaction> entities,
       {SyncSource syncSource = SyncSource.local}) async {
     if (syncSource == SyncSource.supabase) {
+      // Keep Supabase sync logic as is (assuming it's already optimized or different)
       final entitiesToSave = entities
           .map((e) => e.copyWith(
               createdAt: e.createdAt.toLocal(),
@@ -285,47 +286,86 @@ class TransactionRepository extends BaseRepository<Transaction> {
           .toList();
       return await super.putMany(entitiesToSave, syncSource: syncSource);
     } else {
+      // --- Optimization for Local Puts ---
       final currentUserId = _authService.currentUser?.id;
       final now = DateTime.now();
       final List<Transaction> processedEntities = [];
 
+      // --- Batch Fetch Relations ---
       final categoryRepo = CategoryRepository(store, _authService);
       final accountRepo = AccountRepository(store, _authService);
+
+      // Extract unique, non-zero IDs
+      final categoryIds = entities
+          .map((e) => e.category.targetId)
+          .where((id) => id != 0)
+          .toSet()
+          .toList();
+      final fromAccountIds = entities
+          .map((e) => e.fromAccount.targetId)
+          .where((id) => id != 0)
+          .toSet()
+          .toList();
+      final toAccountIds = entities
+          .map((e) => e.toAccount.targetId)
+          .where((id) => id != 0)
+          .toSet()
+          .toList();
+      final allAccountIds =
+          {...fromAccountIds, ...toAccountIds}.toList(); // Combine and unique
+
+      // Fetch in parallel
+      final List<List<dynamic>> results = await Future.wait([
+        if (categoryIds.isNotEmpty)
+          categoryRepo.getManyByIds(categoryIds)
+        else
+          Future.value([]),
+        if (allAccountIds.isNotEmpty)
+          accountRepo.getManyByIds(allAccountIds)
+        else
+          Future.value([]),
+      ]);
+
+      final List<Category> fetchedCategories = results[0].cast<Category>();
+      final List<Account> fetchedAccounts = results[1].cast<Account>();
+
+      // Create lookup maps
+      final categoryMap = {for (var cat in fetchedCategories) cat.id: cat};
+      final accountMap = {for (var acc in fetchedAccounts) acc.id: acc};
+      // --- End Batch Fetch ---
 
       for (final entity in entities) {
         Transaction entityToSave;
 
-        Category? attachedCategory;
-        if (entity.category.targetId != 0) {
-          attachedCategory =
-              await categoryRepo.getById(entity.category.targetId);
-        }
-        attachedCategory ??= Defaults().defaultCategory;
+        // --- Use Maps for Lookup ---
+        // Use fetched category or default if not found or ID was 0
+        Category attachedCategory =
+            categoryMap[entity.category.targetId] ?? Defaults().defaultCategory;
 
-        Account? attachedFromAccount;
-        if (entity.fromAccount.targetId != 0) {
-          attachedFromAccount =
-              await accountRepo.getById(entity.fromAccount.targetId);
-        }
-        attachedFromAccount ??= Defaults().defaultAccount;
+        // Use fetched account or default if not found or ID was 0
+        Account attachedFromAccount = accountMap[entity.fromAccount.targetId] ??
+            Defaults().defaultAccount;
 
-        Account? attachedToAccount;
-        if (entity.toAccount.targetId != 0) {
-          attachedToAccount =
-              await accountRepo.getById(entity.toAccount.targetId);
-        }
+        // Use fetched account (can be null if ID was 0 or not found)
+        Account? attachedToAccount = accountMap[entity.toAccount.targetId];
+        // --- End Use Maps ---
 
         if (entity.id == 0) {
+          // New entity
           entityToSave = entity.copyWith(
             userId: currentUserId,
             createdAt: now,
             updatedAt: now,
             deletedAt: entity.deletedAt,
-            categoryId: attachedCategory.id,
-            fromAccountId: attachedFromAccount.id,
-            toAccountId: attachedToAccount?.id,
+            categoryId: attachedCategory.id, // Use ID from map/default
+            fromAccountId: attachedFromAccount.id, // Use ID from map/default
+            toAccountId: attachedToAccount?.id, // Use ID from map (nullable)
           );
         } else {
+          // Existing entity
+          // Fetch existing only if necessary (e.g., to preserve createdAt)
+          // For performance, consider if fetching existing is always needed.
+          // If only updating, we might skip this fetch, but it's safer to include.
           final existing = await box.getAsync(entity.id);
           if (existing != null && existing.userId == currentUserId) {
             entityToSave = existing.copyWith(
@@ -333,28 +373,31 @@ class TransactionRepository extends BaseRepository<Transaction> {
               amount: entity.amount,
               description: entity.description,
               date: entity.date,
-              categoryId: attachedCategory.id,
-              fromAccountId: attachedFromAccount.id,
-              toAccountId: attachedToAccount?.id,
+              categoryId: attachedCategory.id, // Use ID from map/default
+              fromAccountId: attachedFromAccount.id, // Use ID from map/default
+              toAccountId: attachedToAccount?.id, // Use ID from map (nullable)
               metadata: entity.metadata,
-              updatedAt: now,
-              deletedAt: entity.deletedAt,
-              userId: currentUserId,
+              updatedAt: now, // Always update timestamp
+              deletedAt: entity.deletedAt, // Preserve incoming deletedAt status
+              userId: currentUserId, // Ensure context
             );
           } else {
             print(
                 "Warning: Skipping update for transaction ID ${entity.id} in putMany (not found or context mismatch).");
-            continue;
+            continue; // Skip this entity
           }
         }
 
+        // Final context check
         if (entityToSave.userId != currentUserId) {
           print(
               "Error: Mismatched userId in putMany for transaction ID ${entityToSave.id}. Skipping.");
-          continue;
+          continue; // Skip this entity
         }
         processedEntities.add(entityToSave);
-      }
+      } // End loop
+
+      // Perform the batch database write
       return await super.putMany(processedEntities, syncSource: syncSource);
     }
   }

@@ -51,6 +51,20 @@ class DataManagementCubit extends Cubit<DataManagementState> {
     _loadInitialData();
   }
 
+  Future<void> refreshTransactions() async {
+    emit(state.copyWith(status: LoadingStatus.loading));
+    try {
+      final transactions = await _transactionRepository.getAll();
+      emit(state.copyWith(
+          allTransactions: transactions,
+          status: LoadingStatus.success)); // Set status before applying filters
+      _applyFiltersCache(_filterCubit.state); // Re-apply filters
+    } catch (e) {
+      emit(state.copyWith(
+          status: LoadingStatus.failure, errorMessage: e.toString()));
+    }
+  }
+
   Future<void> _loadInitialData() async {
     emit(state.copyWith(status: LoadingStatus.loading));
     try {
@@ -66,7 +80,6 @@ class DataManagementCubit extends Cubit<DataManagementState> {
       ));
       // Apply initial filters from FilterCubit
       _applyFiltersCache(_filterCubit.state);
-      _applySortByDateCache();
     } catch (e) {
       emit(state.copyWith(
           status: LoadingStatus.failure, errorMessage: e.toString()));
@@ -202,14 +215,6 @@ class DataManagementCubit extends Cubit<DataManagementState> {
       status: LoadingStatus.success,
     ));
   }
-  // --- END REFACTORED _applyFiltersCache ---
-
-  // --- REFACTORED _applySortByDateCache ---
-  void _applySortByDateCache() {
-    // Re-applying filters automatically handles sorting raw data and re-mapping
-    _applyFiltersCache(_filterCubit.state);
-  }
-  // --- END REFACTORED _applySortByDateCache ---
 
   void recalculateSummary() async {
     final summary = await _calculateSummary(
