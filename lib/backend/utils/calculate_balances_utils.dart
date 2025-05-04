@@ -25,8 +25,11 @@ class CalculateBalancesUtils {
       if (transaction.isIncome) {
         final currency = transaction.fromAccount.target?.currency ??
             Defaults().defaultCurrency;
-        incomeByCurrency[currency] =
-            (incomeByCurrency[currency] ?? 0.0) + transaction.amount;
+        incomeByCurrency.update(
+          currency,
+          (value) => value + transaction.amount,
+          ifAbsent: () => transaction.amount,
+        );
       }
     }
 
@@ -41,11 +44,38 @@ class CalculateBalancesUtils {
       if (!transaction.isIncome) {
         final currency = transaction.fromAccount.target?.currency ??
             Defaults().defaultCurrency;
-        expensesByCurrency[currency] =
-            (expensesByCurrency[currency] ?? 0.0) + transaction.amount;
+        final amountToAdd = transaction.amount.abs();
+        expensesByCurrency.update(
+          currency,
+          (value) => value + amountToAdd,
+          ifAbsent: () => amountToAdd,
+        );
       }
     }
 
     return expensesByCurrency;
+  }
+
+  static Map<String, double> calculateNetBalanceByCurrency(
+      List<Transaction> transactions) {
+    final Map<String, double> netBalanceByCurrency = {};
+
+    for (final transaction in transactions) {
+      final currency = transaction.fromAccount.target?.currency ??
+          Defaults().defaultCurrency;
+      // if (currency == 'UNK') {
+      //   print(
+      //       "Warning: Transaction ID ${transaction.id} has unknown currency.");
+      //   continue;
+      // }
+
+      netBalanceByCurrency.update(
+        currency,
+        (value) => value + transaction.amount,
+        ifAbsent: () => transaction.amount,
+      );
+    }
+
+    return netBalanceByCurrency;
   }
 }

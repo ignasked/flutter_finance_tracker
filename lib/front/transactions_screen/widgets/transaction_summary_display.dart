@@ -45,20 +45,42 @@ class TransactionSummaryDisplay extends StatelessWidget {
                   icon: Icons.account_balance_wallet_outlined,
                   iconColor: AppStyle.primaryColor, // Or textColorSecondary
                 ),
+                flex: 5,
               ),
+
+              // _buildVerticalDivider(),
+
+              // Expanded(
+              //   child: _buildSummaryFigure(
+              //     label: 'Net',
+              //     amountString: state.summary.absoluteEndingBalanceString,
+              //     currencySymbol: currencySymbol,
+              //     // Style for balance - maybe slightly more prominent?
+              //     style: AppStyle.titleStyle.copyWith(
+              //       // Using titleStyle instead of heading2 for compactness
+              //       fontWeight: FontWeight.w600, // Make it boldish
+              //       color: AppStyle.textColorPrimary,
+              //     ),
+              //     // Optional: Add an icon for balance
+              //     icon: Icons.functions,
+              //     iconColor: AppStyle.primaryColor, // Or textColorSecondary
+              //   ),
+              //   flex: 15,
+              // ),
 
               _buildVerticalDivider(),
 
               // --- Income Figure ---
               Flexible(
                 child: _buildSummaryFigure(
-                  label: 'Income',
+                  label: '',
                   amountString: state.summary.totalIncomeString,
                   currencySymbol: currencySymbol,
                   style: AppStyle.amountIncomeStyle,
                   icon: Icons.arrow_upward,
                   iconColor: AppStyle.incomeColor,
                 ),
+                flex: 2,
               ),
 
               _buildVerticalDivider(),
@@ -66,13 +88,14 @@ class TransactionSummaryDisplay extends StatelessWidget {
               // --- Expense Figure ---
               Flexible(
                 child: _buildSummaryFigure(
-                  label: 'Expenses',
+                  label: '',
                   amountString: state.summary.totalExpensesString,
                   currencySymbol: currencySymbol,
                   style: AppStyle.amountExpenseStyle,
                   icon: Icons.arrow_downward,
                   iconColor: AppStyle.expenseColor,
                 ),
+                flex: 2,
               ),
             ],
           ),

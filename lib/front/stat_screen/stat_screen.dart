@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:money_owl/backend/utils/app_style.dart';
 import 'package:money_owl/backend/utils/defaults.dart';
+import 'package:money_owl/front/shared/filter_cubit/filter_cubit.dart';
+import 'package:money_owl/front/shared/filter_cubit/filter_state.dart';
 import 'package:money_owl/front/transactions_screen/widgets/summary_bar_widget.dart';
 import 'package:money_owl/front/transactions_screen/widgets/date_bar_widget.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
@@ -51,7 +53,10 @@ class _StatScreenState extends State<StatScreen> {
 
               return BlocProvider(
                 key: chartCubitKey,
-                create: (_) => ChartCubit(dataState.filteredTransactions),
+                create: (_) => ChartCubit(
+                    allTransactions: dataState.allTransactions,
+                    filteredTransactions: dataState.filteredTransactions,
+                    filterState: context.read<FilterCubit>().state),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -208,12 +213,12 @@ class _StatScreenState extends State<StatScreen> {
     if (hasExpenseData) {
       segments.add(const ButtonSegment<CategoryChartType>(
           value: CategoryChartType.expense,
-          icon: Icon(Icons.arrow_downward, size: 18))); // Smaller icon
+          icon: Icon(Icons.arrow_upward, size: 18))); // Smaller icon
     }
     if (hasIncomeData) {
       segments.add(const ButtonSegment<CategoryChartType>(
           value: CategoryChartType.income,
-          icon: Icon(Icons.arrow_upward, size: 18))); // Smaller icon
+          icon: Icon(Icons.arrow_downward, size: 18))); // Smaller icon
     }
 
     // Auto-switch selection if current type has no data but the other does

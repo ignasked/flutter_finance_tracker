@@ -223,27 +223,35 @@ class DataManagementCubit extends Cubit<DataManagementState> {
   }
 
   Future<TransactionSummaryState> _calculateSummary(
-      List<Transaction> transactions, Account? selectedAccount) async {
-    // Group transactions by currency
-    final incomeByCurrency =
-        CalculateBalancesUtils.calculateIncomeByCurrency(transactions);
-    final expensesByCurrency =
-        CalculateBalancesUtils.calculateExpensesByCurrency(transactions);
-
-    // Fetch exchange rates with Defaults.defaultCurrency as the base currency
+      List<Transaction> transactionsInPeriod, // Renamed for clarity
+      Account? selectedAccount) async {
+    final filterState = _filterCubit.state;
+    final allTransactions = state.allTransactions;
+    final incomeInPeriodByCurrency =
+        CalculateBalancesUtils.calculateIncomeByCurrency(transactionsInPeriod);
+    final expensesInPeriodByCurrency =
+        CalculateBalancesUtils.calculateExpensesByCurrency(
+            transactionsInPeriod);
     final exchangeRates =
         await CurrencyService.fetchExchangeRates(Defaults().defaultCurrency);
-
     String convertToCurrency =
         selectedAccount?.currency ?? Defaults().defaultCurrency;
 
-    double totalIncome = 0.0;
-    double totalExpenses = 0.0;
-    double totalBalance = 0.0;
+    double periodIncomeConverted = 0.0;
+    double periodExpensesConverted = 0.0;
+    double startingBalanceConverted = 0.0; // Balance BEFORE the period starts
+    double absoluteEndingBalanceConverted = 0.0;
 
-    // Convert grouped amounts to Defaults.defaultCurrency
-    for (final entry in incomeByCurrency.entries) {
-      totalIncome += CurrencyUtils.convertAmount(
+    for (final entry in incomeInPeriodByCurrency.entries) {
+      periodIncomeConverted += CurrencyUtils.convertAmount(
+        entry.value,
+        entry.key,
+        convertToCurrency,
+        exchangeRates,
+      );
+    }
+    for (final entry in expensesInPeriodByCurrency.entries) {
+      periodExpensesConverted += CurrencyUtils.convertAmount(
         entry.value,
         entry.key,
         convertToCurrency,
@@ -251,25 +259,42 @@ class DataManagementCubit extends Cubit<DataManagementState> {
       );
     }
 
-    for (final entry in expensesByCurrency.entries) {
-      totalExpenses += CurrencyUtils.convertAmount(
-        entry.value,
-        entry.key,
-        convertToCurrency,
-        exchangeRates,
-      );
+    double periodNetChangeConverted =
+        periodIncomeConverted - periodExpensesConverted;
+
+    DateTime? periodStartDate = filterState.startDate;
+    if (filterState.singleDay && periodStartDate != null) {
+      periodStartDate = DateTime(
+          periodStartDate.year, periodStartDate.month, periodStartDate.day);
+    }
+    if (periodStartDate != null) {
+      final transactionsBeforePeriod = allTransactions.where((t) {
+        bool accountMatch = selectedAccount == null ||
+            t.fromAccount.targetId == selectedAccount.id;
+        return accountMatch && t.date.isBefore(periodStartDate!);
+      }).toList();
+      final balanceBeforePeriodByCurrency =
+          CalculateBalancesUtils.calculateNetBalanceByCurrency(
+              transactionsBeforePeriod);
+      for (final entry in balanceBeforePeriodByCurrency.entries) {
+        startingBalanceConverted += CurrencyUtils.convertAmount(
+          entry.value,
+          entry.key,
+          convertToCurrency,
+          exchangeRates,
+        );
+      }
     }
 
-    totalBalance = totalIncome - totalExpenses;
+    absoluteEndingBalanceConverted =
+        startingBalanceConverted + periodNetChangeConverted;
 
     return TransactionSummaryState(
-      totalIncome: totalIncome,
-      totalExpenses: totalExpenses,
-      balance: totalBalance,
+      totalIncome: periodIncomeConverted,
+      totalExpenses: periodExpensesConverted,
+      balance: absoluteEndingBalanceConverted,
     );
   }
-
-  // --- CRUD Operations (Modify state.allTransactions, then re-filter/map) --- //
 
   Future addTransaction(Transaction transaction) async {
     // Add to repository (ObjectBox assigns ID here if transaction.id is 0)
