@@ -400,6 +400,198 @@ class DataManagementCubit extends Cubit<DataManagementState> {
     // Status is set within _applyFiltersCache
   }
 
+  // --- Category Management Methods ---
+
+  Future<void> addCategory(Category category) async {
+    emit(state.copyWith(status: LoadingStatus.loading));
+    try {
+      final savedId = await _categoryRepository.put(category);
+      final savedCategory = await _categoryRepository.getById(savedId);
+      if (savedCategory != null) {
+        final updatedCategories = List<Category>.from(state.allCategories)
+          ..add(savedCategory);
+        emit(state.copyWith(
+            allCategories: updatedCategories, status: LoadingStatus.success));
+        // Re-apply filters if category changes affect displayed transactions (e.g., new category used)
+        //_applyFiltersCache(_filterCubit.state);
+      } else {
+        throw Exception("Failed to fetch saved category after adding.");
+      }
+    } catch (e) {
+      emit(state.copyWith(
+          status: LoadingStatus.failure, errorMessage: e.toString()));
+    }
+  }
+
+  Future<void> updateCategory(Category category) async {
+    emit(state.copyWith(status: LoadingStatus.loading));
+    try {
+      final savedId = await _categoryRepository.put(category);
+      final updatedCategory = await _categoryRepository.getById(savedId);
+      if (updatedCategory != null) {
+        final index =
+            state.allCategories.indexWhere((c) => c.id == updatedCategory.id);
+        if (index != -1) {
+          final updatedCategories = List<Category>.from(state.allCategories);
+          updatedCategories[index] = updatedCategory;
+
+          // Update default category if necessary
+          if (Defaults().defaultCategory.id == updatedCategory.id) {
+            Defaults().defaultCategory = updatedCategory;
+          }
+
+          emit(state.copyWith(
+              allCategories: updatedCategories, status: LoadingStatus.success));
+          // Re-apply filters as category details (like name, color) might have changed
+          _applyFiltersCache(_filterCubit.state);
+        } else {
+          // Category wasn't in the list, maybe add it? Or log warning.
+          print(
+              "Warning: Updated category ID ${updatedCategory.id} not found in current allCategories list.");
+          emit(state.copyWith(status: LoadingStatus.success)); // Still success?
+        }
+      } else {
+        throw Exception("Failed to fetch updated category after saving.");
+      }
+    } catch (e) {
+      emit(state.copyWith(
+          status: LoadingStatus.failure, errorMessage: e.toString()));
+    }
+  }
+
+  Future<void> deleteCategory(int categoryId) async {
+    // Prevent deletion of default categories
+    if (categoryId >= 1 && categoryId <= 19) {
+      emit(state.copyWith(
+          status: LoadingStatus.failure,
+          errorMessage: "Default categories (ID 1-19) cannot be deleted."));
+      return;
+    }
+    // Check if transactions exist for this category
+    if (hasTransactionsForCategory(categoryId)) {
+      emit(state.copyWith(
+          status: LoadingStatus.failure,
+          errorMessage: "Cannot delete category with existing transactions."));
+      return;
+    }
+
+    emit(state.copyWith(status: LoadingStatus.loading));
+    try {
+      final success = await _categoryRepository.remove(categoryId);
+      if (success) {
+        final updatedCategories = List<Category>.from(state.allCategories)
+          ..removeWhere((c) => c.id == categoryId);
+        emit(state.copyWith(
+            allCategories: updatedCategories, status: LoadingStatus.success));
+        // Re-apply filters if needed (though deleting an unused category shouldn't affect filters)
+        _applyFiltersCache(_filterCubit.state);
+      } else {
+        throw Exception("Failed to delete category from repository.");
+      }
+    } catch (e) {
+      emit(state.copyWith(
+          status: LoadingStatus.failure, errorMessage: e.toString()));
+    }
+  }
+
+  // --- End Category Management Methods ---
+
+  // --- Account Management Methods ---
+
+  Future<void> addAccount(Account account) async {
+    emit(state.copyWith(status: LoadingStatus.loading));
+    try {
+      final savedId = await _accountRepository.put(account);
+      final savedAccount = await _accountRepository.getById(savedId);
+      if (savedAccount != null) {
+        final updatedAccounts = List<Account>.from(state.allAccounts)
+          ..add(savedAccount);
+        emit(state.copyWith(
+            allAccounts: updatedAccounts, status: LoadingStatus.success));
+        // Re-apply filters if account changes affect displayed transactions
+        _applyFiltersCache(_filterCubit.state);
+      } else {
+        throw Exception("Failed to fetch saved account after adding.");
+      }
+    } catch (e) {
+      emit(state.copyWith(
+          status: LoadingStatus.failure, errorMessage: e.toString()));
+    }
+  }
+
+  Future<void> updateAccount(Account account) async {
+    emit(state.copyWith(status: LoadingStatus.loading));
+    try {
+      final savedId = await _accountRepository.put(account);
+      final updatedAccount = await _accountRepository.getById(savedId);
+      if (updatedAccount != null) {
+        final index =
+            state.allAccounts.indexWhere((a) => a.id == updatedAccount.id);
+        if (index != -1) {
+          final updatedAccounts = List<Account>.from(state.allAccounts);
+          updatedAccounts[index] = updatedAccount;
+
+          // Update default account if necessary
+          if (Defaults().defaultAccount.id == updatedAccount.id) {
+            Defaults().defaultAccount = updatedAccount;
+          }
+
+          emit(state.copyWith(
+              allAccounts: updatedAccounts, status: LoadingStatus.success));
+          _filterCubit.resetFilters();
+          // Re-apply filters as account details might have changed
+          //_applyFiltersCache(_filterCubit.state);
+        } else {
+          print(
+              "Warning: Updated account ID ${updatedAccount.id} not found in current allAccounts list.");
+          emit(state.copyWith(status: LoadingStatus.success));
+        }
+      } else {
+        throw Exception("Failed to fetch updated account after saving.");
+      }
+    } catch (e) {
+      emit(state.copyWith(
+          status: LoadingStatus.failure, errorMessage: e.toString()));
+    }
+  }
+
+  Future<void> deleteAccount(int accountId) async {
+    // Prevent deletion of accounts 1 and 2 (default accounts)
+    if (accountId == 1 || accountId == 2) {
+      emit(state.copyWith(
+          status: LoadingStatus.failure,
+          errorMessage: "Default accounts cannot be deleted."));
+      return;
+    }
+    // Check if transactions exist for this account
+    if (hasTransactionsForAccount(accountId)) {
+      emit(state.copyWith(
+          status: LoadingStatus.failure,
+          errorMessage: "Cannot delete account with existing transactions."));
+      return;
+    }
+
+    emit(state.copyWith(status: LoadingStatus.loading));
+    try {
+      final success = await _accountRepository.remove(accountId);
+      if (success) {
+        final updatedAccounts = List<Account>.from(state.allAccounts)
+          ..removeWhere((a) => a.id == accountId);
+        emit(state.copyWith(
+            allAccounts: updatedAccounts, status: LoadingStatus.success));
+        // Re-apply filters if needed
+        _applyFiltersCache(_filterCubit.state);
+      } else {
+        throw Exception("Failed to delete account from repository.");
+      }
+    } catch (e) {
+      emit(state.copyWith(
+          status: LoadingStatus.failure, errorMessage: e.toString()));
+    }
+  }
+
+  // --- End Account Management Methods ---
+
   // --- Transaction Form Result Handling (Remains the same) --- //
   void handleTransactionFormResult(TransactionResult result) async {
     switch (result.actionType) {

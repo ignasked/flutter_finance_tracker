@@ -84,4 +84,11 @@ class DateCubit extends Cubit<DateState> {
       singleDay: singleDay,
     ));
   }
+
+  void resetDate() {
+    emit(DateState(
+      selectedStartDate: Defaults().defaultDateRangeStart,
+      selectedEndDate: Defaults().defaultDateRangeEnd,
+    ));
+  }
 }

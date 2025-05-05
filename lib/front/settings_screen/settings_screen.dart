@@ -24,6 +24,18 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dataManagementCubit = context.watch<DataManagementCubit>();
+    List<Category> enabledCategories =
+        dataManagementCubit.getEnabledCategoriesCache();
+    if (!enabledCategories.contains(Defaults().defaultCategory)) {
+      enabledCategories = [...enabledCategories, Defaults().defaultCategory];
+    }
+    List<Account> enabledAccounts =
+        dataManagementCubit.getEnabledAccountsCache();
+    if (!enabledAccounts.contains(Defaults().defaultAccount)) {
+      enabledAccounts = [...enabledAccounts, Defaults().defaultAccount];
+    }
+
     return BlocProvider(
       create: (_) => ImporterCubit(),
       child: BlocListener<ImporterCubit, ImporterState>(
@@ -47,7 +59,6 @@ class SettingsScreen extends StatelessWidget {
               );
           }
 
-          // Show success operation message if available
           if (state.lastOperation != null && !state.isLoading) {
             ScaffoldMessenger.of(context)
               ..hideCurrentSnackBar()
@@ -66,7 +77,6 @@ class SettingsScreen extends StatelessWidget {
                 ),
               );
 
-            // Clear operation message after displaying
             context.read<ImporterCubit>().clearLastOperation();
           }
         },
@@ -83,7 +93,6 @@ class SettingsScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // --- Data Management Section ---
                 _buildSectionHeader('Data Management'),
                 _buildImportButton(),
                 const SizedBox(height: AppStyle.paddingSmall),
@@ -94,16 +103,18 @@ class SettingsScreen extends StatelessWidget {
                 const Divider(
                     height: AppStyle.paddingMedium,
                     color: AppStyle.dividerColor),
-
-                // --- Preferences Section ---
                 _buildSectionHeader('Preferences'),
                 _buildCurrencySelector(context),
+                const SizedBox(height: AppStyle.paddingSmall),
+                _buildDefaultCategorySelector(
+                    context, enabledCategories, Defaults().defaultCategory),
+                const SizedBox(height: AppStyle.paddingSmall),
+                _buildDefaultAccountSelector(
+                    context, enabledAccounts, Defaults().defaultAccount),
                 const SizedBox(height: AppStyle.paddingSmall),
                 const Divider(
                     height: AppStyle.paddingMedium,
                     color: AppStyle.dividerColor),
-
-                // --- AI Financial Advisor Section ---
                 _buildSectionHeader('AI Financial Advisor'),
                 _buildSettingsListTile(
                   context: context,
@@ -115,8 +126,6 @@ class SettingsScreen extends StatelessWidget {
                 const Divider(
                     height: AppStyle.paddingMedium,
                     color: AppStyle.dividerColor),
-
-                // --- Management Section ---
                 _buildSectionHeader('Management'),
                 _buildSettingsListTile(
                   context: context,
@@ -125,12 +134,7 @@ class SettingsScreen extends StatelessWidget {
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) => BlocProvider(
-                          create: (ctx) => CategoryCubit(
-                              ctx.read<CategoryRepository>(),
-                              ctx.read<DataManagementCubit>()),
-                          child: const CategoryManagementScreen(),
-                        ),
+                        builder: (_) => const CategoryManagementScreen(),
                       ),
                     );
                   },
@@ -142,13 +146,7 @@ class SettingsScreen extends StatelessWidget {
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) => BlocProvider(
-                          create: (ctx) => AccountCubit(
-                              ctx.read<AccountRepository>(),
-                              ctx.read<DataManagementCubit>(),
-                              ctx.read<TransactionRepository>()),
-                          child: const AccountManagementScreen(),
-                        ),
+                        builder: (_) => const AccountManagementScreen(),
                       ),
                     );
                   },
@@ -157,10 +155,7 @@ class SettingsScreen extends StatelessWidget {
                 const Divider(
                     height: AppStyle.paddingMedium,
                     color: AppStyle.dividerColor),
-
-                // --- Account Section ---
                 _buildSectionHeader('Account', icon: Icons.person_outline),
-                // Display Login/Signup button if not authenticated
                 BlocBuilder<AuthBloc, AuthState>(
                   builder: (context, state) {
                     if (state.status == AuthStatus.unauthenticated) {
@@ -182,7 +177,6 @@ class SettingsScreen extends StatelessWidget {
                         ),
                       );
                     } else {
-                      // Display Logout button if authenticated
                       return Padding(
                         padding: const EdgeInsets.only(
                             bottom: AppStyle.paddingSmall),
@@ -339,6 +333,137 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildDefaultCategorySelector(BuildContext context,
+      List<Category> enabledCategories, Category? currentDefault) {
+    if (enabledCategories.isEmpty) {
+      return const ListTile(
+          title: Text('No enabled categories available for default selection.',
+              style: AppStyle.captionStyle));
+    }
+
+    return DropdownButtonFormField<Category>(
+      value: currentDefault,
+      decoration: AppStyle.getInputDecoration(labelText: 'Default Category'),
+      items: enabledCategories.map((category) {
+        return DropdownMenuItem(
+          value: category,
+          child: Row(
+            children: [
+              Icon(category.icon, color: category.color, size: 20),
+              const SizedBox(width: AppStyle.paddingSmall),
+              Expanded(
+                child: Text(
+                  category.title,
+                  style: AppStyle.bodyText,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+      onChanged: (value) {
+        if (value != null) {
+          Defaults().defaultCategory = value;
+          Defaults().saveDefaults();
+        }
+      },
+      dropdownColor: AppStyle.cardColor,
+      icon:
+          const Icon(Icons.arrow_drop_down, color: AppStyle.textColorSecondary),
+      isExpanded: true,
+      selectedItemBuilder: (context) {
+        return enabledCategories.map<Widget>((category) {
+          return Row(
+            children: [
+              Icon(category.icon, color: category.color, size: 20),
+              const SizedBox(width: AppStyle.paddingSmall),
+              Expanded(
+                child: Text(
+                  category.title,
+                  style: AppStyle.bodyText,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          );
+        }).toList();
+      },
+    );
+  }
+
+  Widget _buildDefaultAccountSelector(BuildContext context,
+      List<Account> enabledAccounts, Account? currentDefault) {
+    if (enabledAccounts.isEmpty) {
+      return const ListTile(
+          title: Text('No enabled accounts available for default selection.',
+              style: AppStyle.captionStyle));
+    }
+
+    return DropdownButtonFormField<Account>(
+      value: currentDefault,
+      decoration: AppStyle.getInputDecoration(labelText: 'Default Account'),
+      items: enabledAccounts.map((account) {
+        return DropdownMenuItem(
+          value: account,
+          child: Row(
+            children: [
+              Icon(
+                IconData(account.iconCodePoint, fontFamily: 'MaterialIcons'),
+                color: Color(account.colorValue),
+                size: 20,
+              ),
+              const SizedBox(width: AppStyle.paddingSmall),
+              Expanded(
+                child: Text(
+                  account.name,
+                  style: AppStyle.bodyText,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: AppStyle.paddingMedium),
+              Text(
+                account.currency,
+                style: AppStyle.captionStyle,
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+      onChanged: (value) {
+        if (value != null) {
+          Defaults().defaultAccount = value;
+          Defaults().saveDefaults();
+        }
+      },
+      dropdownColor: AppStyle.cardColor,
+      icon:
+          const Icon(Icons.arrow_drop_down, color: AppStyle.textColorSecondary),
+      isExpanded: true,
+      selectedItemBuilder: (context) {
+        return enabledAccounts.map<Widget>((account) {
+          return Row(
+            children: <Widget>[
+              Icon(
+                IconData(account.iconCodePoint, fontFamily: 'MaterialIcons'),
+                color: Color(account.colorValue),
+                size: 20,
+              ),
+              const SizedBox(width: AppStyle.paddingSmall),
+              Expanded(
+                child: Text(
+                  account.name,
+                  style: AppStyle.bodyText,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          );
+        }).toList();
+      },
+    );
+  }
+
   Future<void> _showFinancialAnalysis(BuildContext context) async {
     if (!context.mounted) return;
     showLoadingPopup(context, message: 'Analyzing your data...');
@@ -442,7 +567,6 @@ class SettingsScreen extends StatelessWidget {
 
     final existingTransactions = txCubit.state.filteredTransactions;
 
-    // Get all available categories and accounts to properly map them during import
     final availableCategories = txCubit.state.allCategories;
     final availableAccounts = txCubit.state.allAccounts;
 
@@ -628,10 +752,6 @@ class SettingsScreen extends StatelessWidget {
             accRepo.putMany(accRepo.defaultAccountsData),
             catRepo.putMany(catRepo.defaultCategoriesData),
           });
-
-          // final prefs = await SharedPreferences.getInstance();
-          // await prefs.setBool('isFirstLaunchAccounts', true);
-          // await prefs.setBool('isFirstLaunchCategories', true);
 
           await Future.wait({
             catRepo.init(),

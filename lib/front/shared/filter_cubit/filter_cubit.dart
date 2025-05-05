@@ -49,15 +49,6 @@ class FilterCubit extends Cubit<FilterState> {
     emit(state.copyWith(selectedCategories: categories));
   }
 
-  // Note: Date changes are now driven by listening to DateCubit
-  // void changeDateRange(DateTime? startDate, DateTime? endDate) {
-  //   emit(state.copyWith(startDate: startDate, endDate: endDate, singleDay: false));
-  // }
-
-  // void changeSingleDay(DateTime? singleDay) {
-  //   emit(state.copyWith(startDate: singleDay, singleDay: true));
-  // }
-
   void changeMinAmount(double? minAmount) {
     emit(state.copyWith(minAmount: minAmount));
   }
@@ -69,8 +60,7 @@ class FilterCubit extends Cubit<FilterState> {
   void resetFilters() {
     // Reset filters in FilterCubit state, keep date filters
     emit(state.resetFilters());
-    // Also reset DateCubit to its default/initial state if needed
-    // _dateCubit.resetDates(); // Assuming DateCubit has a reset method
+    _dateCubit.resetDate(); // Assuming DateCubit has a reset method
   }
 
   @override

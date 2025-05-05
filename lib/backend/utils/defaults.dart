@@ -38,7 +38,8 @@ class Defaults {
   String defaultCurrency = 'USD';
   String defaultCurrencySymbol = '\$';
 
-  DateTime defaultDateRangeStart = DateTime(2010, 1, 1);
+  DateTime defaultDateRangeStart =
+      DateTime.now().subtract(const Duration(days: 30));
   DateTime defaultDateRangeEnd = DateTime.now();
 
   Future<void> saveDefaults() async {
