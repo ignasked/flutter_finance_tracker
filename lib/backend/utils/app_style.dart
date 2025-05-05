@@ -370,28 +370,28 @@ class AppStyle {
 
   // Predefined Icons (Keep as is, or update if desired)
   static const List<IconData> predefinedIcons = [
-    Icons.category_outlined, // Use outlined versions for modern feel
-    Icons.fastfood_outlined,
-    Icons.directions_car_filled_outlined, // Can mix outlined/filled
-    Icons.movie_outlined,
-    Icons.attach_money, // Keep filled for money
-    Icons.local_hospital_outlined,
-    Icons.lightbulb_outline,
-    Icons.restaurant_outlined,
-    Icons.shopping_cart_outlined,
-    Icons.home_outlined,
-    Icons.miscellaneous_services_outlined,
-    Icons.fitness_center_outlined,
-    Icons.sports_esports_outlined,
-    Icons.power_settings_new, // Different power icon
-    Icons.shopping_bag_outlined,
-    Icons.recycling_outlined,
-    Icons.card_giftcard_outlined,
-    Icons.business_center_outlined,
-    Icons.local_offer_outlined,
-    Icons.more_horiz,
-    Icons.account_balance_outlined,
-    Icons.account_balance_wallet_outlined,
+    Icons.category, // Filled
+    Icons.fastfood, // Filled
+    Icons.directions_car, // Filled (standard car)
+    Icons.movie, // Filled
+    Icons.attach_money, // Filled (already was)
+    Icons.local_hospital, // Filled
+    Icons.lightbulb, // Filled
+    Icons.restaurant, // Filled
+    Icons.shopping_cart, // Filled
+    Icons.home, // Filled
+    Icons.miscellaneous_services, // Filled
+    Icons.fitness_center, // Filled
+    Icons.sports_esports, // Filled
+    Icons.power_settings_new, // Filled (kept this specific one)
+    Icons.shopping_bag, // Filled
+    Icons.recycling, // Filled
+    Icons.card_giftcard, // Filled
+    Icons.business_center, // Filled
+    Icons.local_offer, // Filled
+    Icons.more_horiz, // Filled (already was)
+    Icons.account_balance, // Filled
+    Icons.account_balance_wallet, // Filled
   ];
 }
 

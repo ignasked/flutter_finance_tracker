@@ -3,12 +3,11 @@ import 'package:money_owl/backend/models/account.dart';
 import 'package:money_owl/backend/repositories/base_repository.dart';
 import 'package:money_owl/backend/utils/defaults.dart';
 import 'package:money_owl/backend/utils/enums.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:money_owl/objectbox.g.dart';
 import 'package:money_owl/backend/services/sync_service.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:money_owl/backend/services/auth_service.dart';
 import 'package:money_owl/backend/models/transaction.dart';
+import 'package:money_owl/backend/utils/app_style.dart'; // Import AppStyle
 
 class AccountRepository extends BaseRepository<Account> {
   final AuthService _authService;
@@ -16,135 +15,162 @@ class AccountRepository extends BaseRepository<Account> {
   AccountRepository(Store store, this._authService) : super(store);
 
   Future<void> init() async {
-    await _initializeDefaultAccounts();
-    await _setDefaultAccount(); // Ensure this is also awaited if needed
+    await _initializeDefaultAccounts(); // Keep initialization
+    await _setDefaultAccount(); // Add call to set default instance separately
   }
-
-  get defaultAccountsData => [
-        Account(
-          name: 'Bank Account',
-          typeValue: AccountType.bank.index,
-          currency: 'USD',
-          currencySymbol: '\$',
-          balance: 0.0,
-          colorValue: Colors.blue.value,
-          iconCodePoint: Icons.account_balance.codePoint,
-        ),
-        Account(
-          name: 'Cash',
-          typeValue: AccountType.cash.index,
-          currency: 'USD',
-          currencySymbol: '\$',
-          balance: 0.0,
-          colorValue: Colors.green.value,
-          iconCodePoint: Icons.account_balance_wallet.codePoint,
-        )
-      ];
 
   Future<void> _setDefaultAccount() async {
     // Use getById which respects user context and deleted status
-    final defaultAcc = await getById(1);
-    if (defaultAcc != null) {
-      Defaults().defaultAccount = defaultAcc;
-    } else {
-      // Fallback logic if default ID 1 isn't found after init
-      final userCondition = _userIdCondition();
-      final anyAccountQuery =
-          box.query(userCondition.and(_notDeletedCondition())).build();
-      final fallbackAccount = await anyAccountQuery.findFirstAsync();
-      anyAccountQuery.close();
-      if (fallbackAccount != null) {
-        Defaults().defaultAccount = fallbackAccount;
-        print(
-            "Set fallback default account during init: ${fallbackAccount.name}");
+    if (Defaults().defaultAccountId != null) {
+      final defaultAcc = await getById(Defaults().defaultAccountId!);
+      if (defaultAcc != null) {
+        Defaults().setDefaultAccountInstance(defaultAcc);
+        return; // Already set and instance loaded
       } else {
-        print("Error during init: No accounts available to set as default.");
+        // ID was saved but account not found (e.g., deleted), proceed to fallback
+        print(
+            "Warning: Default account ID ${Defaults().defaultAccountId} found in prefs, but account not found in DB. Resetting default.");
       }
     }
+
+    // Fallback logic if default ID isn't set or account wasn't found
+    final userCondition = _userIdCondition();
+    final anyAccQuery =
+        box.query(userCondition.and(_notDeletedCondition())).build();
+    final fallbackAcc = await anyAccQuery.findFirstAsync();
+    anyAccQuery.close();
+    if (fallbackAcc != null) {
+      Defaults().setDefaultAccountInstance(fallbackAcc);
+      await Defaults().saveDefaults(); // Save the new fallback default ID
+      print("Set fallback default account: ${fallbackAcc.name}");
+    } else {
+      print("Error: No account available to set as default.");
+      // Handle case where no accounts exist at all if necessary
+    }
   }
+
+  // Define default data with stable UUIDs
+  List<Account> get defaultAccountsData => [
+        Account(
+          uuid: 'f47ac10b-58cc-4372-a567-0e02b2c3d479', // Stable UUID for Bank
+          name: 'Bank Account',
+          typeValue: AccountType.bank.index,
+          currency: Defaults().defaultCurrency, // Use loaded default currency
+          currencySymbol: Defaults().defaultCurrencySymbol,
+          balance: 0.0,
+          colorValue:
+              AppStyle.predefinedColors[0].value, // Use color from AppStyle
+          iconCodePoint: AppStyle.predefinedIcons[20]
+              .codePoint, // Use account_balance_outlined from AppStyle
+        ),
+        Account(
+          uuid: 'a1b2c3d4-e5f6-7890-1234-567890abcdef', // Stable UUID for Cash
+          name: 'Cash',
+          typeValue: AccountType.cash.index,
+          currency: Defaults().defaultCurrency, // Use loaded default currency
+          currencySymbol: Defaults().defaultCurrencySymbol,
+          balance: 0.0,
+          colorValue:
+              AppStyle.predefinedColors[1].value, // Use color from AppStyle
+          iconCodePoint: AppStyle.predefinedIcons[21]
+              .codePoint, // Use account_balance_wallet_outlined from AppStyle
+        )
+      ];
 
   /// Factory method for asynchronous initialization
   static Future<AccountRepository> create(
       Store store, AuthService authService) async {
+    // Ensure Defaults are loaded before repository uses them
+    await Defaults().loadDefaults();
     return AccountRepository(store, authService);
   }
 
+  /// Initializes default accounts if they don't exist (based on UUID)
+  /// Does NOT set the default instance in the Defaults singleton.
   Future<void> _initializeDefaultAccounts() async {
-    final isFirstLaunch = await _isFirstLaunch();
-    if (!isFirstLaunch) {
-      // Still need to set the default account if it exists
-      final defaultAcc = await getById(1); // Check non-deleted default
-      if (defaultAcc != null) {
-        Defaults().defaultAccount = defaultAcc;
-      }
-      return;
+    final userCondition = _userIdCondition();
+    final notDeleted = _notDeletedCondition();
+    final primaryDefaultUuid = defaultAccountsData.first.uuid;
+
+    // 1. Check if the primary default account exists for the user context
+    final defaultAccQuery = box
+        .query(Account_.uuid
+            .equals(primaryDefaultUuid)
+            .and(userCondition)
+            .and(notDeleted))
+        .build();
+    final bool primaryExists = defaultAccQuery.count() > 0;
+    defaultAccQuery.close();
+
+    // 2. If primary default exists, just ensure others are present
+    if (primaryExists) {
+      print(
+          "Primary default account found (UUID: $primaryDefaultUuid). Ensuring others exist.");
+
+      // Ensure other default accounts also exist (optional, but good practice)
+      await _ensureOtherDefaultAccountsExist(userCondition);
+
+      return; // Initialization check done
     }
 
-    print("First launch detected, initializing default accounts...");
+    // 3. If primary default NOT found, it might be first launch or new user context
+    print("Primary default account not found. Initializing defaults...");
 
-    // 2. Get existing account names for the current context in one query
-    final userCondition =
-        _userIdCondition(); // Get condition for current user/local
-    final existingNamesQuery = box.query(userCondition).build();
-    // Use findIds() and then getMany() or just find() if memory is not a concern
-    final existingAccounts = await existingNamesQuery.findAsync();
-    existingNamesQuery.close();
-    final existingNames = existingAccounts.map((a) => a.name).toSet();
+    // Get existing account UUIDs for the current context
+    final existingUuidsQuery = box.query(userCondition).build();
+    final existingUuids =
+        (await existingUuidsQuery.findAsync()).map((a) => a.uuid).toSet();
+    existingUuidsQuery.close();
 
-    // 3. Filter default accounts that don't exist yet
-    final List<Account> accountsToAdd = [];
-    for (final defaultAccount in defaultAccountsData) {
-      if (!existingNames.contains(defaultAccount.name)) {
-        // Prepare for batch insertion (userId and timestamps will be set by putMany)
-        accountsToAdd.add(defaultAccount);
-      }
-    }
+    // Filter default accounts that don't exist yet based on UUID
+    final List<Account> accountsToAdd = defaultAccountsData
+        .where((defaultAccount) => !existingUuids.contains(defaultAccount.uuid))
+        .toList();
 
-    // 4. Batch insert the missing accounts
+    // Batch insert the missing accounts
     if (accountsToAdd.isNotEmpty) {
       try {
+        print('Adding ${accountsToAdd.length} default accounts...');
         // Use putMany which handles setting userId and timestamps for local source
         await putMany(accountsToAdd, syncSource: SyncSource.local);
-        print('Added ${accountsToAdd.length} default accounts in batch.');
+        print('Added default accounts successfully.');
       } catch (e) {
-        print('Error adding default accounts in batch: $e');
-        // Handle potential batch errors if necessary
+        print('Error adding default accounts: $e');
+        // Decide if we should proceed or rethrow
       }
     } else {
-      print("All default accounts already exist for the current context.");
-    }
-
-    // 5. Set the default account (assuming ID 1 is still the intended default)
-    // Use getById which respects the user context and deleted status
-    final defaultAcc = await getById(1);
-    if (defaultAcc != null) {
-      Defaults().defaultAccount = defaultAcc;
-      print("Default account set.");
-    } else {
-      print(
-          "Warning: Default account (ID 1) not found or not accessible after initialization.");
-      // Attempt to find *any* account if the default (ID 1) isn't available
-      final anyAccountQuery =
-          box.query(userCondition.and(_notDeletedCondition())).build();
-      final fallbackAccount = await anyAccountQuery.findFirstAsync();
-      anyAccountQuery.close();
-      if (fallbackAccount != null) {
-        Defaults().defaultAccount = fallbackAccount;
-        print("Set fallback default account: ${fallbackAccount.name}");
-      } else {
-        print("Error: No accounts available to set as default.");
-        // Consider creating a fallback 'Cash' account here if none exist
-      }
+      print("All default accounts already exist (UUID check).");
     }
   }
 
-  Future<bool> _isFirstLaunch() async {
-    final prefs = await SharedPreferences.getInstance();
-    final isFirstLaunch = prefs.getBool('isFirstLaunchAccounts') ?? true;
-    if (isFirstLaunch) {
-      await prefs.setBool('isFirstLaunchAccounts', false);
+  /// Helper to ensure non-primary default accounts exist.
+  Future<void> _ensureOtherDefaultAccountsExist(
+      Condition<Account> userCondition) async {
+    final otherDefaultUuids =
+        defaultAccountsData.skip(1).map((a) => a.uuid).toList();
+    if (otherDefaultUuids.isEmpty) return;
+
+    final existingUuidsQuery = box
+        .query(userCondition.and(Account_.uuid.oneOf(otherDefaultUuids)))
+        .build();
+    final existingUuids =
+        (await existingUuidsQuery.findAsync()).map((a) => a.uuid).toSet();
+    existingUuidsQuery.close();
+
+    final List<Account> accountsToAdd = defaultAccountsData
+        .skip(1)
+        .where((acc) => !existingUuids.contains(acc.uuid))
+        .toList();
+
+    if (accountsToAdd.isNotEmpty) {
+      print(
+          'Ensuring other default accounts exist: Adding ${accountsToAdd.length} missing accounts.');
+      try {
+        await putMany(accountsToAdd, syncSource: SyncSource.local);
+      } catch (e) {
+        print('Error ensuring other default accounts exist: $e');
+      }
     }
-    return isFirstLaunch;
   }
 
   Condition<Account> _userIdCondition() {
@@ -220,6 +246,9 @@ class AccountRepository extends BaseRepository<Account> {
           .build();
       final results = await query.findAsync();
       query.close();
+
+      _setDefaultAccount(); // Set default account instance after fetching all accounts
+
       return results;
     } catch (e) {
       final context = _authService.currentUser?.id ?? 'local (unauthenticated)';

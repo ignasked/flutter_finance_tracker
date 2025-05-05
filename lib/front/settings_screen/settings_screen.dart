@@ -312,8 +312,19 @@ class SettingsScreen extends StatelessWidget {
               style: AppStyle.captionStyle));
     }
 
+    Category? valueFromList;
+    try {
+      valueFromList = enabledCategories.firstWhere(
+        (cat) => cat.id == Defaults().defaultCategoryId,
+      );
+    } catch (e) {
+      print(
+          "Warning: Default category ID ${Defaults().defaultCategoryId} not found in enabled categories list.");
+      valueFromList = null;
+    }
+
     return DropdownButtonFormField<Category>(
-      value: currentDefault,
+      value: valueFromList,
       decoration: AppStyle.getInputDecoration(labelText: 'Default Category'),
       items: enabledCategories.map((category) {
         return DropdownMenuItem(
@@ -335,7 +346,7 @@ class SettingsScreen extends StatelessWidget {
       }).toList(),
       onChanged: (value) {
         if (value != null) {
-          Defaults().defaultCategory = value;
+          Defaults().setDefaultCategoryInstance(value);
           Defaults().saveDefaults();
         }
       },
@@ -371,8 +382,19 @@ class SettingsScreen extends StatelessWidget {
               style: AppStyle.captionStyle));
     }
 
+    Account? valueFromList;
+    try {
+      valueFromList = enabledAccounts.firstWhere(
+        (acc) => acc.id == Defaults().defaultAccountId,
+      );
+    } catch (e) {
+      print(
+          "Warning: Default account ID ${Defaults().defaultAccountId} not found in enabled accounts list.");
+      valueFromList = null;
+    }
+
     return DropdownButtonFormField<Account>(
-      value: currentDefault,
+      value: valueFromList,
       decoration: AppStyle.getInputDecoration(labelText: 'Default Account'),
       items: enabledAccounts.map((account) {
         return DropdownMenuItem(
@@ -403,8 +425,7 @@ class SettingsScreen extends StatelessWidget {
       }).toList(),
       onChanged: (value) {
         if (value != null) {
-          Defaults().defaultAccount = value;
-          Defaults().saveDefaults();
+          Defaults().setDefaultAccountInstance(value);
         }
       },
       dropdownColor: AppStyle.cardColor,

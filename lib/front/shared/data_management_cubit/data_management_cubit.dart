@@ -21,7 +21,6 @@ import 'package:money_owl/front/shared/filter_cubit/filter_cubit.dart'; // Impor
 import 'package:money_owl/front/shared/filter_cubit/filter_state.dart';
 import 'package:money_owl/front/transaction_form_screen/cubit/transaction_form_cubit.dart';
 import 'package:money_owl/front/transactions_screen/viewmodel/transaction_viewmodel.dart';
-import 'package:money_owl/main.dart'; // Import FilterState
 
 part 'data_management_state.dart'; // Updated part directive
 
@@ -54,178 +53,127 @@ class DataManagementCubit extends Cubit<DataManagementState> {
   Future<void> refreshTransactions() async {
     emit(state.copyWith(status: LoadingStatus.loading));
     try {
-      final transactions = await _transactionRepository.getAll();
-      emit(state.copyWith(
-          allTransactions: transactions,
-          status: LoadingStatus.success)); // Set status before applying filters
-      _applyFiltersCache(_filterCubit.state); // Re-apply filters
+      // Fetch all data again, which includes applying filters
+      await _loadInitialData(); // Corrected: Call _loadInitialData which handles filters
     } catch (e) {
+      print("Error refreshing transactions: $e");
       emit(state.copyWith(
-          status: LoadingStatus.failure, errorMessage: e.toString()));
+          status: LoadingStatus.failure,
+          errorMessage: "Error refreshing transactions: $e"));
     }
   }
 
   Future<void> _loadInitialData() async {
     emit(state.copyWith(status: LoadingStatus.loading));
     try {
-      final accounts = await _accountRepository.getAll();
-      final categories = await _categoryRepository.getAll();
-      final transactions = await _transactionRepository.getAll();
+      // Fetch all base data
+      final allTransactions = await _transactionRepository.getAll();
+      final allAccounts = await _accountRepository.getAll();
+      final allCategories = await _categoryRepository.getAll();
 
+      // Emit base data first
       emit(state.copyWith(
-        allAccounts: accounts,
-        allCategories: categories,
-        allTransactions: transactions,
-        status: LoadingStatus.success, // Set status before applying filters
+        allTransactions: allTransactions,
+        allAccounts: allAccounts,
+        allCategories: allCategories,
+        // Keep status loading until filters are applied
       ));
-      // Apply initial filters from FilterCubit
+
+      // Now apply current filters using the freshly loaded data
       _applyFiltersCache(_filterCubit.state);
     } catch (e) {
+      print("Error loading initial data: $e");
       emit(state.copyWith(
-          status: LoadingStatus.failure, errorMessage: e.toString()));
+          status: LoadingStatus.failure,
+          errorMessage: "Error loading initial data: $e"));
     }
   }
 
   List<Category> getEnabledCategoriesCache() {
     List<Category> enabledCategories =
         state.allCategories.where((category) => category.isEnabled).toList();
-    if (!enabledCategories.contains(Defaults().defaultCategory)) {
-      enabledCategories.add(Defaults()
-          .defaultCategory); // Remove default category from enabled list
-    }
+    // if (!enabledCategories.contains(Defaults().defaultCategory)) {
+    //   enabledCategories.add(Defaults()
+    //       .defaultCategory); // Remove default category from enabled list
+    // }
     return enabledCategories;
   }
 
   List<Account> getEnabledAccountsCache() {
     List<Account> enabledAccounts =
         state.allAccounts.where((acc) => acc.isEnabled).toList();
-    if (!enabledAccounts.contains(Defaults().defaultAccount)) {
-      enabledAccounts.add(Defaults()
-          .defaultAccount); // Remove default account from enabled list
-    }
+    // if (!enabledAccounts.contains(Defaults().defaultAccount)) {
+    //   enabledAccounts.add(Defaults()
+    //       .defaultAccount); // Remove default account from enabled list
+    // }
     return enabledAccounts;
   }
 
   // --- REFACTORED _applyFiltersCache ---
   void _applyFiltersCache(FilterState filterState) async {
     emit(state.copyWith(status: LoadingStatus.loading));
-    List<Transaction> filteredRaw = List.from(state.allTransactions);
+    try {
+      // Add try-catch block for safety during filtering/mapping
+      // --- Fetch filtered raw data using the repository method ---
+      final List<Transaction> filteredRaw =
+          await _transactionRepository.getFiltered(filterState);
 
-    // --- Apply filters to raw data (filteredRaw) ---
+      // --- Map filtered raw data to ViewModels ---
+      final List<TransactionViewModel> viewModels = [];
+      final dateFormat = DateFormat.Md(); // Or your preferred format
+      // Fetch accounts/categories needed for mapping efficiently
+      // Get all accounts/categories from the state (already loaded)
+      final accountMap = {for (var acc in state.allAccounts) acc.id: acc};
+      final categoryMap = {for (var cat in state.allCategories) cat.id: cat};
 
-    // Apply Account Filter (Use targetId)
-    if (filterState.selectedAccount != null) {
-      filteredRaw = filteredRaw
-          .where((t) =>
-              t.fromAccount.targetId ==
-              filterState.selectedAccount!.id) // Use targetId
-          .toList();
-    }
+      for (final tx in filteredRaw) {
+        // Use the maps for efficient lookup
+        final category = categoryMap[tx.category.targetId];
+        final account = accountMap[tx.fromAccount.targetId];
 
-    // Apply Category Filter (Use targetId)
-    if (filterState.selectedCategories.isNotEmpty) {
-      final categoryIds =
-          filterState.selectedCategories.map((c) => c.id).toSet();
-      filteredRaw = filteredRaw
-          .where(
-              (t) => categoryIds.contains(t.category.targetId)) // Use targetId
-          .toList();
-    }
+        // Handle potential nulls gracefully
+        final currencySymbol = account?.currencySymbolOrCurrency ??
+            Defaults().defaultCurrencySymbol;
+        final displayAmount =
+            '${tx.isIncome ? '+' : ''}${tx.amount.toStringAsFixed(2)} $currencySymbol';
+        final categoryName = category?.title ?? 'Uncategorized';
+        final categoryColor = category?.color ?? Colors.grey;
+        final categoryIcon = category?.icon ?? Icons.question_mark;
+        final accountName = account?.name ?? 'Unknown Account';
 
-    // Apply Date Filter (logic remains the same, applied to filteredRaw)
-    if (filterState.startDate != null) {
-      if (filterState.singleDay) {
-        // Filter for a single day (ignore time part)
-        final startOfDay = DateTime(filterState.startDate!.year,
-            filterState.startDate!.month, filterState.startDate!.day);
-        final endOfDay = startOfDay.add(const Duration(days: 1));
-        filteredRaw = filteredRaw
-            .where((t) =>
-                t.date.isAtSameMomentAs(startOfDay) ||
-                (t.date.isAfter(startOfDay) && t.date.isBefore(endOfDay)))
-            .toList();
-      } else {
-        // Filter for a date range (inclusive start, exclusive end for end date)
-        final rangeStart = filterState.startDate!;
-        final rangeEnd = filterState.endDate?.add(const Duration(
-            days:
-                1)); // Add 1 day to make endDate inclusive for filtering purposes
-
-        filteredRaw = filteredRaw.where((t) {
-          final transactionDate = t.date;
-          bool afterStart = transactionDate.isAtSameMomentAs(rangeStart) ||
-              transactionDate.isAfter(rangeStart);
-          bool beforeEnd =
-              rangeEnd == null || transactionDate.isBefore(rangeEnd);
-          return afterStart && beforeEnd;
-        }).toList();
+        viewModels.add(TransactionViewModel(
+          id: tx.id,
+          title: tx.title,
+          displayAmount: displayAmount,
+          categoryName: categoryName,
+          categoryColor: categoryColor,
+          categoryIcon: categoryIcon,
+          displayDate: dateFormat.format(tx.date),
+          date: tx.date,
+          isIncome: tx.isIncome,
+          accountName: accountName,
+        ));
       }
-    }
+      // --- End Mapping ---
 
-    // Apply Amount Filter (Optional, applied to filteredRaw)
-    if (filterState.minAmount != null) {
-      filteredRaw = filteredRaw
-          .where((t) => t.amount.abs() >= filterState.minAmount!)
-          .toList();
-    }
+      // Calculate Summary using the filtered RAW data we just fetched
+      final summary = await _calculateSummary(
+          filteredRaw, filterState.selectedAccount); // Use filteredRaw
 
-    // Apply Income/Expense Filter (Optional, applied to filteredRaw)
-    if (filterState.isIncome != null) {
-      filteredRaw =
-          filteredRaw.where((t) => t.isIncome == filterState.isIncome).toList();
-    }
-
-    // Sort by Date (Newest First) - Sort raw data before mapping
-    filteredRaw.sort((a, b) => b.date.compareTo(a.date));
-
-    // --- Store the filtered raw list temporarily ---
-    // We'll use this for summary calculation
-    final currentFilteredRaw = filteredRaw;
-
-    // --- Map filtered raw data to ViewModels ---
-    final List<TransactionViewModel> viewModels = [];
-    final dateFormat = DateFormat.Md(); // Or your preferred format
-    final accountMap = {for (var acc in state.allAccounts) acc.id: acc};
-    final categoryMap = {for (var cat in state.allCategories) cat.id: cat};
-
-    for (final tx in filteredRaw) {
-      final category = categoryMap[tx.category.targetId];
-      final account = accountMap[tx.fromAccount.targetId];
-
-      final displayAmount =
-          '${tx.isIncome ? '+' : ''}${tx.amount.toStringAsFixed(2)} ${account?.currencySymbolOrCurrency ?? ''}';
-      final categoryName = category?.title ?? 'Uncategorized';
-      final categoryColor = category?.color ?? Colors.grey;
-      final categoryIcon = category?.icon ?? Icons.question_mark;
-      final accountName = account?.name ?? 'Unknown Account';
-
-      viewModels.add(TransactionViewModel(
-        id: tx.id,
-        title: tx.title,
-        displayAmount: displayAmount,
-        categoryName: categoryName,
-        categoryColor: categoryColor,
-        categoryIcon: categoryIcon,
-        displayDate: dateFormat.format(tx.date),
-        date: tx.date, // --- ADDED: Pass the original DateTime ---
-        isIncome: tx.isIncome,
-        accountName: accountName,
+      emit(state.copyWith(
+        filteredTransactions: filteredRaw, // Store the raw list
+        displayedTransactions: viewModels, // Emit the mapped ViewModels
+        summary: summary,
+        status: LoadingStatus.success,
       ));
+    } catch (e, stacktrace) {
+      print("Error applying filters or mapping ViewModels: $e");
+      print(stacktrace);
+      emit(state.copyWith(
+          status: LoadingStatus.failure,
+          errorMessage:
+              "Error updating transaction list: $e")); // Corrected: Removed extra characters
     }
-    // --- End Mapping ---
-
-    // Calculate Summary using the filtered RAW data we just prepared
-    final summary = await _calculateSummary(currentFilteredRaw,
-        filterState.selectedAccount); // Use currentFilteredRaw
-
-    emit(state.copyWith(
-      // --- Store the filtered raw list in the final state ---
-      filteredTransactions: currentFilteredRaw, // Store the raw list
-      // Emit the ViewModels for display
-      displayedTransactions: viewModels, // Emit the mapped ViewModels
-      summary: summary,
-      status: LoadingStatus.success,
-    ));
   }
 
   void recalculateSummary() async {
@@ -237,23 +185,25 @@ class DataManagementCubit extends Cubit<DataManagementState> {
   Future<TransactionSummaryState> _calculateSummary(
       List<Transaction> transactionsInPeriod, // Renamed for clarity
       Account? selectedAccount) async {
-    final filterState = _filterCubit.state;
-    final allTransactions = state.allTransactions;
+    // Fetch necessary data directly if state might be stale or incomplete
+    final defaultCurrency = Defaults().defaultCurrency;
+    final exchangeRates =
+        await CurrencyService.fetchExchangeRates(defaultCurrency);
+    String convertToCurrency = selectedAccount?.currency ?? defaultCurrency;
+
+    // Calculate income/expenses for the given period transactions
     final incomeInPeriodByCurrency =
         CalculateBalancesUtils.calculateIncomeByCurrency(transactionsInPeriod);
     final expensesInPeriodByCurrency =
         CalculateBalancesUtils.calculateExpensesByCurrency(
             transactionsInPeriod);
-    final exchangeRates =
-        await CurrencyService.fetchExchangeRates(Defaults().defaultCurrency);
-    String convertToCurrency =
-        selectedAccount?.currency ?? Defaults().defaultCurrency;
 
     double periodIncomeConverted = 0.0;
     double periodExpensesConverted = 0.0;
     double startingBalanceConverted = 0.0; // Balance BEFORE the period starts
     double absoluteEndingBalanceConverted = 0.0;
 
+    // Convert period income/expenses
     for (final entry in incomeInPeriodByCurrency.entries) {
       periodIncomeConverted += CurrencyUtils.convertAmount(
         entry.value,
@@ -274,20 +224,31 @@ class DataManagementCubit extends Cubit<DataManagementState> {
     double periodNetChangeConverted =
         periodIncomeConverted - periodExpensesConverted;
 
-    DateTime? periodStartDate = filterState.startDate;
-    if (filterState.singleDay && periodStartDate != null) {
+    // Calculate starting balance (balance before the period start date)
+    DateTime? periodStartDate = _filterCubit.state.startDate;
+    if (_filterCubit.state.singleDay && periodStartDate != null) {
       periodStartDate = DateTime(
           periodStartDate.year, periodStartDate.month, periodStartDate.day);
     }
+
     if (periodStartDate != null) {
-      final transactionsBeforePeriod = allTransactions.where((t) {
+      // Fetch transactions *before* the period start date
+      // This requires a separate query or filtering the full list if efficient
+      // Option 1: Filter the full list (simpler if allTransactions is reliable)
+      final transactionsBeforePeriod = state.allTransactions.where((t) {
         bool accountMatch = selectedAccount == null ||
-            t.fromAccount.targetId == selectedAccount.id;
+            t.fromAccount.targetId == selectedAccount.id ||
+            t.toAccount.targetId ==
+                selectedAccount.id; // Include transfers TO the account
         return accountMatch && t.date.isBefore(periodStartDate!);
       }).toList();
+
+      // Option 2: Perform a dedicated repository query (potentially more efficient for large datasets)
+      // final transactionsBeforePeriod = await _transactionRepository.getTransactionsBeforeDate(periodStartDate, selectedAccount);
+
       final balanceBeforePeriodByCurrency =
           CalculateBalancesUtils.calculateNetBalanceByCurrency(
-              transactionsBeforePeriod);
+              transactionsBeforePeriod); // Corrected: Only one argument expected
       for (final entry in balanceBeforePeriodByCurrency.entries) {
         startingBalanceConverted += CurrencyUtils.convertAmount(
           entry.value,
@@ -296,6 +257,25 @@ class DataManagementCubit extends Cubit<DataManagementState> {
           exchangeRates,
         );
       }
+    } else {
+      // If no start date, starting balance is calculated from all transactions
+      // (or could be considered 0 if the filter implies 'all time up to now')
+      // Let's calculate from all transactions for consistency if no start date
+      final balanceFromAllByCurrency =
+          CalculateBalancesUtils.calculateNetBalanceByCurrency(
+              state.allTransactions); // Corrected: Only one argument expected
+      for (final entry in balanceFromAllByCurrency.entries) {
+        startingBalanceConverted += CurrencyUtils.convertAmount(
+          entry.value,
+          entry.key,
+          convertToCurrency,
+          exchangeRates,
+        );
+      }
+      // If periodStartDate is null, the 'periodNetChange' effectively becomes the total change
+      // So, the absoluteEndingBalance will just be the startingBalance (total balance)
+      periodNetChangeConverted =
+          0; // Reset period change as it's included in startingBalance
     }
 
     absoluteEndingBalanceConverted =
@@ -304,7 +284,9 @@ class DataManagementCubit extends Cubit<DataManagementState> {
     return TransactionSummaryState(
       totalIncome: periodIncomeConverted,
       totalExpenses: periodExpensesConverted,
-      balance: absoluteEndingBalanceConverted,
+      balance: absoluteEndingBalanceConverted, // This is the ENDING balance
+      // Optional: Add starting balance to the state if needed for display
+      // startingBalance: startingBalanceConverted,
     );
   }
 
@@ -386,30 +368,39 @@ class DataManagementCubit extends Cubit<DataManagementState> {
   }
 
   Future deleteTransaction(int transactionId) async {
+    emit(state.copyWith(status: LoadingStatus.loading)); // Set loading status
     // Use soft delete from repository
     final success = await _transactionRepository.remove(transactionId);
     if (success) {
+      // Remove from the local state immediately for responsiveness
       final updatedAllTransactions =
-          List<Transaction>.from(state.allTransactions)
-            ..removeWhere((t) => t.id == transactionId);
+          state.allTransactions.where((tx) => tx.id != transactionId).toList();
       emit(state.copyWith(allTransactions: updatedAllTransactions));
+      // Re-apply filters AFTER updating the base list
+      _applyFiltersCache(_filterCubit.state);
     } else {
-      print("Failed to soft delete transaction $transactionId");
-      // Optionally emit failure state
+      print("Error deleting transaction $transactionId");
+      emit(state.copyWith(
+          status: LoadingStatus.failure,
+          errorMessage: "Error deleting transaction $transactionId"));
     }
-    _applyFiltersCache(
-        _filterCubit.state); // Re-apply filters and map to ViewModels
-    // Status is set within _applyFiltersCache (will be success unless error emitted above)
+    // Status is set within _applyFiltersCache or the error case above
   }
 
   Future deleteAllTransactions() async {
     emit(state.copyWith(status: LoadingStatus.loading));
     // Use soft delete for current user
-    await _transactionRepository.removeAllForCurrentUser();
-    emit(state.copyWith(allTransactions: [])); // Clear raw transactions
-    _applyFiltersCache(_filterCubit
-        .state); // Re-apply filters (will result in empty ViewModels)
-    // Status is set within _applyFiltersCache
+    final count = await _transactionRepository.removeAllForCurrentUser();
+    print("Soft deleted $count transactions locally.");
+    // Clear raw transactions and displayed transactions
+    emit(state.copyWith(
+      allTransactions: [],
+      filteredTransactions: [],
+      displayedTransactions: [],
+      status: LoadingStatus.success, // Set success after clearing
+      summary: TransactionSummaryState(), // Reset summary
+    ));
+    // No need to call _applyFiltersCache as everything is empty
   }
 
   // --- Category Management Methods ---
@@ -449,7 +440,8 @@ class DataManagementCubit extends Cubit<DataManagementState> {
 
           // Update default category if necessary
           if (Defaults().defaultCategory.id == updatedCategory.id) {
-            Defaults().defaultCategory = updatedCategory;
+            Defaults().setDefaultCategoryInstance(updatedCategory);
+            Defaults().saveDefaults();
           }
 
           emit(state.copyWith(
@@ -545,7 +537,7 @@ class DataManagementCubit extends Cubit<DataManagementState> {
 
           // Update default account if necessary
           if (Defaults().defaultAccount.id == updatedAccount.id) {
-            Defaults().defaultAccount = updatedAccount;
+            Defaults().setDefaultAccountInstance(updatedAccount);
           }
 
           emit(state.copyWith(
@@ -652,8 +644,10 @@ class DataManagementCubit extends Cubit<DataManagementState> {
   }
 
   bool hasTransactionsForAccount(int accountId) {
-    return state.allTransactions
-        .any((transaction) => transaction.fromAccount.targetId == accountId);
+    // Check both fromAccount and toAccount for transfers
+    return state.allTransactions.any((transaction) =>
+        transaction.fromAccount.targetId == accountId ||
+        transaction.toAccount.targetId == accountId);
   }
 
   void updateDefaultCurrency() {

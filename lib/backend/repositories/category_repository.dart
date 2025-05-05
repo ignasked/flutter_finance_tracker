@@ -28,24 +28,38 @@ class CategoryRepository extends BaseRepository<Category> {
 
   /// Helper method to set default category asynchronously
   Future<void> _setDefaultCategory() async {
-    // Use getById which respects user context and deleted status
-    final defaultCategory = await getById(1);
-    if (defaultCategory != null) {
-      Defaults().defaultCategory = defaultCategory;
-    } else {
-      // Fallback logic if default ID 1 isn't found after init
-      final userCondition = _userIdCondition();
-      final anyCategoryQuery =
-          box.query(userCondition.and(_notDeletedCondition())).build();
-      final fallbackCategory = await anyCategoryQuery.findFirstAsync();
-      anyCategoryQuery.close();
-      if (fallbackCategory != null) {
-        Defaults().defaultCategory = fallbackCategory;
-        print(
-            "Set fallback default category during init: ${fallbackCategory.title}");
+    // 1. Try loading using the ID stored in Defaults
+    if (Defaults().defaultCategoryId != null) {
+      final defaultCategory = await getById(Defaults().defaultCategoryId!);
+      if (defaultCategory != null) {
+        Defaults().setDefaultCategoryInstance(defaultCategory);
+        // No need to save here, as the ID hasn't changed
+        print("Defaults: Set default category instance from saved ID.");
+        return; // Successfully set from saved ID
       } else {
-        print("Error during init: No categories available to set as default.");
+        // ID was saved, but category not found (e.g., deleted)
+        print(
+            "Warning: Default category ID ${Defaults().defaultCategoryId} found in prefs, but category not found in DB. Resetting default.");
+        // Proceed to fallback logic below
       }
+    }
+
+    // 2. Fallback logic if default ID isn't set or category wasn't found
+    final userCondition = _userIdCondition();
+    final anyCategoryQuery =
+        box.query(userCondition.and(_notDeletedCondition())).build();
+    final fallbackCategory = await anyCategoryQuery.findFirstAsync();
+    anyCategoryQuery.close();
+
+    if (fallbackCategory != null) {
+      Defaults().setDefaultCategoryInstance(fallbackCategory);
+      await Defaults().saveDefaults(); // Save the new fallback default ID
+      print(
+          "Set fallback default category during init: ${fallbackCategory.title}");
+    } else {
+      print("Error during init: No categories available to set as default.");
+      // Consider setting Defaults()._defaultCategoryId = null and saving?
+      // For now, it will remain null or the old invalid ID.
     }
   }
 
@@ -107,8 +121,9 @@ class CategoryRepository extends BaseRepository<Category> {
     return enabledCategories.map((category) => category.title).join(', ');
   }
 
-  get defaultCategoriesData => [
+  List<Category> get defaultCategoriesData => [
         Category(
+          uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-111111111111', // Stable UUID 1
           title: 'Food',
           descriptionForAI: 'Expenses related to food and dining',
           colorValue: AppStyle.predefinedColors[3].value, // Orange
@@ -117,6 +132,7 @@ class CategoryRepository extends BaseRepository<Category> {
           typeValue: TransactionType.expense.index,
         ),
         Category(
+          uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-222222222222', // Stable UUID 2
           title: 'Transportation',
           descriptionForAI:
               'Expenses related to transportation like fuel, public transit, taxis',
@@ -126,6 +142,7 @@ class CategoryRepository extends BaseRepository<Category> {
           typeValue: TransactionType.expense.index,
         ),
         Category(
+          uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-333333333333', // Stable UUID 3
           title: 'Accomodation',
           descriptionForAI: 'Expenses related to housing, rent, hotels',
           colorValue: AppStyle.predefinedColors[6].value, // Brown
@@ -133,6 +150,7 @@ class CategoryRepository extends BaseRepository<Category> {
           typeValue: TransactionType.expense.index,
         ),
         Category(
+          uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-444444444444', // Stable UUID 4
           title: 'Groceries',
           descriptionForAI:
               'Expenses related to grocery shopping and household supplies',
@@ -142,6 +160,7 @@ class CategoryRepository extends BaseRepository<Category> {
           typeValue: TransactionType.expense.index,
         ),
         Category(
+          uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-555555555555', // Stable UUID 5
           title: 'Junk Food',
           descriptionForAI: 'Expenses related to snacks and fast food',
           colorValue: AppStyle.predefinedColors[0].value, // Red
@@ -150,6 +169,7 @@ class CategoryRepository extends BaseRepository<Category> {
           typeValue: TransactionType.expense.index,
         ),
         Category(
+          uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-666666666666', // Stable UUID 6
           title: 'Services',
           descriptionForAI:
               'Expenses related to various services and subscriptions',
@@ -159,6 +179,7 @@ class CategoryRepository extends BaseRepository<Category> {
           typeValue: TransactionType.expense.index,
         ),
         Category(
+          uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-777777777777', // Stable UUID 7
           title: 'Fitness',
           descriptionForAI:
               'Expenses related to gym memberships and fitness activities',
@@ -168,6 +189,7 @@ class CategoryRepository extends BaseRepository<Category> {
           typeValue: TransactionType.expense.index,
         ),
         Category(
+          uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-888888888888', // Stable UUID 8
           title: 'Entertainment',
           descriptionForAI:
               'Expenses related to entertainment and leisure activities',
@@ -177,6 +199,7 @@ class CategoryRepository extends BaseRepository<Category> {
           typeValue: TransactionType.expense.index,
         ),
         Category(
+          uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-999999999999', // Stable UUID 9
           title: 'Healthcare',
           descriptionForAI:
               'Expenses related to medical care and health services',
@@ -186,6 +209,7 @@ class CategoryRepository extends BaseRepository<Category> {
           typeValue: TransactionType.expense.index,
         ),
         Category(
+          uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-aaaaaaaaaaaa', // Stable UUID 10
           title: 'Utilities',
           descriptionForAI:
               'Expenses related to utilities like electricity, water, internet',
@@ -195,6 +219,7 @@ class CategoryRepository extends BaseRepository<Category> {
           typeValue: TransactionType.expense.index,
         ),
         Category(
+          uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-bbbbbbbbbbbb', // Stable UUID 11
           title: 'Clothing',
           descriptionForAI: 'Expenses related to clothes and accessories',
           colorValue: AppStyle.predefinedColors[5].value, // Pink
@@ -203,6 +228,7 @@ class CategoryRepository extends BaseRepository<Category> {
           typeValue: TransactionType.expense.index,
         ),
         Category(
+          uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-cccccccccccc', // Stable UUID 12
           title: 'Deposit', // Assuming this relates to recycling/returns
           descriptionForAI: 'Money deposited or saved from bottle returns',
           colorValue: AppStyle.predefinedColors[7].value, // Amber
@@ -212,6 +238,7 @@ class CategoryRepository extends BaseRepository<Category> {
               .expense.index, // Should this be income? Keeping expense for now.
         ),
         Category(
+          uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-dddddddddddd', // Stable UUID 13
           title: 'Other Expenses',
           descriptionForAI:
               'Miscellaneous expenses that don\'t fit other categories',
@@ -220,6 +247,7 @@ class CategoryRepository extends BaseRepository<Category> {
           typeValue: TransactionType.expense.index,
         ),
         Category(
+          uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-eeeeeeeeeeee', // Stable UUID 14
           title: 'Salary',
           descriptionForAI: 'Regular income from employment',
           colorValue: AppStyle.predefinedColors[2].value, // Green
@@ -227,6 +255,7 @@ class CategoryRepository extends BaseRepository<Category> {
           typeValue: TransactionType.income.index,
         ),
         Category(
+          uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-ffffffffffff', // Stable UUID 15
           title: 'Gifts',
           descriptionForAI: 'Recieved gifts',
           colorValue: AppStyle.predefinedColors[5].value, // Pink
@@ -235,6 +264,7 @@ class CategoryRepository extends BaseRepository<Category> {
           typeValue: TransactionType.income.index,
         ),
         Category(
+          uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-000000000000', // Stable UUID 16
           title: 'Side Hustle',
           descriptionForAI: 'Income from side jobs or freelance work',
           colorValue: AppStyle.predefinedColors[9].value, // Teal
@@ -243,6 +273,7 @@ class CategoryRepository extends BaseRepository<Category> {
           typeValue: TransactionType.income.index,
         ),
         Category(
+          uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-101010101010', // Stable UUID 17
           title: 'Other Income',
           descriptionForAI:
               'Miscellaneous income that doesn\'t fit other categories',
@@ -251,6 +282,7 @@ class CategoryRepository extends BaseRepository<Category> {
           typeValue: TransactionType.income.index,
         ),
         Category(
+          uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-121212121212', // Stable UUID 18
           title: 'Discount for item', // Using local_offer
           descriptionForAI: 'Money saved through discounts and rebates',
           colorValue: AppStyle.predefinedColors[2].value, // Green
@@ -259,6 +291,7 @@ class CategoryRepository extends BaseRepository<Category> {
           typeValue: TransactionType.income.index,
         ),
         Category(
+          uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-131313131313', // Stable UUID 19
           title: 'Overall discount', // Using local_offer
           descriptionForAI: 'Money saved through discounts and rebates',
           colorValue: AppStyle.predefinedColors[2].value, // Green
@@ -268,83 +301,96 @@ class CategoryRepository extends BaseRepository<Category> {
         ),
       ];
 
-  /// Initialize default categories if they don't exist (ignores deleted status for check)
+  Future<Category> getDefaultCategory() async {
+    return await getById(Defaults().defaultCategoryId ?? 1) ??
+        defaultCategoriesData.first; // Fallback to first default category
+  }
+
+  /// Initialize default categories if they don't exist (based on UUID)
+  /// Does NOT set the default instance in the Defaults singleton.
   Future<void> _initializeDefaultCategories() async {
-    final isFirstLaunch = await _isFirstLaunch();
-    if (!isFirstLaunch) {
-      // Still need to set the default category if it exists
-      final defaultCategory = await getById(1); // Check non-deleted default
-      if (defaultCategory != null) {
-        Defaults().defaultCategory = defaultCategory;
-      }
-      return;
+    // Check if initialization is needed based on UUIDs, not a flag
+    final userCondition = _userIdCondition();
+    final notDeleted = _notDeletedCondition();
+    final primaryDefaultUuid =
+        defaultCategoriesData.first.uuid; // Assuming first is primary
+
+    // Check if the primary default category exists for the user context
+    final primaryCheckQuery = box
+        .query(Category_.uuid
+            .equals(primaryDefaultUuid)
+            .and(userCondition)
+            .and(notDeleted))
+        .build();
+    final bool primaryExists = primaryCheckQuery.count() > 0;
+    primaryCheckQuery.close();
+
+    if (primaryExists) {
+      print(
+          "Primary default category found (UUID: $primaryDefaultUuid). Ensuring others exist.");
+      await _ensureOtherDefaultCategoriesExist(userCondition);
+      return; // Initialization check done, defaults exist
     }
 
-    print("First launch detected, initializing default categories...");
+    // If primary default NOT found, initialize defaults
+    print("Primary default category not found. Initializing defaults...");
 
-    // 2. Get existing category titles for the current context in one query
-    final userCondition =
-        _userIdCondition(); // Get condition for current user/local
-    final existingTitlesQuery = box.query(userCondition).build();
-    // Use findIds() and then getMany() or just find() if memory is not a concern
-    final existingCategories = await existingTitlesQuery.findAsync();
-    existingTitlesQuery.close();
-    final existingTitles = existingCategories.map((c) => c.title).toSet();
+    // Get existing category UUIDs for the current context
+    final existingUuidsQuery = box.query(userCondition).build();
+    final existingUuids =
+        (await existingUuidsQuery.findAsync()).map((c) => c.uuid).toSet();
+    existingUuidsQuery.close();
 
-    // 3. Filter default categories that don't exist yet
-    final List<Category> categoriesToAdd = [];
-    for (final defaultCategory in defaultCategoriesData) {
-      if (!existingTitles.contains(defaultCategory.title)) {
-        // Prepare for batch insertion (userId and timestamps will be set by putMany)
-        categoriesToAdd.add(defaultCategory);
-      }
-    }
+    // Filter default categories that don't exist yet based on UUID
+    final List<Category> categoriesToAdd = defaultCategoriesData
+        .where(
+            (defaultCategory) => !existingUuids.contains(defaultCategory.uuid))
+        .toList();
 
-    // 4. Batch insert the missing categories
+    // Batch insert the missing categories
     if (categoriesToAdd.isNotEmpty) {
       try {
-        // Use putMany which handles setting userId and timestamps for local source
         await putMany(categoriesToAdd, syncSource: SyncSource.local);
         print('Added ${categoriesToAdd.length} default categories in batch.');
       } catch (e) {
         print('Error adding default categories in batch: $e');
-        // Handle potential batch errors if necessary
       }
-    } else {
-      print("All default categories already exist for the current context.");
-    }
-
-    // 5. Set the default category (assuming ID 1 is still the intended default)
-    // Use getById which respects the user context and deleted status
-    final defaultCategory = await getById(1);
-    if (defaultCategory != null) {
-      Defaults().defaultCategory = defaultCategory;
-      print("Default category set.");
     } else {
       print(
-          "Warning: Default category (ID 1) not found or not accessible after initialization.");
-      // Attempt to find *any* category if the default (ID 1) isn't available
-      final anyCategoryQuery =
-          box.query(userCondition.and(_notDeletedCondition())).build();
-      final fallbackCategory = await anyCategoryQuery.findFirstAsync();
-      anyCategoryQuery.close();
-      if (fallbackCategory != null) {
-        Defaults().defaultCategory = fallbackCategory;
-        print("Set fallback default category: ${fallbackCategory.title}");
-      } else {
-        print("Error: No categories available to set as default.");
-        // Consider creating a fallback 'Uncategorized' category here if none exist
-      }
+          "All default categories already exist for the current context (checked by UUID).");
     }
+
+    // No need to set default here, _setDefaultCategory will handle it after this.
   }
 
-  Future<bool> _isFirstLaunch() async {
-    final prefs = await SharedPreferences.getInstance();
-    final isFirstLaunch = prefs.getBool('isFirstLaunchCategories') ?? true;
-    if (isFirstLaunch) {
-      await prefs.setBool('isFirstLaunchCategories', false);
+  // Helper to ensure non-primary default categories exist
+  Future<void> _ensureOtherDefaultCategoriesExist(
+      Condition<Category> userCondition) async {
+    final otherDefaultUuids =
+        defaultCategoriesData.skip(1).map((c) => c.uuid).toList();
+    if (otherDefaultUuids.isEmpty) return;
+
+    final existingUuidsQuery = box
+        .query(userCondition.and(Category_.uuid.oneOf(otherDefaultUuids)))
+        .build();
+    final existingUuids =
+        (await existingUuidsQuery.findAsync()).map((c) => c.uuid).toSet();
+    existingUuidsQuery.close();
+
+    final List<Category> categoriesToAdd = defaultCategoriesData
+        .skip(1) // Skip the primary one
+        .where((cat) => !existingUuids.contains(cat.uuid))
+        .toList();
+
+    if (categoriesToAdd.isNotEmpty) {
+      print(
+          'Ensuring other default categories exist: Adding ${categoriesToAdd.length} missing categories.');
+      try {
+        await putMany(categoriesToAdd, syncSource: SyncSource.local);
+      } catch (e) {
+        print('Error ensuring other default categories exist: $e');
+      }
     }
-    return isFirstLaunch;
   }
 
   /// Get categories modified after a specific time (UTC) for the current context.
@@ -406,14 +452,17 @@ class CategoryRepository extends BaseRepository<Category> {
       }
       return await super.put(categoryToSave, syncSource: syncSource);
     } else {
+      // Syncing down from Supabase
       if (category.userId == null) {
         print(
             "Warning: Syncing down category with null userId. ID: ${category.id}");
       }
+      // Ensure dates are local
       final categoryToSave = category.copyWith(
           createdAt: category.createdAt.toLocal(),
           updatedAt: category.updatedAt.toLocal(),
           deletedAt: category.deletedAt?.toLocal());
+      // Use the processed categoryToSave and return the result
       return await super.put(categoryToSave, syncSource: syncSource);
     }
   }
@@ -426,6 +475,12 @@ class CategoryRepository extends BaseRepository<Category> {
           box.query(_userIdCondition().and(_notDeletedCondition())).build();
       final results = await query.findAsync();
       query.close();
+
+      _setDefaultCategory(); // Ensure default category is set after fetching
+      // Defaults().setDefaultCategoryInstance(results.firstWhere(
+      //     (category) => category.id == Defaults().defaultCategoryId,
+      //     orElse: () => results.first)); // Set default category instance
+
       return results;
     } catch (e) {
       final context = _authService.currentUser?.id ?? 'local (unauthenticated)';
@@ -485,18 +540,6 @@ class CategoryRepository extends BaseRepository<Category> {
     }
   }
 
-  /// Soft removes a category by ID if it belongs to the current context.
-  @override
-  Future<bool> remove(int id) async {
-    final hasTransactions = await _hasTransactionsForCategory(id);
-    if (hasTransactions) {
-      print(
-          "Soft remove failed: Category $id is still linked to active transactions.");
-      return false;
-    }
-    return await super.softRemove(id);
-  }
-
   /// Helper to check if a category is used by non-deleted transactions.
   bool _hasTransactionsForCategory(int categoryId) {
     final transactionBox = store.box<Transaction>();
@@ -505,7 +548,7 @@ class CategoryRepository extends BaseRepository<Category> {
         .query(Transaction_.category // Use the relation field directly
             .equals(categoryId) // ObjectBox handles matching the target ID
             .and(Transaction_.deletedAt.isNull())
-            .and(_transactionUserIdCondition()))
+            .and(_transactionUserIdCondition())) // Moved declaration below
         .build();
     // --- END FIX ---
     final count = query.count(); // Use async count
@@ -513,11 +556,29 @@ class CategoryRepository extends BaseRepository<Category> {
     return count > 0;
   }
 
+  // Moved this method here, before its first use in _hasTransactionsForCategory
   Condition<Transaction> _transactionUserIdCondition() {
     final currentUserId = _authService.currentUser?.id;
     return currentUserId != null
         ? Transaction_.userId.equals(currentUserId)
         : Transaction_.userId.isNull();
+  }
+
+  /// Soft removes a category by ID if it belongs to the current context.
+  @override
+  Future<bool> remove(int id) async {
+    // Prevent deletion of default categories (assuming IDs 1-19 are defaults)
+    if (id >= 1 && id <= defaultCategoriesData.length) {
+      print("Soft remove failed: Cannot remove default category ID $id.");
+      return false;
+    }
+    final hasTransactions = await _hasTransactionsForCategory(id);
+    if (hasTransactions) {
+      print(
+          "Soft remove failed: Category $id is still linked to active transactions.");
+      return false;
+    }
+    return await super.softRemove(id);
   }
 
   /// Restores a soft-deleted category by ID if it belongs to the current context.
@@ -565,7 +626,8 @@ class CategoryRepository extends BaseRepository<Category> {
     }
 
     if (updatedItems.isNotEmpty) {
-      await putMany(updatedItems, syncSource: SyncSource.local);
+      // Explicitly use 'this' to clarify it's a method call
+      await this.putMany(updatedItems, syncSource: SyncSource.local);
       print(
           "Successfully assigned userId $newUserId to ${updatedItems.length} categories.");
       return updatedItems.length;
@@ -617,7 +679,6 @@ class CategoryRepository extends BaseRepository<Category> {
       // Use super.softRemove directly as the check for transactions is complex here
       // and we are explicitly deleting non-defaults.
       // If you need the transaction check, call `remove(item.id)` instead.
-      // If you need the transaction check, call `remove(item.id)` instead.
       if (await super.softRemove(item.id)) {
         successCount++;
       } else {
@@ -656,6 +717,16 @@ class CategoryRepository extends BaseRepository<Category> {
       final currentUserId = _authService.currentUser?.id;
       final now = DateTime.now();
       final List<Category> processedEntities = [];
+      // Fetch existing entities to preserve createdAt if needed (more robust)
+      final existingIds =
+          entities.map((e) => e.id).where((id) => id != 0).toList();
+      // Handle potential nulls from getManyAsync
+      final existingMap = {
+        for (var e
+            in (await box.getManyAsync(existingIds)).whereType<Category>())
+          e.id: e
+      };
+
       for (final entity in entities) {
         Category entityToSave;
         if (entity.id == 0) {
@@ -666,13 +737,13 @@ class CategoryRepository extends BaseRepository<Category> {
             deletedAt: entity.deletedAt,
           );
         } else {
+          final existing = existingMap[entity.id];
           entityToSave = entity.copyWith(
             userId: currentUserId,
             updatedAt: now,
-            createdAt:
-                entity.createdAt != DateTime.fromMillisecondsSinceEpoch(0)
-                    ? entity.createdAt
-                    : now,
+            // Preserve original createdAt if available, otherwise use now
+            createdAt: existing?.createdAt ?? now,
+            // copyWith handles deletedAt logic
           );
         }
         processedEntities.add(entityToSave);

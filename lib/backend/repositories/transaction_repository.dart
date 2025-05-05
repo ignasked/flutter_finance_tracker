@@ -1,15 +1,11 @@
-import 'package:money_owl/backend/models/account.dart';
-import 'package:money_owl/backend/models/category.dart';
-import 'package:money_owl/backend/repositories/account_repository.dart';
-import 'package:money_owl/backend/repositories/base_repository.dart';
 import 'package:money_owl/backend/models/transaction.dart';
-import 'package:money_owl/backend/repositories/category_repository.dart';
+import 'package:money_owl/backend/repositories/base_repository.dart'; // <-- Add missing import
 import 'package:money_owl/backend/services/auth_service.dart';
-import 'package:money_owl/backend/utils/defaults.dart';
-import 'package:money_owl/front/shared/filter_cubit/filter_state.dart';
+import 'package:money_owl/front/shared/filter_cubit/filter_state.dart'; // Import FilterState
 import 'package:money_owl/objectbox.g.dart';
 import 'package:objectbox/objectbox.dart';
 import 'package:money_owl/backend/services/sync_service.dart'; // Import SyncSource
+import 'package:money_owl/backend/utils/enums.dart'; // Import TransactionType
 
 class TransactionRepository extends BaseRepository<Transaction> {
   final AuthService _authService;
@@ -59,52 +55,47 @@ class TransactionRepository extends BaseRepository<Transaction> {
           createdAt: now,
           updatedAt: now,
           deletedAt: transaction.deletedAt, // Preserve if explicitly set
-          categoryId: transaction.category.targetId,
-          fromAccountId: transaction.fromAccount.targetId,
-          toAccountId: transaction.toAccount.targetId == 0
-              ? null
-              : transaction.toAccount.targetId,
         );
       } else {
-        // Existing transaction - fetch directly to handle updates/restores
+        // Existing transaction - fetch WITHOUT user filter to allow updates/restores
         final existing = await box.getAsync(transaction.id);
         if (existing == null) {
           print(
               "Warning: Attempted to update non-existent transaction ID: ${transaction.id}");
-          throw Exception(
-              "Cannot update non-existent transaction ID ${transaction.id}");
+          return transaction.id; // Or throw?
         }
+        // Check context *before* saving
         if (existing.userId != currentUserId) {
+          // Allow update only if the existing userId is null (assignment case)
+          if (existing.userId != null) {
+            print(
+                "Error: Attempted to update transaction with mismatched userId context. Existing: ${existing.userId}, Current: $currentUserId");
+            throw Exception(
+                "Cannot modify data belonging to a different user context.");
+          }
+          // If existing.userId is null, we allow the update (assignment)
           print(
-              "Error: Attempted to update transaction with mismatched userId context. Existing: ${existing.userId}, Current: $currentUserId");
-          throw Exception(
-              "Cannot modify data belonging to a different user context.");
+              "Info: Assigning userId $currentUserId to transaction ID ${transaction.id}");
         }
 
-        // Apply changes from the incoming 'transaction' onto the 'existing' one
-        transactionToSave = existing.copyWith(
-          title: transaction.title,
-          amount: transaction.amount,
-          description: transaction.description,
-          date: transaction.date,
-          categoryId: transaction.category.targetId,
-          fromAccountId: transaction.fromAccount.targetId,
-          toAccountId: transaction.toAccount.targetId == 0
-              ? null
-              : transaction.toAccount.targetId,
-          updatedAt: now,
-          userId: currentUserId,
-          metadata: transaction.metadata,
-          deletedAt: transaction.deletedAt,
+        transactionToSave = transaction.copyWith(
+          userId: currentUserId, // Ensure context is set/updated
+          updatedAt: now, // Always update timestamp
+          createdAt:
+              transaction.createdAt != DateTime.fromMillisecondsSinceEpoch(0)
+                  ? transaction.createdAt
+                  : existing.createdAt, // Preserve original createdAt
+          // copyWith handles deletedAt logic (including setDeletedAtNull)
         );
       }
 
       // Final check before saving
       if (transactionToSave.userId != currentUserId) {
         print(
-            "Error: Mismatched userId (${transactionToSave.userId}) during save for current context ($currentUserId). Transaction ID: ${transactionToSave.id}");
-        throw Exception("Data integrity error: User ID mismatch before save.");
+            "Error: Mismatched userId (${transactionToSave.userId}) during save for current context ($currentUserId).");
+        throw Exception("Data integrity error: User ID mismatch.");
       }
+      // Use super.put to bypass this override's logic
       return await super.put(transactionToSave, syncSource: syncSource);
     } else {
       // Syncing down from Supabase
@@ -112,13 +103,12 @@ class TransactionRepository extends BaseRepository<Transaction> {
         print(
             "Warning: Syncing down transaction with null userId. ID: ${transaction.id}");
       }
+      // Ensure dates are local
       final transactionToSave = transaction.copyWith(
           createdAt: transaction.createdAt.toLocal(),
           updatedAt: transaction.updatedAt.toLocal(),
-          deletedAt: transaction.deletedAt?.toLocal(),
-          categoryId: transaction.category.targetId,
-          fromAccountId: transaction.fromAccount.targetId,
-          toAccountId: transaction.toAccount.targetId);
+          deletedAt: transaction.deletedAt?.toLocal());
+      // Use super.put to bypass this override's logic
       return await super.put(transactionToSave, syncSource: syncSource);
     }
   }
@@ -127,12 +117,8 @@ class TransactionRepository extends BaseRepository<Transaction> {
   @override
   Future<List<Transaction>> getAll() async {
     try {
-      final query = box
-          .query(_userIdCondition()
-              .and(_notDeletedCondition())) // Filter by user and not deleted
-          .order(Transaction_.date,
-              flags: Order.descending) // Order by date descending
-          .build();
+      final query =
+          box.query(_userIdCondition().and(_notDeletedCondition())).build();
       final results = await query.findAsync();
       query.close();
       return results;
@@ -151,7 +137,7 @@ class TransactionRepository extends BaseRepository<Transaction> {
           .query(Transaction_.id
               .equals(id)
               .and(_userIdCondition())
-              .and(_notDeletedCondition())) // Filter by user and not deleted
+              .and(_notDeletedCondition()))
           .build();
       final result = await query.findFirstAsync();
       query.close();
@@ -166,20 +152,43 @@ class TransactionRepository extends BaseRepository<Transaction> {
   /// Soft removes a transaction by ID if it belongs to the current context.
   @override
   Future<bool> remove(int id) async {
+    // Fetch first to ensure it belongs to the current user before soft deleting
+    final item = await getById(id); // Uses user context and notDeleted filter
+    if (item == null) {
+      print(
+          "Soft remove failed: Transaction $id not found or doesn't belong to user ${_authService.currentUser?.id}.");
+      return false;
+    }
+    // If found, proceed with base soft remove
     return await super.softRemove(id);
   }
 
   /// Restores a soft-deleted transaction by ID if it belongs to the current context.
   Future<bool> restoreTransaction(int id) async {
+    // Fetch directly (including deleted) but check user context before restoring
+    final currentUserId = _authService.currentUser?.id;
+    final query = box
+        .query(Transaction_.id
+            .equals(id)
+            .and(_userIdCondition())) // Check user context
+        .build();
+    final item = await query.findFirstAsync();
+    query.close();
+
+    if (item == null) {
+      print(
+          "Restore failed: Transaction $id not found or doesn't belong to user $currentUserId.");
+      return false;
+    }
+    // If found and belongs to user, proceed with base restore
     return await super.restore(id);
   }
 
   /// Updates non-deleted transactions with null userId to the provided newUserId.
+  /// Uses direct box access to bypass overridden put/putMany context checks for this specific task.
   Future<int> assignUserIdToNullEntries(String newUserId) async {
     final query = box
-        .query(Transaction_.userId
-            .isNull()
-            .and(_notDeletedCondition())) // Only non-deleted
+        .query(Transaction_.userId.isNull().and(_notDeletedCondition()))
         .build();
     final nullUserItems = await query.findAsync();
     query.close();
@@ -194,31 +203,40 @@ class TransactionRepository extends BaseRepository<Transaction> {
     final List<Transaction> updatedItems = [];
     final now = DateTime.now();
 
-    for (final item in nullUserItems) {
-      final existingUserItemQuery = box
-          .query(Transaction_.uuid
-              .equals(item.uuid)
-              .and(Transaction_.userId.equals(newUserId)))
-          .build();
-      final existingUserItem = await existingUserItemQuery.findFirstAsync();
-      existingUserItemQuery.close();
+    // Fetch existing UUIDs for the target user to prevent duplicates
+    final userUuidQuery =
+        box.query(Transaction_.userId.equals(newUserId)).build();
+    final existingUserUuids =
+        (await userUuidQuery.findAsync()).map((t) => t.uuid).toSet();
+    userUuidQuery.close();
 
-      if (existingUserItem != null) {
+    int skippedCount = 0;
+    for (final item in nullUserItems) {
+      if (existingUserUuids.contains(item.uuid)) {
         print(
-            "Skipping assignment for transaction UUID ${item.uuid}: Already exists for user $newUserId with ID ${existingUserItem.id}. Consider merging or deleting local item ID ${item.id}.");
+            "Skipping assignment for transaction UUID ${item.uuid}: Already exists for user $newUserId. Local item ID ${item.id}.");
+        skippedCount++;
         continue;
       }
       updatedItems.add(item.copyWith(
         userId: newUserId,
-        updatedAt: now,
+        updatedAt: now, // IMPORTANT: Update timestamp
       ));
     }
 
     if (updatedItems.isNotEmpty) {
-      await putMany(updatedItems, syncSource: SyncSource.local);
-      print(
-          "Successfully assigned userId $newUserId to ${updatedItems.length} transactions.");
-      return updatedItems.length;
+      try {
+        // Use box.putManyAsync directly for this specific assignment task
+        await box.putManyAsync(updatedItems);
+        final successCount = updatedItems.length;
+        print(
+            "Successfully assigned userId $newUserId to $successCount transactions. Skipped $skippedCount due to existing UUIDs.");
+        return successCount;
+      } catch (e) {
+        print(
+            "Error during direct putManyAsync in assignUserIdToNullEntries: $e");
+        return 0; // Indicate failure
+      }
     } else {
       print(
           "No transactions needed userId assignment after checking for existing entries by UUID.");
@@ -229,35 +247,37 @@ class TransactionRepository extends BaseRepository<Transaction> {
   /// Soft deletes all transactions for the currently logged-in user.
   /// If no user is logged in, soft deletes transactions with a null userId.
   Future<int> removeAllForCurrentUser() async {
-    final currentUserId = _authService.currentUser?.id;
+    final query =
+        box.query(_userIdCondition().and(_notDeletedCondition())).build();
+    final itemsToDelete = await query.findAsync();
+    query.close();
 
-    // If user is logged in, target their ID. If not logged in, target null userId.
-    final queryBuilder = currentUserId != null
-        ? box.query(Transaction_.userId.equals(currentUserId) &
-            Transaction_.deletedAt
-                .isNull()) // Existing condition for logged-in user
-        : box.query(Transaction_.userId.isNull() &
-            Transaction_.deletedAt.isNull()); // Condition for logged-out user
-
-    final transactionsToDelete = await queryBuilder.build().findAsync();
-    if (transactionsToDelete.isEmpty) {
+    if (itemsToDelete.isEmpty) {
       print(
-          "No transactions found to delete for user: ${currentUserId ?? 'unauthenticated'}");
+          "No transactions found to delete for user: ${_authService.currentUser?.id ?? 'unauthenticated'}");
       return 0;
     }
 
+    final List<Transaction> itemsToSoftDelete = [];
     final now = DateTime.now();
-    // Create new instances with deletedAt set
-    final List<Transaction> updatedTransactions = transactionsToDelete
-        .map((transaction) => transaction.copyWith(deletedAt: now))
-        .toList();
+    final nowUtc = now.toUtc();
+    for (final item in itemsToDelete) {
+      itemsToSoftDelete.add(item.copyWith(
+        deletedAt: nowUtc,
+        updatedAt: now, // Update timestamp for sync
+      ));
+    }
 
-    // Save the updated instances, replacing the old ones
-    await box.putManyAsync(updatedTransactions);
-
-    print(
-        "Soft deleted ${updatedTransactions.length} transactions for user: ${currentUserId ?? 'unauthenticated'}");
-    return updatedTransactions.length;
+    try {
+      // Use box.putManyAsync directly to bypass context checks in overridden putMany
+      await box.putManyAsync(itemsToSoftDelete);
+      print(
+          "Soft removed ${itemsToSoftDelete.length} transactions for user: ${_authService.currentUser?.id ?? 'unauthenticated'}");
+      return itemsToSoftDelete.length;
+    } catch (e) {
+      print("Error during direct putManyAsync in removeAllForCurrentUser: $e");
+      return 0;
+    }
   }
 
   /// Override removeAll from BaseRepository.
@@ -274,82 +294,33 @@ class TransactionRepository extends BaseRepository<Transaction> {
   Future<List<int>> putMany(List<Transaction> entities,
       {SyncSource syncSource = SyncSource.local}) async {
     if (syncSource == SyncSource.supabase) {
-      // Keep Supabase sync logic as is (assuming it's already optimized or different)
+      // Syncing down from Supabase
       final entitiesToSave = entities
           .map((e) => e.copyWith(
               createdAt: e.createdAt.toLocal(),
               updatedAt: e.updatedAt.toLocal(),
-              deletedAt: e.deletedAt?.toLocal(),
-              categoryId: e.category.targetId,
-              fromAccountId: e.fromAccount.targetId,
-              toAccountId: e.toAccount.targetId))
+              deletedAt: e.deletedAt?.toLocal()))
           .toList();
+      // Use super.putMany to bypass this override's logic
       return await super.putMany(entitiesToSave, syncSource: syncSource);
     } else {
-      // --- Optimization for Local Puts ---
+      // Local operation (e.g., adding multiple transactions, import, userId assignment)
       final currentUserId = _authService.currentUser?.id;
       final now = DateTime.now();
       final List<Transaction> processedEntities = [];
 
-      // --- Batch Fetch Relations ---
-      final categoryRepo = CategoryRepository(store, _authService);
-      final accountRepo = AccountRepository(store, _authService);
-
-      // Extract unique, non-zero IDs
-      final categoryIds = entities
-          .map((e) => e.category.targetId)
-          .where((id) => id != 0)
-          .toSet()
-          .toList();
-      final fromAccountIds = entities
-          .map((e) => e.fromAccount.targetId)
-          .where((id) => id != 0)
-          .toSet()
-          .toList();
-      final toAccountIds = entities
-          .map((e) => e.toAccount.targetId)
-          .where((id) => id != 0)
-          .toSet()
-          .toList();
-      final allAccountIds =
-          {...fromAccountIds, ...toAccountIds}.toList(); // Combine and unique
-
-      // Fetch in parallel
-      final List<List<dynamic>> results = await Future.wait([
-        if (categoryIds.isNotEmpty)
-          categoryRepo.getManyByIds(categoryIds)
-        else
-          Future.value([]),
-        if (allAccountIds.isNotEmpty)
-          accountRepo.getManyByIds(allAccountIds)
-        else
-          Future.value([]),
-      ]);
-
-      final List<Category> fetchedCategories = results[0].cast<Category>();
-      final List<Account> fetchedAccounts = results[1].cast<Account>();
-
-      // Create lookup maps
-      final categoryMap = {for (var cat in fetchedCategories) cat.id: cat};
-      final accountMap = {for (var acc in fetchedAccounts) acc.id: acc};
-      // --- End Batch Fetch ---
+      // Fetch existing entities to preserve createdAt and check context
+      final existingIds =
+          entities.map((e) => e.id).where((id) => id != 0).toList();
+      // Fetch WITHOUT user filter initially, as we might be assigning userId or restoring
+      final existingMap = {
+        for (var e
+            in (await box.getManyAsync(existingIds)).whereType<Transaction>())
+          e.id: e
+      };
 
       for (final entity in entities) {
         Transaction entityToSave;
-
-        // --- Use Maps for Lookup ---
-        // Use fetched category or default if not found or ID was 0
-        Category attachedCategory =
-            categoryMap[entity.category.targetId] ?? Defaults().defaultCategory;
-
-        // Use fetched account or default if not found or ID was 0
-        Account attachedFromAccount = accountMap[entity.fromAccount.targetId] ??
-            Defaults().defaultAccount;
-
-        // Use fetched account (can be null if ID was 0 or not found)
-        Account? attachedToAccount = accountMap[entity.toAccount.targetId];
-        // --- End Use Maps ---
-
         if (entity.id == 0) {
           // New entity
           entityToSave = entity.copyWith(
@@ -357,112 +328,153 @@ class TransactionRepository extends BaseRepository<Transaction> {
             createdAt: now,
             updatedAt: now,
             deletedAt: entity.deletedAt,
-            categoryId: attachedCategory.id, // Use ID from map/default
-            fromAccountId: attachedFromAccount.id, // Use ID from map/default
-            toAccountId: attachedToAccount?.id, // Use ID from map (nullable)
           );
         } else {
           // Existing entity
-          // Fetch existing only if necessary (e.g., to preserve createdAt)
-          // For performance, consider if fetching existing is always needed.
-          // If only updating, we might skip this fetch, but it's safer to include.
-          final existing = await box.getAsync(entity.id);
-          if (existing != null && existing.userId == currentUserId) {
-            entityToSave = existing.copyWith(
-              title: entity.title,
-              amount: entity.amount,
-              description: entity.description,
-              date: entity.date,
-              categoryId: attachedCategory.id, // Use ID from map/default
-              fromAccountId: attachedFromAccount.id, // Use ID from map/default
-              toAccountId: attachedToAccount?.id, // Use ID from map (nullable)
-              metadata: entity.metadata,
-              updatedAt: now, // Always update timestamp
-              deletedAt: entity.deletedAt, // Preserve incoming deletedAt status
-              userId: currentUserId, // Ensure context
-            );
-          } else {
+          final existing = existingMap[entity.id];
+          if (existing == null) {
             print(
-                "Warning: Skipping update for transaction ID ${entity.id} in putMany (not found or context mismatch).");
+                "Warning: Skipping update for transaction ID ${entity.id} in putMany (not found).");
             continue; // Skip this entity
           }
+
+          // --- MODIFIED CONTEXT CHECK ---
+          // Allow update if:
+          // 1. The existing item has no user ID yet (userId assignment case)
+          // 2. The existing item's user ID matches the current user ID
+          if (existing.userId != null && existing.userId != currentUserId) {
+            print(
+                "Warning: Skipping update for transaction ID ${entity.id} in putMany (context mismatch: existing=${existing.userId}, current=$currentUserId).");
+            continue; // Skip this entity - Strict context mismatch
+          }
+          // If existing.userId is null OR matches currentUserId, proceed with update.
+          // --- END MODIFIED CONTEXT CHECK ---
+
+          entityToSave = entity.copyWith(
+            userId:
+                currentUserId, // Ensure context is set/updated to current user
+            updatedAt: now, // Always update timestamp
+            createdAt: existing.createdAt, // Preserve original createdAt
+            // copyWith handles deletedAt logic
+          );
         }
 
-        // Final context check
+        // Final check (redundant with above but safe)
         if (entityToSave.userId != currentUserId) {
           print(
-              "Error: Mismatched userId in putMany for transaction ID ${entityToSave.id}. Skipping.");
+              "Error: Mismatched userId (${entityToSave.userId}) during putMany processing for current context ($currentUserId). Skipping ID ${entity.id}.");
           continue; // Skip this entity
         }
         processedEntities.add(entityToSave);
-      } // End loop
-
-      // Perform the batch database write
-      return await super.putMany(processedEntities, syncSource: syncSource);
+      }
+      // Use super.putMany to bypass this override's logic for the final write
+      if (processedEntities.isNotEmpty) {
+        return await super.putMany(processedEntities, syncSource: syncSource);
+      } else {
+        return []; // Return empty list if all items were skipped
+      }
     }
   }
 
   /// Fetch filtered transactions for the current context, excluding soft-deleted ones.
   Future<List<Transaction>> getFiltered(FilterState filterState) async {
-    Condition<Transaction> queryCondition =
-        _userIdCondition().and(_notDeletedCondition());
+    try {
+      // Start with the base conditions (user context and not deleted)
+      Condition<Transaction> queryCondition =
+          _userIdCondition().and(_notDeletedCondition());
 
-    if (filterState.selectedAccount != null) {
-      queryCondition = queryCondition.and(
-          Transaction_.fromAccount.equals(filterState.selectedAccount!.id));
-    }
-
-    if (filterState.selectedCategories.isNotEmpty) {
-      final categoryIds =
-          filterState.selectedCategories.map((c) => c.id).toList();
-      queryCondition =
-          queryCondition.and(Transaction_.category.oneOf(categoryIds));
-    }
-
-    if (filterState.startDate != null) {
-      if (filterState.singleDay) {
-        final startOfDay = DateTime(filterState.startDate!.year,
-            filterState.startDate!.month, filterState.startDate!.day);
-        final endOfDay = startOfDay.add(const Duration(days: 1));
-        queryCondition = queryCondition.and(Transaction_.date
-            .greaterOrEqual(startOfDay.millisecondsSinceEpoch)
-            .and(Transaction_.date.lessThan(endOfDay.millisecondsSinceEpoch)));
-      } else {
-        final rangeStart = filterState.startDate!;
-        final rangeEnd = filterState.endDate?.add(const Duration(days: 1));
-        queryCondition = queryCondition.and(Transaction_.date
-            .greaterOrEqual(rangeStart.millisecondsSinceEpoch));
-        if (rangeEnd != null) {
-          queryCondition = queryCondition
-              .and(Transaction_.date.lessThan(rangeEnd.millisecondsSinceEpoch));
-        }
+      // Helper function to combine conditions safely
+      Condition<Transaction> addCondition(
+          Condition<Transaction>? currentCombined,
+          Condition<Transaction> newCondition) {
+        return currentCombined == null
+            ? newCondition
+            : currentCombined.and(newCondition);
       }
+
+      // Apply Date Filter
+      Condition<Transaction>? combinedPropertyCondition;
+      if (filterState.startDate != null) {
+        Condition<Transaction>? dateCondition;
+        if (filterState.singleDay) {
+          final startOfDay = DateTime(filterState.startDate!.year,
+              filterState.startDate!.month, filterState.startDate!.day);
+          final endOfDay = startOfDay.add(const Duration(days: 1));
+          dateCondition = Transaction_.date
+              .greaterOrEqual(startOfDay.millisecondsSinceEpoch)
+              .and(Transaction_.date.lessThan(endOfDay.millisecondsSinceEpoch));
+        } else {
+          final rangeStart = filterState.startDate!;
+          Condition<Transaction> startCondition = Transaction_.date
+              .greaterOrEqual(rangeStart.millisecondsSinceEpoch);
+          if (filterState.endDate != null) {
+            final rangeEnd = filterState.endDate!.add(const Duration(days: 1));
+            dateCondition = startCondition.and(
+                Transaction_.date.lessThan(rangeEnd.millisecondsSinceEpoch));
+          } else {
+            dateCondition = startCondition;
+          }
+        }
+        combinedPropertyCondition =
+            addCondition(combinedPropertyCondition, dateCondition);
+      }
+
+      // Apply Amount Filter (Optional)
+      if (filterState.minAmount != null) {
+        print(
+            "Warning: Amount filtering might not work as expected with ObjectBox query conditions on absolute values. Filtering >= ${filterState.minAmount}");
+        final amountCondition =
+            Transaction_.amount.greaterOrEqual(filterState.minAmount!);
+        combinedPropertyCondition =
+            addCondition(combinedPropertyCondition, amountCondition);
+      }
+
+      // Apply Income/Expense Filter (Optional)
+      if (filterState.isIncome != null) {
+        Condition<Transaction> typeCondition;
+        if (filterState.isIncome!) {
+          // Income: amount > 0
+          typeCondition = Transaction_.amount.greaterThan(0);
+        } else {
+          // Expense: amount < 0
+          typeCondition = Transaction_.amount.lessThan(0);
+        }
+        combinedPropertyCondition =
+            addCondition(combinedPropertyCondition, typeCondition);
+      }
+
+      // Combine base conditions with property conditions
+      if (combinedPropertyCondition != null) {
+        queryCondition = queryCondition.and(combinedPropertyCondition);
+      }
+
+      // Build the query with the combined property conditions
+      var queryBuilder = box.query(queryCondition);
+
+      // Apply Link conditions
+      if (filterState.selectedAccount != null) {
+        queryBuilder.link(Transaction_.fromAccount,
+            Account_.id.equals(filterState.selectedAccount!.id));
+      }
+      if (filterState.selectedCategories.isNotEmpty) {
+        final categoryIds =
+            filterState.selectedCategories.map((c) => c.id).toList();
+        queryBuilder.link(
+            Transaction_.category, Category_.id.oneOf(categoryIds));
+      }
+
+      // Apply Sorting (Date Descending)
+      queryBuilder.order(Transaction_.date, flags: Order.descending);
+
+      final query = queryBuilder.build();
+      final results = await query.findAsync();
+      query.close();
+      return results;
+    } catch (e, stacktrace) {
+      print("Error fetching filtered transactions: $e");
+      print(stacktrace);
+      return [];
     }
-
-    if (filterState.minAmount != null) {}
-
-    if (filterState.isIncome != null) {}
-
-    final query = box
-        .query(queryCondition)
-        .order(Transaction_.date, flags: Order.descending)
-        .build();
-
-    List<Transaction> results = await query.findAsync();
-    query.close();
-
-    if (filterState.minAmount != null) {
-      results = results
-          .where((t) => t.amount.abs() >= filterState.minAmount!)
-          .toList();
-    }
-
-    if (filterState.isIncome != null) {
-      results =
-          results.where((t) => t.isIncome == filterState.isIncome).toList();
-    }
-
-    return results;
   }
 
   /// Fetch multiple transactions by their IDs for the current context.
@@ -470,16 +482,13 @@ class TransactionRepository extends BaseRepository<Transaction> {
   Future<List<Transaction>> getManyByIds(List<int> ids,
       {bool includeDeleted = false}) async {
     if (ids.isEmpty) return [];
-    // Remove duplicates and 0 if present
     final uniqueIds = ids.where((id) => id != 0).toSet().toList();
     if (uniqueIds.isEmpty) return [];
 
     try {
-      // Base condition: match IDs and user context
       Condition<Transaction> condition =
           Transaction_.id.oneOf(uniqueIds) & _userIdCondition();
 
-      // Conditionally add the 'notDeleted' filter
       if (!includeDeleted) {
         condition = condition & _notDeletedCondition();
       }

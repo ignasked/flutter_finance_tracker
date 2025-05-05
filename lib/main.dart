@@ -7,6 +7,7 @@ import 'package:money_owl/backend/repositories/category_repository.dart';
 import 'package:money_owl/backend/repositories/transaction_repository.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:money_owl/backend/services/auth_service.dart'; // Import AuthService
+import 'package:money_owl/backend/utils/defaults.dart';
 import 'package:money_owl/front/auth/auth_bloc/auth_bloc.dart'
     as auth_bloc; // Use a prefix for your local auth bloc to avoid name collision
 import 'package:money_owl/front/shared/data_management_cubit/data_management_cubit.dart';
@@ -40,6 +41,8 @@ Future<void> main() async {
 
   // Initialize Services
   authService = AuthService(supabase); // Instantiate AuthService
+
+  await Defaults().loadDefaults();
 
   // Initialize ObjectBox Store
   final store = await BaseRepository.createStore();
