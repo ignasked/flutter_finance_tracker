@@ -4,12 +4,13 @@ import 'package:money_owl/backend/models/category.dart';
 import 'package:money_owl/backend/utils/app_style.dart';
 import 'package:money_owl/front/shared/data_management_cubit/data_management_cubit.dart'; // Updated import
 import 'package:money_owl/front/shared/filter_cubit/filter_cubit.dart'; // Import FilterCubit
-import 'package:money_owl/front/shared/filter_cubit/filter_state.dart'; // Import FilterState
 
 class TransactionFilterSheet extends StatefulWidget {
   const TransactionFilterSheet({Key? key}) : super(key: key);
 
   static Future<void> show(BuildContext context) {
+    // Capture the FilterCubit instance *before* the async gap.
+    final filterCubit = BlocProvider.of<FilterCubit>(context);
     // Provide FilterCubit to the sheet
     return showModalBottomSheet(
       context: context,
@@ -20,8 +21,8 @@ class TransactionFilterSheet extends StatefulWidget {
             BorderRadius.vertical(top: Radius.circular(AppStyle.paddingMedium)),
       ),
       builder: (_) => BlocProvider.value(
-        // Pass the existing FilterCubit from the context where show() is called
-        value: BlocProvider.of<FilterCubit>(context),
+        // Pass the captured FilterCubit instance
+        value: filterCubit,
         child: const TransactionFilterSheet(),
       ),
     );

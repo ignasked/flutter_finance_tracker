@@ -93,11 +93,11 @@ class ChartCubit extends Cubit<ChartState> {
     // --- End Filter Dates ---
 
     // --- 2. Determine Actual Transaction Range ---
-    if (allTransactions.isEmpty) {
+    if (filteredTransactions.isEmpty) {
       return []; // No transactions, no chart
     }
-    DateTime firstTransactionDate = allTransactions.last.date;
-    DateTime lastTransactionDate = allTransactions.first.date;
+    DateTime firstTransactionDate = filteredTransactions.last.date;
+    DateTime lastTransactionDate = filteredTransactions.first.date;
     // Normalize transaction bounds
     firstTransactionDate = DateTime(firstTransactionDate.year,
         firstTransactionDate.month, firstTransactionDate.day);
