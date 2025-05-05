@@ -59,23 +59,23 @@ class Category extends Equatable {
         updatedAt = updatedAt ?? (createdAt ?? DateTime.now());
 
   // Convert to JSON for Supabase
-  Map<String, dynamic> toJson() {
-    return {
-      // 'id': id == 0 ? null : id, // Don't send local ID
-      'uuid': uuid, // ALWAYS send UUID
-      'title': title,
-      'description_for_ai': descriptionForAI,
-      'color_value': colorValue,
-      'icon_code_point': iconCodePoint,
-      'type_value': typeValue, // Send int value for Supabase
-      'is_enabled': isEnabled,
-      'created_at': createdAt.toUtc().toIso8601String(),
-      'updated_at':
-          DateTime.now().toUtc().toIso8601String(), // Send current time
-      'user_id': userId,
-      'deleted_at': deletedAt?.toUtc().toIso8601String(),
-    };
-  }
+  Map<String, dynamic> toJson() => {
+        'id': id == 0
+            ? null
+            : id, // Send ID (null if 0, though should have ID when syncing up existing)
+        'uuid': uuid,
+        'title': title,
+        'description_for_ai': descriptionForAI,
+        'icon_code_point': iconCodePoint,
+        'type_value': typeValue,
+        'is_enabled': isEnabled,
+        'color_value': colorValue,
+        'created_at': createdAt.toUtc().toIso8601String(),
+        'updated_at':
+            DateTime.now().toUtc().toIso8601String(), // Send current UTC time
+        'user_id': userId,
+        'deleted_at': deletedAt?.toUtc().toIso8601String(),
+      };
 
   // Create a Category from Supabase JSON
   factory Category.fromJson(Map<String, dynamic> json) {
@@ -83,23 +83,22 @@ class Category extends Equatable {
         value == null ? null : DateTime.tryParse(value as String)?.toLocal();
 
     return Category(
-      id: (json['id'] as num?)?.toInt() ?? 0, // Use Supabase ID if available
-      uuid: json['uuid'] as String?, // Use Supabase UUID if available
+      id: (json['id'] as num?)?.toInt() ??
+          0, // Use ID from Supabase if available
+      uuid: json['uuid'] as String?, // Get UUID from Supabase
       title: json['title'] as String? ?? 'Unknown Category',
       descriptionForAI: json['description_for_ai'] as String?,
-      colorValue: (json['color_value'] as num?)?.toInt() ?? Colors.grey.value,
-      iconCodePoint: (json['icon_code_point'] as num?)?.toInt() ??
-          Icons.question_mark.codePoint,
-      // Parse int type_value directly
-      typeValue: (json['type_value'] as num?)?.toInt() ??
-          TransactionType.expense.index,
+      iconCodePoint:
+          (json['icon_code_point'] as num?)?.toInt() ?? Icons.error.codePoint,
+      typeValue: (json['type_value'] as num?)?.toInt() ?? 0,
       isEnabled: json['is_enabled'] as bool? ?? true,
+      colorValue: (json['color_value'] as num?)?.toInt() ?? Colors.grey.value,
       createdAt:
           parseDate(json['created_at']), // Let constructor handle default
       updatedAt:
           parseDate(json['updated_at']), // Let constructor handle default
       userId: json['user_id'] as String?,
-      deletedAt: parseDate(json['deleted_at']), // Nullable
+      deletedAt: parseDate(json['deleted_at']),
     );
   }
 

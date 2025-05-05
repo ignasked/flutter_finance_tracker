@@ -157,52 +157,68 @@ class Transaction extends Equatable {
     );
   }
 
-  // --- Updated fromJson Factory to use the factory constructor ---
+  // --- Updated fromJson Factory (Hybrid Approach) ---
+  // Prioritizes integer IDs from JSON for local linking (compatibility).
+  // Still parses UUIDs and other fields.
   factory Transaction.fromJson(Map<String, dynamic> json) {
     // Helper to parse dates safely
     DateTime? parseDate(dynamic value) =>
         value == null ? null : DateTime.tryParse(value as String)?.toLocal();
 
-    // Parse IDs directly from JSON
-    final categoryIdFromJson = (json['category_id'] as num?)?.toInt() ??
-        Defaults().defaultCategory.id; // Fallback ID
-    final fromAccountIdFromJson = (json['from_account_id'] as num?)?.toInt() ??
-        Defaults().defaultAccount.id; // Fallback ID
-    final toAccountIdFromJson =
-        (json['to_account_id'] as num?)?.toInt(); // Nullable
+    // --- Extract integer IDs for local linking ---
+    final categoryIdFromJson = (json['category_id'] as num?)?.toInt();
+    final fromAccountIdFromJson = (json['from_account_id'] as num?)?.toInt();
+    final toAccountIdFromJson = (json['to_account_id'] as num?)?.toInt();
 
-    // Use the factory constructor
+    // --- Use createWithIds factory for convenience ---
+    // This factory handles setting the targetIds correctly.
     return Transaction.createWithIds(
-      id: (json['id'] as num?)?.toInt() ?? 0,
-      uuid: json['uuid'] as String?,
+      // id: (json['id'] as num?)?.toInt() ?? 0, // Let ObjectBox handle local ID
+      uuid: json['uuid'] as String?, // Get UUID from Supabase/JSON
       title: json['title'] as String? ?? 'Unknown Title',
       amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
       description: json['description'] as String?,
       date: parseDate(json['date']) ?? DateTime.now(),
-      categoryId: categoryIdFromJson,
-      fromAccountId: fromAccountIdFromJson,
-      toAccountId: toAccountIdFromJson,
-      createdAt: parseDate(json['created_at']),
-      updatedAt: parseDate(json['updated_at']),
+      // --- Pass the parsed integer IDs ---
+      categoryId: categoryIdFromJson ?? 0, // Default to 0 if null
+      fromAccountId: fromAccountIdFromJson ?? 0, // Default to 0 if null
+      toAccountId: toAccountIdFromJson, // Can be null
+      createdAt:
+          parseDate(json['created_at']), // Let constructor handle default
+      updatedAt:
+          parseDate(json['updated_at']), // Let constructor handle default
       userId: json['user_id'] as String?,
       metadata: json['metadata'] as Map<String, dynamic>?,
       deletedAt: parseDate(json['deleted_at']),
     );
   }
 
+  // --- Updated toJson (Hybrid Approach) ---
+  // Sends both integer IDs and UUIDs for relationships.
   Map<String, dynamic> toJson() {
+    // Access the target objects to get their UUIDs
+    final categoryObj = category.target;
+    final fromAccountObj = fromAccount.target;
+    final toAccountObj = toAccount.target;
+
     return {
       'uuid': uuid,
       'title': title,
       'description': description,
       'amount': amount,
+      // --- Send BOTH IDs and UUIDs ---
       'category_id': category.targetId == 0 ? null : category.targetId,
+      'category_uuid': categoryObj?.uuid,
       'from_account_id':
           fromAccount.targetId == 0 ? null : fromAccount.targetId,
+      'from_account_uuid': fromAccountObj?.uuid,
       'to_account_id': toAccount.targetId == 0 ? null : toAccount.targetId,
+      'to_account_uuid': toAccountObj?.uuid,
+      // ------------------------------
       'date': date.toUtc().toIso8601String(),
       'created_at': createdAt.toUtc().toIso8601String(),
-      'updated_at': DateTime.now().toUtc().toIso8601String(),
+      'updated_at':
+          DateTime.now().toUtc().toIso8601String(), // Send current UTC time
       'user_id': userId,
       'metadata': metadata,
       'deleted_at': deletedAt?.toUtc().toIso8601String(),

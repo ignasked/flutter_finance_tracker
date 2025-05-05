@@ -454,21 +454,27 @@ class CategoryRepository extends BaseRepository<Category> {
     }
   }
 
-  /// Fetch multiple non-deleted categories by their IDs for the current context.
-  Future<List<Category>> getManyByIds(List<int> ids) async {
+  /// Fetch multiple categories by their IDs for the current context.
+  /// Optionally includes soft-deleted items.
+  Future<List<Category>> getManyByIds(List<int> ids,
+      {bool includeDeleted = false}) async {
+    // Added includeDeleted parameter
     if (ids.isEmpty) return [];
     // Remove duplicates and 0 if present
     final uniqueIds = ids.where((id) => id != 0).toSet().toList();
     if (uniqueIds.isEmpty) return [];
 
     try {
-      final query = box
-          .query(Category_.id.oneOf(uniqueIds) // Use oneOf for batch query
-                  &
-                  _userIdCondition() &
-                  _notDeletedCondition() // Ensure they are not deleted
-              )
-          .build();
+      // Base condition: match IDs and user context
+      Condition<Category> condition =
+          Category_.id.oneOf(uniqueIds) & _userIdCondition();
+
+      // Conditionally add the 'notDeleted' filter
+      if (!includeDeleted) {
+        condition = condition & _notDeletedCondition();
+      }
+
+      final query = box.query(condition).build();
       final results = await query.findAsync();
       query.close();
       return results;

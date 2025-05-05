@@ -135,6 +135,9 @@ class Account extends Equatable {
   // --- Updated toJson (Matches repository version) ---
   Map<String, dynamic> toJson() {
     return {
+      'id': id == 0
+          ? null
+          : id, // Send ID (null if 0, though should have ID when syncing up existing)
       'uuid': uuid, // ALWAYS send UUID
       'name': name,
       'currency': currency,

@@ -464,4 +464,34 @@ class TransactionRepository extends BaseRepository<Transaction> {
 
     return results;
   }
+
+  /// Fetch multiple transactions by their IDs for the current context.
+  /// Optionally includes soft-deleted items.
+  Future<List<Transaction>> getManyByIds(List<int> ids,
+      {bool includeDeleted = false}) async {
+    if (ids.isEmpty) return [];
+    // Remove duplicates and 0 if present
+    final uniqueIds = ids.where((id) => id != 0).toSet().toList();
+    if (uniqueIds.isEmpty) return [];
+
+    try {
+      // Base condition: match IDs and user context
+      Condition<Transaction> condition =
+          Transaction_.id.oneOf(uniqueIds) & _userIdCondition();
+
+      // Conditionally add the 'notDeleted' filter
+      if (!includeDeleted) {
+        condition = condition & _notDeletedCondition();
+      }
+
+      final query = box.query(condition).build();
+      final results = await query.findAsync();
+      query.close();
+      return results;
+    } catch (e) {
+      final context = _authService.currentUser?.id ?? 'local (unauthenticated)';
+      print('Error fetching multiple transactions for context $context: $e');
+      return [];
+    }
+  }
 }
