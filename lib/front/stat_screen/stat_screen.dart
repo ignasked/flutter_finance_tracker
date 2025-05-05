@@ -3,7 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:money_owl/backend/utils/app_style.dart';
 import 'package:money_owl/backend/utils/defaults.dart';
 import 'package:money_owl/front/shared/filter_cubit/filter_cubit.dart';
-import 'package:money_owl/front/shared/filter_cubit/filter_state.dart';
 import 'package:money_owl/front/transactions_screen/widgets/summary_bar_widget.dart';
 import 'package:money_owl/front/transactions_screen/widgets/date_bar_widget.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
@@ -245,9 +244,8 @@ class _StatScreenState extends State<StatScreen> {
 
     final bool isExpense = currentEffectiveType == CategoryChartType.expense;
     final dataSource = chartState.categoryData
-        .where((d) =>
-            d.category != null && (isExpense ? d.amount < 0 : d.amount > 0))
-        .map((d) => ChartData(d.category!, d.amount.abs()))
+        .where((d) => (isExpense ? d.amount < 0 : d.amount > 0))
+        .map((d) => ChartData(d.category, d.amount.abs()))
         .where((d) => d.amount > 0.01)
         .toList();
     dataSource.sort((a, b) => b.amount.compareTo(a.amount));
@@ -283,7 +281,7 @@ class _StatScreenState extends State<StatScreen> {
 
         // Conditional Chart/List Area
         SizedBox(
-          height: 250,
+          height: 320, // Increased from 280
           child: _buildCategoryView(context, chartState, currentEffectiveType,
               dataSource, currencySymbol),
         ),
@@ -392,16 +390,19 @@ class _StatScreenState extends State<StatScreen> {
       List<ChartData> dataSource,
       String currencySymbol) {
     if (dataSource.isEmpty) {
-      print("PieChart: dataSource is empty.");
       return Center(child: Text('No data for pie chart'));
     }
 
     final SelectionBehavior selectionBehavior = SelectionBehavior(
       enable: true,
       selectedColor: AppStyle.primaryColor,
-      unselectedColor: Colors.grey.withOpacity(0.5),
       selectedOpacity: 0.8,
-      unselectedOpacity: 0.4,
+      unselectedOpacity: 1.0,
+    );
+
+    final currencyFormat = NumberFormat.simpleCurrency(
+      name: currencySymbol,
+      decimalDigits: 0,
     );
 
     return SfCircularChart(
@@ -409,13 +410,49 @@ class _StatScreenState extends State<StatScreen> {
       tooltipBehavior: TooltipBehavior(
         enable: true,
         activationMode: ActivationMode.singleTap,
-        format: 'point.x : point.y',
-        decimalPlaces: 0,
-        textStyle:
-            AppStyle.captionStyle.copyWith(color: ColorPalette.onPrimary),
-        color: AppStyle.secondaryColor,
-        elevation: 2,
-        canShowMarker: false,
+        builder: (dynamic data, dynamic point, dynamic series, int pointIndex,
+            int seriesIndex) {
+          if (data is ChartData) {
+            final String formattedAmount = currencyFormat.format(data.amount);
+            return Container(
+              padding: const EdgeInsets.all(AppStyle.paddingSmall / 1.5),
+              decoration: BoxDecoration(
+                color: AppStyle.secondaryColor.withOpacity(0.9),
+                borderRadius: BorderRadius.circular(AppStyle.borderRadiusSmall),
+              ),
+              child: Text(
+                '${data.category}: $formattedAmount',
+                style: AppStyle.captionStyle
+                    .copyWith(color: ColorPalette.onPrimary),
+              ),
+            );
+          }
+          return const SizedBox.shrink();
+        },
+      ),
+      legend: Legend(
+        isVisible: true,
+        position: LegendPosition.bottom,
+        overflowMode: LegendItemOverflowMode.scroll,
+        itemPadding: AppStyle.paddingSmall / 2,
+        legendItemBuilder:
+            (String name, dynamic series, dynamic point, int index) {
+          if (index >= 0 && index < dataSource.length) {
+            final ChartData data = dataSource[index];
+            final style = _getCategoryStyle(data.category, context);
+
+            return Container(
+              padding: const EdgeInsets.symmetric(
+                  vertical: AppStyle.paddingSmall * 0.75,
+                  horizontal: AppStyle.paddingSmall),
+              child: Icon(
+                  IconData(style.iconCodePoint, fontFamily: 'MaterialIcons'),
+                  color: style.color,
+                  size: 24),
+            );
+          }
+          return const SizedBox.shrink();
+        },
       ),
       series: <CircularSeries>[
         PieSeries<ChartData, String>(
@@ -423,18 +460,12 @@ class _StatScreenState extends State<StatScreen> {
           xValueMapper: (ChartData data, _) => data.category,
           yValueMapper: (ChartData data, _) => data.amount,
           pointColorMapper: (ChartData data, _) =>
-              _getColorForCategory(data.category, context),
+              _getCategoryStyle(data.category, context).color,
           selectionBehavior: selectionBehavior,
           dataLabelSettings: const DataLabelSettings(
-            isVisible: true,
-            labelPosition: ChartDataLabelPosition.outside,
-            connectorLineSettings: ConnectorLineSettings(
-              type: ConnectorType.curve,
-              length: '10%',
-            ),
-            textStyle: AppStyle.captionStyle,
+            isVisible: false,
           ),
-          radius: '80%',
+          radius: '70%',
           enableTooltip: true,
         ),
       ],
@@ -481,7 +512,8 @@ class _StatScreenState extends State<StatScreen> {
         majorGridLines: const MajorGridLines(width: 0),
         axisLine: const AxisLine(width: 0),
         labelStyle: AppStyle.captionStyle.copyWith(fontSize: 10),
-        labelIntersectAction: AxisLabelIntersectAction.rotate45,
+        labelIntersectAction: AxisLabelIntersectAction.rotate90,
+        interval: 1,
       ),
       primaryYAxis: NumericAxis(
         numberFormat: NumberFormat.compactSimpleCurrency(
@@ -499,35 +531,40 @@ class _StatScreenState extends State<StatScreen> {
           yValueMapper: (ChartData data, _) => data.amount,
           pointColorMapper: (ChartData data, _) =>
               _getColorForCategory(data.category, context),
+          width: 0.9, // Make bars wider to increase tappable area
           borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(AppStyle.borderRadiusSmall / 2),
             topRight: Radius.circular(AppStyle.borderRadiusSmall / 2),
           ),
-          dataLabelSettings: DataLabelSettings(
-              isVisible: true,
-              textStyle: AppStyle.captionStyle.copyWith(fontSize: 9),
-              labelAlignment: ChartDataLabelAlignment.top,
-              builder: (dynamic data, dynamic point, dynamic series,
-                  int pointIndex, int seriesIndex) {
-                final ChartData chartData = data as ChartData;
-                if (chartData.amount < (dataSource.first.amount * 0.05))
-                  return const SizedBox.shrink();
-                return Text(
-                  NumberFormat.compact().format(chartData.amount),
-                  style: AppStyle.captionStyle.copyWith(
-                      fontSize: 9, color: AppStyle.textColorSecondary),
-                );
-              }),
+          dataLabelSettings: const DataLabelSettings(
+            isVisible: false,
+          ),
           enableTooltip: true,
         )
       ],
       tooltipBehavior: TooltipBehavior(
         enable: true,
-        format: 'point.x : point.y',
-        decimalPlaces: 0,
-        textStyle:
-            AppStyle.captionStyle.copyWith(color: ColorPalette.onPrimary),
-        color: AppStyle.secondaryColor,
+        builder: (dynamic data, dynamic point, dynamic series, int pointIndex,
+            int seriesIndex) {
+          if (data is ChartData) {
+            final currencyFormat = NumberFormat.simpleCurrency(
+                name: currencySymbol, decimalDigits: 0);
+            final String formattedAmount = currencyFormat.format(data.amount);
+            return Container(
+              padding: const EdgeInsets.all(AppStyle.paddingSmall / 1.5),
+              decoration: BoxDecoration(
+                color: AppStyle.secondaryColor.withOpacity(0.9),
+                borderRadius: BorderRadius.circular(AppStyle.borderRadiusSmall),
+              ),
+              child: Text(
+                '${data.category}: $formattedAmount',
+                style: AppStyle.captionStyle
+                    .copyWith(color: ColorPalette.onPrimary),
+              ),
+            );
+          }
+          return const SizedBox.shrink();
+        },
         canShowMarker: false,
       ),
       plotAreaBorderWidth: 0,
@@ -626,18 +663,46 @@ class _StatScreenState extends State<StatScreen> {
     );
   }
 
-  Color _getColorForCategory(String categoryTitle, BuildContext context) {
+  // --- ADD Helper to get Category Color and Icon ---
+  ({Color color, int iconCodePoint}) _getCategoryStyle(
+      String categoryTitle, BuildContext context) {
     try {
       final categories =
           context.read<DataManagementCubit>().state.allCategories;
       final category = categories.firstWhere(
         (cat) => cat.title == categoryTitle,
-        orElse: () => Defaults().defaultCategory,
+        orElse: () => Defaults().defaultCategory, // Fallback
+      );
+      return (color: category.color, iconCodePoint: category.iconCodePoint);
+    } catch (e) {
+      print("Error finding category style for '$categoryTitle': $e");
+      // Return default style on error
+      return (
+        color: AppStyle.accentColor,
+        iconCodePoint: Defaults().defaultCategory.iconCodePoint
+      );
+    }
+  }
+  // --- END ADD Helper ---
+
+  // Helper to get category color (ensure access to categories) - Keep original for now if used elsewhere, or remove if only _getCategoryStyle is needed
+  Color _getColorForCategory(String categoryTitle, BuildContext context) {
+    // Access categories from DataManagementCubit's state
+    try {
+      // Use context.read inside build methods or helpers called directly from build
+      // Be cautious if calling this from callbacks where context might be outdated
+      final categories =
+          context.read<DataManagementCubit>().state.allCategories;
+      final category = categories.firstWhere(
+        (cat) => cat.title == categoryTitle,
+        // Provide orElse for safety if category might genuinely not exist
+        orElse: () =>
+            Defaults().defaultCategory, // Fallback to a default category
       );
       return category.color;
     } catch (e) {
       print("Error finding category '$categoryTitle': $e");
-      return AppStyle.accentColor;
+      return AppStyle.accentColor; // Fallback
     }
   }
 }
