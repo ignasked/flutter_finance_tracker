@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:money_owl/backend/models/account.dart';
 import 'package:money_owl/backend/utils/currency_utils.dart';
+import 'package:money_owl/backend/utils/defaults.dart';
 import 'package:money_owl/backend/utils/enums.dart';
 import 'package:money_owl/backend/utils/app_style.dart';
 
@@ -26,10 +27,13 @@ class _AccountFormWidgetState extends State<AccountFormWidget> {
         Account(
           name: '',
           typeValue: AccountType.bank.index,
-          currency: 'USD',
+          currency: Defaults().defaultCurrency,
+          currencySymbol:
+              CurrencyUtils.predefinedCurrencies[Defaults().defaultCurrency] ??
+                  Defaults().defaultCurrency,
           balance: 0.0,
-          colorValue: Colors.blue.value,
-          iconCodePoint: Icons.account_balance.codePoint,
+          colorValue: AppStyle.predefinedColors.first.value,
+          iconCodePoint: AppStyle.predefinedIcons.first.codePoint,
         );
 
     _nameController = TextEditingController(text: _accountState.name);
@@ -59,15 +63,6 @@ class _AccountFormWidgetState extends State<AccountFormWidget> {
                 decoration: const InputDecoration(labelText: 'Name'),
                 onChanged: (value) => setState(() {
                   _accountState = _accountState.copyWith(name: value);
-                }),
-              ),
-              TextField(
-                controller: _balanceController,
-                decoration: const InputDecoration(labelText: 'Balance'),
-                keyboardType: TextInputType.number,
-                onChanged: (value) => setState(() {
-                  _accountState = _accountState.copyWith(
-                      balance: double.tryParse(value) ?? 0.0);
                 }),
               ),
               DropdownButtonFormField<AccountType>(
@@ -134,7 +129,11 @@ class _AccountFormWidgetState extends State<AccountFormWidget> {
                         ))
                     .toList(),
                 onChanged: (value) => setState(() {
-                  _accountState = _accountState.copyWith(currency: value);
+                  _accountState = _accountState.copyWith(
+                      currency: value,
+                      currencySymbol:
+                          CurrencyUtils.predefinedCurrencies[value] ??
+                              Defaults().defaultCurrency);
                 }),
               ),
             ],

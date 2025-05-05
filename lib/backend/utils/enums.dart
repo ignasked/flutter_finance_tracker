@@ -5,7 +5,7 @@ enum TransactionType { expense, income }
 enum AccountType {
   bank,
   cash,
-  creditCard,
+  credit_card,
   savings,
   investment,
   debt,

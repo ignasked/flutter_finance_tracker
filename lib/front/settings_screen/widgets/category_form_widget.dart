@@ -25,8 +25,8 @@ class _CategoryFormWidgetState extends State<CategoryFormWidget> {
         Category(
           title: '',
           descriptionForAI: '',
-          colorValue: Colors.blue.value,
-          iconCodePoint: Icons.category.codePoint,
+          colorValue: AppStyle.predefinedColors.first.value,
+          iconCodePoint: AppStyle.predefinedIcons.first.codePoint,
           typeValue: TransactionType.expense.index,
         );
 
