@@ -87,11 +87,23 @@ class DataManagementCubit extends Cubit<DataManagementState> {
   }
 
   List<Category> getEnabledCategoriesCache() {
-    return state.allCategories.where((category) => category.isEnabled).toList();
+    List<Category> enabledCategories =
+        state.allCategories.where((category) => category.isEnabled).toList();
+    if (!enabledCategories.contains(Defaults().defaultCategory)) {
+      enabledCategories.add(Defaults()
+          .defaultCategory); // Remove default category from enabled list
+    }
+    return enabledCategories;
   }
 
   List<Account> getEnabledAccountsCache() {
-    return state.allAccounts.where((acc) => acc.isEnabled).toList();
+    List<Account> enabledAccounts =
+        state.allAccounts.where((acc) => acc.isEnabled).toList();
+    if (!enabledAccounts.contains(Defaults().defaultAccount)) {
+      enabledAccounts.add(Defaults()
+          .defaultAccount); // Remove default account from enabled list
+    }
+    return enabledAccounts;
   }
 
   // --- REFACTORED _applyFiltersCache ---

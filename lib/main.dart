@@ -16,6 +16,7 @@ import 'package:supabase_auth_ui/supabase_auth_ui.dart';
 import 'backend/services/sync_service.dart';
 import 'front/shared/data_management_cubit/date_cubit.dart';
 import 'config/env.dart';
+import 'package:money_owl/front/settings_screen/cubit/importer_cubit.dart'; // Import ImporterCubit
 
 /// Repository providers
 late TransactionRepository txRepository;
@@ -103,6 +104,9 @@ class MyApp extends StatelessWidget {
               context.read<CategoryRepository>(),
               context.read<FilterCubit>(), // Provide FilterCubit
             ),
+          ),
+          BlocProvider<ImporterCubit>(
+            create: (context) => ImporterCubit(), // Initialize ImporterCubit
           ),
           BlocProvider<auth_bloc.AuthBloc>(
             create: (context) {

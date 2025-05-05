@@ -209,11 +209,24 @@ class ImporterCubit extends Cubit<ImporterState> {
         accRepo.removeNonDefaultForCurrentUser(),
       ]);
 
+      List<Category> defaultCategories = catRepo.defaultCategoriesData;
+      List<Account> defaultAccounts = accRepo.defaultAccountsData;
+
+      for (int i = 0; i < defaultCategories.length; i++) {
+        // Set the userId to null for default categories
+        defaultCategories[i] = defaultCategories[i].copyWith(id: i + 1);
+      }
+
+      for (int i = 0; i < defaultAccounts.length; i++) {
+        // Set the userId to null for default accounts
+        defaultAccounts[i] = defaultAccounts[i].copyWith(id: i + 1);
+      }
+
       // 3. Re-add default categories and accounts in parallel
       // Ensure default data is available in repositories or Defaults
       await Future.wait([
-        accRepo.putMany(accRepo.defaultAccountsData),
-        catRepo.putMany(catRepo.defaultCategoriesData),
+        accRepo.putMany(defaultAccounts),
+        catRepo.putMany(defaultCategories),
       ]);
 
       // 4. Re-initialize repositories (if needed by their implementation)

@@ -112,7 +112,8 @@ class CategoryRepository extends BaseRepository<Category> {
           title: 'Food',
           descriptionForAI: 'Expenses related to food and dining',
           colorValue: AppStyle.predefinedColors[3].value, // Orange
-          iconCodePoint: AppStyle.predefinedIcons[7].codePoint, // Restaurant
+          iconCodePoint:
+              AppStyle.predefinedIcons[7].codePoint, // restaurant_outlined
           typeValue: TransactionType.expense.index,
         ),
         Category(
@@ -120,15 +121,15 @@ class CategoryRepository extends BaseRepository<Category> {
           descriptionForAI:
               'Expenses related to transportation like fuel, public transit, taxis',
           colorValue: AppStyle.predefinedColors[1].value, // Blue
-          iconCodePoint:
-              AppStyle.predefinedIcons[2].codePoint, // Directions Car
+          iconCodePoint: AppStyle
+              .predefinedIcons[2].codePoint, // directions_car_filled_outlined
           typeValue: TransactionType.expense.index,
         ),
         Category(
           title: 'Accomodation',
           descriptionForAI: 'Expenses related to housing, rent, hotels',
           colorValue: AppStyle.predefinedColors[6].value, // Brown
-          iconCodePoint: AppStyle.predefinedIcons[9].codePoint, // Home
+          iconCodePoint: AppStyle.predefinedIcons[9].codePoint, // home_outlined
           typeValue: TransactionType.expense.index,
         ),
         Category(
@@ -136,14 +137,16 @@ class CategoryRepository extends BaseRepository<Category> {
           descriptionForAI:
               'Expenses related to grocery shopping and household supplies',
           colorValue: AppStyle.predefinedColors[2].value, // Green
-          iconCodePoint: AppStyle.predefinedIcons[8].codePoint, // Shopping Cart
+          iconCodePoint:
+              AppStyle.predefinedIcons[8].codePoint, // shopping_cart_outlined
           typeValue: TransactionType.expense.index,
         ),
         Category(
           title: 'Junk Food',
           descriptionForAI: 'Expenses related to snacks and fast food',
           colorValue: AppStyle.predefinedColors[0].value, // Red
-          iconCodePoint: AppStyle.predefinedIcons[1].codePoint, // Fast Food
+          iconCodePoint:
+              AppStyle.predefinedIcons[1].codePoint, // fastfood_outlined
           typeValue: TransactionType.expense.index,
         ),
         Category(
@@ -151,8 +154,8 @@ class CategoryRepository extends BaseRepository<Category> {
           descriptionForAI:
               'Expenses related to various services and subscriptions',
           colorValue: AppStyle.predefinedColors[11].value, // Indigo
-          iconCodePoint:
-              AppStyle.predefinedIcons[10].codePoint, // Miscellaneous Services
+          iconCodePoint: AppStyle
+              .predefinedIcons[10].codePoint, // miscellaneous_services_outlined
           typeValue: TransactionType.expense.index,
         ),
         Category(
@@ -161,7 +164,7 @@ class CategoryRepository extends BaseRepository<Category> {
               'Expenses related to gym memberships and fitness activities',
           colorValue: AppStyle.predefinedColors[10].value, // Deep Orange
           iconCodePoint:
-              AppStyle.predefinedIcons[11].codePoint, // Fitness Center
+              AppStyle.predefinedIcons[11].codePoint, // fitness_center_outlined
           typeValue: TransactionType.expense.index,
         ),
         Category(
@@ -170,7 +173,7 @@ class CategoryRepository extends BaseRepository<Category> {
               'Expenses related to entertainment and leisure activities',
           colorValue: AppStyle.predefinedColors[4].value, // Purple
           iconCodePoint:
-              AppStyle.predefinedIcons[12].codePoint, // Sports Esports
+              AppStyle.predefinedIcons[12].codePoint, // sports_esports_outlined
           typeValue: TransactionType.expense.index,
         ),
         Category(
@@ -179,7 +182,7 @@ class CategoryRepository extends BaseRepository<Category> {
               'Expenses related to medical care and health services',
           colorValue: AppStyle.predefinedColors[0].value, // Red
           iconCodePoint:
-              AppStyle.predefinedIcons[5].codePoint, // Local Hospital
+              AppStyle.predefinedIcons[5].codePoint, // local_hospital_outlined
           typeValue: TransactionType.expense.index,
         ),
         Category(
@@ -187,36 +190,40 @@ class CategoryRepository extends BaseRepository<Category> {
           descriptionForAI:
               'Expenses related to utilities like electricity, water, internet',
           colorValue: AppStyle.predefinedColors[1].value, // Blue
-          iconCodePoint: AppStyle.predefinedIcons[13].codePoint, // Power
+          iconCodePoint:
+              AppStyle.predefinedIcons[13].codePoint, // power_settings_new
           typeValue: TransactionType.expense.index,
         ),
         Category(
           title: 'Clothing',
           descriptionForAI: 'Expenses related to clothes and accessories',
           colorValue: AppStyle.predefinedColors[5].value, // Pink
-          iconCodePoint: AppStyle.predefinedIcons[6].codePoint, // Shopping Bag
+          iconCodePoint:
+              AppStyle.predefinedIcons[14].codePoint, // shopping_bag_outlined
           typeValue: TransactionType.expense.index,
         ),
         Category(
-          title: 'Deposit',
+          title: 'Deposit', // Assuming this relates to recycling/returns
           descriptionForAI: 'Money deposited or saved from bottle returns',
           colorValue: AppStyle.predefinedColors[7].value, // Amber
-          iconCodePoint: AppStyle.predefinedIcons[14].codePoint, // Recycling
-          typeValue: TransactionType.expense.index,
+          iconCodePoint:
+              AppStyle.predefinedIcons[15].codePoint, // recycling_outlined
+          typeValue: TransactionType
+              .expense.index, // Should this be income? Keeping expense for now.
         ),
         Category(
           title: 'Other Expenses',
           descriptionForAI:
               'Miscellaneous expenses that don\'t fit other categories',
           colorValue: AppStyle.predefinedColors[8].value, // Grey
-          iconCodePoint: AppStyle.predefinedIcons[15].codePoint, // More Horiz
+          iconCodePoint: AppStyle.predefinedIcons[19].codePoint, // more_horiz
           typeValue: TransactionType.expense.index,
         ),
         Category(
           title: 'Salary',
           descriptionForAI: 'Regular income from employment',
           colorValue: AppStyle.predefinedColors[2].value, // Green
-          iconCodePoint: AppStyle.predefinedIcons[16].codePoint, // Work
+          iconCodePoint: AppStyle.predefinedIcons[4].codePoint, // attach_money
           typeValue: TransactionType.income.index,
         ),
         Category(
@@ -224,15 +231,15 @@ class CategoryRepository extends BaseRepository<Category> {
           descriptionForAI: 'Recieved gifts',
           colorValue: AppStyle.predefinedColors[5].value, // Pink
           iconCodePoint:
-              AppStyle.predefinedIcons[17].codePoint, // Card Giftcard
+              AppStyle.predefinedIcons[16].codePoint, // card_giftcard_outlined
           typeValue: TransactionType.income.index,
         ),
         Category(
           title: 'Side Hustle',
           descriptionForAI: 'Income from side jobs or freelance work',
           colorValue: AppStyle.predefinedColors[9].value, // Teal
-          iconCodePoint:
-              AppStyle.predefinedIcons[18].codePoint, // Business Center
+          iconCodePoint: AppStyle
+              .predefinedIcons[17].codePoint, // business_center_outlined
           typeValue: TransactionType.income.index,
         ),
         Category(
@@ -240,21 +247,23 @@ class CategoryRepository extends BaseRepository<Category> {
           descriptionForAI:
               'Miscellaneous income that doesn\'t fit other categories',
           colorValue: AppStyle.predefinedColors[8].value, // Grey
-          iconCodePoint: AppStyle.predefinedIcons[15].codePoint, // More Horiz
+          iconCodePoint: AppStyle.predefinedIcons[19].codePoint, // more_horiz
           typeValue: TransactionType.income.index,
         ),
         Category(
-          title: 'Discount for item',
+          title: 'Discount for item', // Using local_offer
           descriptionForAI: 'Money saved through discounts and rebates',
           colorValue: AppStyle.predefinedColors[2].value, // Green
-          iconCodePoint: AppStyle.predefinedIcons[19].codePoint, // Local Offer
+          iconCodePoint:
+              AppStyle.predefinedIcons[18].codePoint, // local_offer_outlined
           typeValue: TransactionType.income.index,
         ),
         Category(
-          title: 'Overall discount',
+          title: 'Overall discount', // Using local_offer
           descriptionForAI: 'Money saved through discounts and rebates',
           colorValue: AppStyle.predefinedColors[2].value, // Green
-          iconCodePoint: AppStyle.predefinedIcons[19].codePoint, // Local Offer
+          iconCodePoint:
+              AppStyle.predefinedIcons[18].codePoint, // local_offer_outlined
           typeValue: TransactionType.income.index,
         ),
       ];
@@ -601,6 +610,7 @@ class CategoryRepository extends BaseRepository<Category> {
     for (final item in categoriesToDelete) {
       // Use super.softRemove directly as the check for transactions is complex here
       // and we are explicitly deleting non-defaults.
+      // If you need the transaction check, call `remove(item.id)` instead.
       // If you need the transaction check, call `remove(item.id)` instead.
       if (await super.softRemove(item.id)) {
         successCount++;

@@ -25,180 +25,165 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dataManagementCubit = context.watch<DataManagementCubit>();
-    List<Category> enabledCategories =
-        dataManagementCubit.getEnabledCategoriesCache();
-    if (!enabledCategories.contains(Defaults().defaultCategory)) {
-      enabledCategories = [...enabledCategories, Defaults().defaultCategory];
-    }
-    List<Account> enabledAccounts =
-        dataManagementCubit.getEnabledAccountsCache();
-    if (!enabledAccounts.contains(Defaults().defaultAccount)) {
-      enabledAccounts = [...enabledAccounts, Defaults().defaultAccount];
-    }
+    final enabledCategories = dataManagementCubit.getEnabledCategoriesCache();
+    final enabledAccounts = dataManagementCubit.getEnabledAccountsCache();
 
-    return BlocProvider(
-      create: (_) => ImporterCubit(),
-      child: BlocListener<ImporterCubit, ImporterState>(
-        listener: (context, state) {
-          if (state.error != null) {
-            ScaffoldMessenger.of(context)
-              ..hideCurrentSnackBar()
-              ..showSnackBar(
-                SnackBar(
-                  content: Text(state.error!,
-                      style: AppStyle.bodyText
-                          .copyWith(color: ColorPalette.onError)),
-                  backgroundColor: ColorPalette.errorContainer,
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                    borderRadius:
-                        BorderRadius.circular(AppStyle.borderRadiusMedium),
-                  ),
-                  margin: const EdgeInsets.all(AppStyle.paddingSmall),
+    return BlocListener<ImporterCubit, ImporterState>(
+      listener: (context, state) {
+        if (state.error != null) {
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(
+              SnackBar(
+                content: Text(state.error!,
+                    style: AppStyle.bodyText
+                        .copyWith(color: ColorPalette.onError)),
+                backgroundColor: ColorPalette.errorContainer,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius:
+                      BorderRadius.circular(AppStyle.borderRadiusMedium),
                 ),
-              );
-          }
+                margin: const EdgeInsets.all(AppStyle.paddingSmall),
+              ),
+            );
+        }
 
-          if (state.lastOperation != null && !state.isLoading) {
-            ScaffoldMessenger.of(context)
-              ..hideCurrentSnackBar()
-              ..showSnackBar(
-                SnackBar(
-                  content: Text(state.lastOperation!,
-                      style: AppStyle.bodyText
-                          .copyWith(color: ColorPalette.onPrimary)),
-                  backgroundColor: AppStyle.incomeColor,
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                    borderRadius:
-                        BorderRadius.circular(AppStyle.borderRadiusMedium),
-                  ),
-                  margin: const EdgeInsets.all(AppStyle.paddingSmall),
+        if (state.lastOperation != null && !state.isLoading) {
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(
+              SnackBar(
+                content: Text(state.lastOperation!,
+                    style: AppStyle.bodyText
+                        .copyWith(color: ColorPalette.onPrimary)),
+                backgroundColor: AppStyle.incomeColor,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius:
+                      BorderRadius.circular(AppStyle.borderRadiusMedium),
                 ),
-              );
+                margin: const EdgeInsets.all(AppStyle.paddingSmall),
+              ),
+            );
 
-            context.read<ImporterCubit>().clearLastOperation();
-          }
-        },
-        child: Scaffold(
-          backgroundColor: AppStyle.backgroundColor,
-          appBar: AppBar(
-            title: const Text('Settings'),
-            backgroundColor: AppStyle.primaryColor,
-            foregroundColor: ColorPalette.onPrimary,
-            elevation: AppStyle.elevationSmall,
-          ),
-          body: SingleChildScrollView(
-            padding: const EdgeInsets.all(AppStyle.paddingMedium),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildSectionHeader('Data Management'),
-                _buildImportButton(),
-                const SizedBox(height: AppStyle.paddingSmall),
-                _buildExportButton(),
-                const SizedBox(height: AppStyle.paddingSmall),
-                _buildDeleteAllDataButton(context),
-                const SizedBox(height: AppStyle.paddingMedium),
-                const Divider(
-                    height: AppStyle.paddingMedium,
-                    color: AppStyle.dividerColor),
-                _buildSectionHeader('Preferences'),
-                _buildCurrencySelector(context),
-                const SizedBox(height: AppStyle.paddingSmall),
-                _buildDefaultCategorySelector(
-                    context, enabledCategories, Defaults().defaultCategory),
-                const SizedBox(height: AppStyle.paddingSmall),
-                _buildDefaultAccountSelector(
-                    context, enabledAccounts, Defaults().defaultAccount),
-                const SizedBox(height: AppStyle.paddingSmall),
-                const Divider(
-                    height: AppStyle.paddingMedium,
-                    color: AppStyle.dividerColor),
-                _buildSectionHeader('AI Financial Advisor'),
-                _buildSettingsListTile(
-                  context: context,
-                  icon: Icons.auto_awesome,
-                  title: 'Ask AI Financial Advisor',
-                  onTap: () => _showFinancialAnalysis(context),
-                ),
-                const SizedBox(height: AppStyle.paddingSmall),
-                const Divider(
-                    height: AppStyle.paddingMedium,
-                    color: AppStyle.dividerColor),
-                _buildSectionHeader('Management'),
-                _buildSettingsListTile(
-                  context: context,
-                  icon: Icons.category_outlined,
-                  title: 'Manage Categories',
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const CategoryManagementScreen(),
+          context.read<ImporterCubit>().clearLastOperation();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: AppStyle.backgroundColor,
+        appBar: AppBar(
+          title: const Text('Settings'),
+          backgroundColor: AppStyle.primaryColor,
+          foregroundColor: ColorPalette.onPrimary,
+          elevation: AppStyle.elevationSmall,
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(AppStyle.paddingMedium),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildSectionHeader('Data Management'),
+              _buildImportButton(),
+              const SizedBox(height: AppStyle.paddingSmall),
+              _buildExportButton(),
+              const SizedBox(height: AppStyle.paddingSmall),
+              _buildDeleteAllDataButton(context),
+              const SizedBox(height: AppStyle.paddingMedium),
+              const Divider(
+                  height: AppStyle.paddingMedium, color: AppStyle.dividerColor),
+              _buildSectionHeader('Preferences'),
+              _buildCurrencySelector(context),
+              const SizedBox(height: AppStyle.paddingSmall),
+              _buildDefaultCategorySelector(
+                  context, enabledCategories, Defaults().defaultCategory),
+              const SizedBox(height: AppStyle.paddingSmall),
+              _buildDefaultAccountSelector(
+                  context, enabledAccounts, Defaults().defaultAccount),
+              const SizedBox(height: AppStyle.paddingSmall),
+              const Divider(
+                  height: AppStyle.paddingMedium, color: AppStyle.dividerColor),
+              _buildSectionHeader('AI Financial Advisor'),
+              _buildSettingsListTile(
+                context: context,
+                icon: Icons.auto_awesome,
+                title: 'Ask AI Financial Advisor',
+                onTap: () => _showFinancialAnalysis(context),
+              ),
+              const SizedBox(height: AppStyle.paddingSmall),
+              const Divider(
+                  height: AppStyle.paddingMedium, color: AppStyle.dividerColor),
+              _buildSectionHeader('Management'),
+              _buildSettingsListTile(
+                context: context,
+                icon: Icons.category_outlined,
+                title: 'Manage Categories',
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const CategoryManagementScreen(),
+                    ),
+                  );
+                },
+              ),
+              _buildSettingsListTile(
+                context: context,
+                icon: Icons.account_balance_wallet_outlined,
+                title: 'Manage Accounts',
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const AccountManagementScreen(),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: AppStyle.paddingSmall),
+              const Divider(
+                  height: AppStyle.paddingMedium, color: AppStyle.dividerColor),
+              _buildSectionHeader('Account', icon: Icons.person_outline),
+              BlocBuilder<AuthBloc, AuthState>(
+                builder: (context, state) {
+                  if (state.status == AuthStatus.unauthenticated) {
+                    return Padding(
+                      padding:
+                          const EdgeInsets.only(bottom: AppStyle.paddingSmall),
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.login,
+                            color: ColorPalette.onPrimary),
+                        label: const Text('Login / Sign Up for Cloud Sync'),
+                        style: AppStyle.primaryButtonStyle,
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const AuthScreen(),
+                            ),
+                          );
+                        },
                       ),
                     );
-                  },
-                ),
-                _buildSettingsListTile(
-                  context: context,
-                  icon: Icons.account_balance_wallet_outlined,
-                  title: 'Manage Accounts',
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const AccountManagementScreen(),
+                  } else {
+                    return Padding(
+                      padding:
+                          const EdgeInsets.only(bottom: AppStyle.paddingSmall),
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.logout,
+                            color: ColorPalette.onPrimary),
+                        label: const Text('Logout'),
+                        style: AppStyle.primaryButtonStyle.copyWith(
+                          backgroundColor:
+                              WidgetStateProperty.all(AppStyle.secondaryColor),
+                        ),
+                        onPressed: () {
+                          context.read<AuthBloc>().add(AuthLogoutRequested());
+                        },
                       ),
                     );
-                  },
-                ),
-                const SizedBox(height: AppStyle.paddingSmall),
-                const Divider(
-                    height: AppStyle.paddingMedium,
-                    color: AppStyle.dividerColor),
-                _buildSectionHeader('Account', icon: Icons.person_outline),
-                BlocBuilder<AuthBloc, AuthState>(
-                  builder: (context, state) {
-                    if (state.status == AuthStatus.unauthenticated) {
-                      return Padding(
-                        padding: const EdgeInsets.only(
-                            bottom: AppStyle.paddingSmall),
-                        child: ElevatedButton.icon(
-                          icon: const Icon(Icons.login,
-                              color: ColorPalette.onPrimary),
-                          label: const Text('Login / Sign Up for Cloud Sync'),
-                          style: AppStyle.primaryButtonStyle,
-                          onPressed: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => const AuthScreen(),
-                              ),
-                            );
-                          },
-                        ),
-                      );
-                    } else {
-                      return Padding(
-                        padding: const EdgeInsets.only(
-                            bottom: AppStyle.paddingSmall),
-                        child: ElevatedButton.icon(
-                          icon: const Icon(Icons.logout,
-                              color: ColorPalette.onPrimary),
-                          label: const Text('Logout'),
-                          style: AppStyle.primaryButtonStyle.copyWith(
-                            backgroundColor: WidgetStateProperty.all(
-                                AppStyle.secondaryColor),
-                          ),
-                          onPressed: () {
-                            context.read<AuthBloc>().add(AuthLogoutRequested());
-                          },
-                        ),
-                      );
-                    }
-                  },
-                ),
-                const SizedBox(height: AppStyle.paddingLarge),
-              ],
-            ),
+                  }
+                },
+              ),
+              const SizedBox(height: AppStyle.paddingLarge),
+            ],
           ),
         ),
       ),
@@ -726,6 +711,12 @@ class SettingsScreen extends StatelessWidget {
   }
 
   Future<void> _showDeleteAllDataConfirmation(BuildContext context) async {
+    final importerCubit = context.read<ImporterCubit>();
+    final dataCubit = context.read<DataManagementCubit>();
+    final txRepo = context.read<TransactionRepository>();
+    final catRepo = context.read<CategoryRepository>();
+    final accRepo = context.read<AccountRepository>();
+
     await _showDeleteConfirmationDialog(
       context: context,
       title: 'Delete All Your Data?',
@@ -736,44 +727,17 @@ class SettingsScreen extends StatelessWidget {
         showLoadingPopup(context, message: 'Deleting data...');
 
         try {
-          final txRepo = context.read<TransactionRepository>();
-          final catRepo = context.read<CategoryRepository>();
-          final accRepo = context.read<AccountRepository>();
-          final dataCubit = context.read<DataManagementCubit>();
-
-          await txRepo.removeAllForCurrentUser();
-
-          await Future.wait({
-            catRepo.removeNonDefaultForCurrentUser(),
-            accRepo.removeNonDefaultForCurrentUser()
-          });
-
-          await Future.wait({
-            accRepo.putMany(accRepo.defaultAccountsData),
-            catRepo.putMany(catRepo.defaultCategoriesData),
-          });
-
-          await Future.wait({
-            catRepo.init(),
-            accRepo.init(),
-          });
-
-          await dataCubit.refreshTransactions();
-
-          if (context.mounted) {
-            hideLoadingPopup(context);
-          }
+          await importerCubit.deleteAllData(
+            txRepo,
+            catRepo,
+            accRepo,
+            dataCubit,
+          );
         } catch (e) {
+          print("Error caught during deleteAllData in UI: $e");
+        } finally {
           if (context.mounted) {
             hideLoadingPopup(context);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Error deleting data: $e',
-                    style: AppStyle.bodyText
-                        .copyWith(color: ColorPalette.onError)),
-                backgroundColor: ColorPalette.errorContainer,
-              ),
-            );
           }
         }
       },
