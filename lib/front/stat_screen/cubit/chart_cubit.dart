@@ -37,19 +37,27 @@ class ChartCubit extends Cubit<ChartState> {
     final Map<String, double> categoryTotals = {};
 
     for (final transaction in transactions) {
-      final category =
-          transaction.category.target; // Access the related Category
-      if (category != null) {
-        categoryTotals.update(
-          category.title,
-          (value) => value + transaction.amount,
-          ifAbsent: () => transaction.amount,
-        );
-      }
+      // --- ADD Null check and default value ---
+      final category = transaction.category.target;
+      final categoryTitle = category?.title ??
+          'Uncategorized'; // Use default title if category is null
+      // --- END ADD ---
+
+      // Ensure amount is not null before adding
+      final amountToAdd = transaction.amount ?? 0.0;
+
+      // Use the safe categoryTitle
+      categoryTotals.update(
+        categoryTitle,
+        (value) => value + amountToAdd,
+        ifAbsent: () => amountToAdd,
+      );
     }
 
+    // Ensure amount in ChartData is never null
     return categoryTotals.entries
-        .map((entry) => ChartData(entry.key, entry.value))
+        .map((entry) => ChartData(entry.key,
+            entry.value ?? 0.0)) // Default amount to 0.0 if somehow null
         .toList();
   }
 

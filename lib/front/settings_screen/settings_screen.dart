@@ -83,12 +83,32 @@ class SettingsScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _buildSectionHeader('Data Management'),
-              _buildImportButton(),
-              const SizedBox(height: AppStyle.paddingSmall),
-              _buildExportButton(),
-              const SizedBox(height: AppStyle.paddingSmall),
-              _buildDeleteAllDataButton(context),
+              _buildSectionHeader('Account'),
+              BlocBuilder<AuthBloc, AuthState>(builder: (context, state) {
+                if (state.status == AuthStatus.unauthenticated) {
+                  return _buildSettingsListTile(
+                    context: context,
+                    icon: Icons.login,
+                    title: 'Login / Sign Up for Cloud Sync',
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const AuthScreen(),
+                        ),
+                      );
+                    },
+                  );
+                } else {
+                  return _buildSettingsListTile(
+                    context: context,
+                    icon: Icons.logout,
+                    title: 'Logout from Cloud Sync',
+                    onTap: () {
+                      context.read<AuthBloc>().add(AuthLogoutRequested());
+                    },
+                  );
+                }
+              }),
               const SizedBox(height: AppStyle.paddingMedium),
               const Divider(
                   height: AppStyle.paddingMedium, color: AppStyle.dividerColor),
@@ -141,47 +161,12 @@ class SettingsScreen extends StatelessWidget {
               const SizedBox(height: AppStyle.paddingSmall),
               const Divider(
                   height: AppStyle.paddingMedium, color: AppStyle.dividerColor),
-              _buildSectionHeader('Account', icon: Icons.person_outline),
-              BlocBuilder<AuthBloc, AuthState>(
-                builder: (context, state) {
-                  if (state.status == AuthStatus.unauthenticated) {
-                    return Padding(
-                      padding:
-                          const EdgeInsets.only(bottom: AppStyle.paddingSmall),
-                      child: ElevatedButton.icon(
-                        icon: const Icon(Icons.login,
-                            color: ColorPalette.onPrimary),
-                        label: const Text('Login / Sign Up for Cloud Sync'),
-                        style: AppStyle.primaryButtonStyle,
-                        onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const AuthScreen(),
-                            ),
-                          );
-                        },
-                      ),
-                    );
-                  } else {
-                    return Padding(
-                      padding:
-                          const EdgeInsets.only(bottom: AppStyle.paddingSmall),
-                      child: ElevatedButton.icon(
-                        icon: const Icon(Icons.logout,
-                            color: ColorPalette.onPrimary),
-                        label: const Text('Logout'),
-                        style: AppStyle.primaryButtonStyle.copyWith(
-                          backgroundColor:
-                              WidgetStateProperty.all(AppStyle.secondaryColor),
-                        ),
-                        onPressed: () {
-                          context.read<AuthBloc>().add(AuthLogoutRequested());
-                        },
-                      ),
-                    );
-                  }
-                },
-              ),
+              _buildSectionHeader('Data Management'),
+              _buildImportButton(),
+              const SizedBox(height: AppStyle.paddingSmall),
+              _buildExportButton(),
+              const SizedBox(height: AppStyle.paddingSmall),
+              _buildDeleteAllDataButton(context),
               const SizedBox(height: AppStyle.paddingLarge),
             ],
           ),
@@ -310,6 +295,7 @@ class SettingsScreen extends StatelessWidget {
               CurrencyUtils.predefinedCurrencies[value]!;
           Defaults().saveDefaults();
           context.read<DataManagementCubit>().updateDefaultCurrency();
+          context.read<DataManagementCubit>().recalculateSummary();
         }
       },
       dropdownColor: AppStyle.cardColor,

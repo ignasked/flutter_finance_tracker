@@ -10,7 +10,7 @@ import 'package:intl/intl.dart';
 import 'package:money_owl/front/shared/data_management_cubit/data_management_cubit.dart';
 import 'cubit/chart_cubit.dart';
 import 'cubit/chart_state.dart';
-import 'package:flutter/foundation.dart'; // For listEquals
+import 'package:flutter/foundation.dart' as foundation; // For listEquals
 
 // Enum to manage category chart type
 enum CategoryChartType { expense, income }

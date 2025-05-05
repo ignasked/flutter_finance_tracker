@@ -116,6 +116,7 @@ class AppStyle {
   static const double elevationSmall =
       1.0; // Slightly reduced elevation for flatter look
   static const double elevationMedium = 3.0;
+  static const double cardElevation = elevationMedium; // Alias for common usage
 
   // --- Text Styles (Updated Colors) ---
   static const TextStyle heading1 = TextStyle(
@@ -133,6 +134,8 @@ class AppStyle {
     letterSpacing: -0.25,
     height: 1.3,
   );
+  static const TextStyle headingStyle =
+      heading2; // Alias for common usage (e.g., card titles)
 
   static const TextStyle titleStyle = TextStyle(
     fontSize: 18.0,
@@ -157,6 +160,8 @@ class AppStyle {
     letterSpacing: 0.3, // Adjusted spacing
     height: 1.5,
   );
+  static const TextStyle bodyTextSecondary =
+      captionStyle; // Alias for less important text
 
   static const TextStyle captionStyle = TextStyle(
     fontSize: 14.0,
