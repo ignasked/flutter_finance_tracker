@@ -184,57 +184,15 @@ class TransactionRepository extends BaseRepository<Transaction> {
   /// Soft removes a transaction by ID if it belongs to the current context.
   @override
   Future<bool> remove(int id) async {
-    final currentUserId = _authService.currentUser?.id;
-    try {
-      // Fetch first to ensure it belongs to the current user before soft deleting
-      final query = box
-          .query(Transaction_.id
-              .equals(id)
-              .and(_userIdCondition())
-              .and(_notDeletedCondition())) // Ensure it's not already deleted
-          .build();
-      final item = await query.findFirstAsync();
-      query.close();
-
-      if (item == null) {
-        print(
-            "Soft remove failed: Transaction $id not found, doesn't belong to user $currentUserId, or already deleted.");
-        return false;
-      }
-
-      // Prepare the update for soft delete
-      final now = DateTime.now();
-      final nowUtc = now.toUtc();
-      final itemToUpdate = item.copyWith(
-        deletedAt: nowUtc,
-        updatedAt: now, // Also update 'updatedAt' for sync mechanisms
-      );
-
-      // --- ADD: Push delete immediately (Fire-and-Forget) ---
-      if (syncService != null) {
-        print("Pushing soft delete for Transaction ID $id (no await).");
-        // Push the state *as it will be* after the local write
-        syncService!
-            .pushSingleUpsert<Transaction>(itemToUpdate)
-            .catchError((pushError) {
-          print(
-              "Background push error during remove for Transaction ID $id: $pushError");
-        });
-      } else {
-        print(
-            "Warning: syncService is null in TransactionRepository.remove. Cannot push delete immediately.");
-      }
-      // --- END ADD ---
-
-      // Perform the local update using box directly
-      await box.putAsync(itemToUpdate);
-      print("Soft removed Transaction $id locally.");
-      return true;
-    } catch (e, stacktrace) {
-      print("Error during soft remove for Transaction ID $id: $e");
-      print(stacktrace);
+    // Fetch first to ensure it belongs to the current user before soft deleting
+    final item = await getById(id); // Uses user context and notDeleted filter
+    if (item == null) {
+      print(
+          "Soft remove failed: Transaction $id not found or doesn't belong to user ${_authService.currentUser?.id}.");
       return false;
     }
+    // If found, proceed with base soft remove
+    return await super.softRemove(id);
   }
 
   /// Restores a soft-deleted transaction by ID if it belongs to the current context.
