@@ -10,6 +10,7 @@ import 'package:money_owl/backend/services/auth_service.dart'; // Import AuthSer
 import 'package:money_owl/backend/utils/defaults.dart';
 import 'package:money_owl/front/auth/auth_bloc/auth_bloc.dart'
     as auth_bloc; // Use a prefix for your local auth bloc to avoid name collision
+import 'package:money_owl/front/common/loading_widget.dart';
 import 'package:money_owl/front/shared/data_management_cubit/data_management_cubit.dart';
 import 'package:money_owl/front/shared/navbar.dart';
 import 'package:money_owl/front/shared/filter_cubit/filter_cubit.dart';
@@ -165,12 +166,25 @@ class MyApp extends StatelessWidget {
                   ),
                 );
             },
-            // The actual UI based on auth state (always shows Navigation now)
-            child: BlocBuilder<auth_bloc.AuthBloc, auth_bloc.AuthState>(
-              builder: (context, state) {
-                // Always show the main navigation.
-                return const Navigation();
+            // Add BlocListener to manage loading popup based on isSyncing
+            child: BlocListener<auth_bloc.AuthBloc, auth_bloc.AuthState>(
+              listener: (context, state) {
+                if (state.status == auth_bloc.AuthStatus.authenticated) {
+                  if (state.isSyncing) {
+                    showLoadingPopup(context, message: 'Syncing data...');
+                  } else {
+                    if (Navigator.of(context).canPop()) {
+                      hideLoadingPopup(context);
+                    }
+                  }
+                }
               },
+              child: BlocBuilder<auth_bloc.AuthBloc, auth_bloc.AuthState>(
+                builder: (context, state) {
+                  // Always show the main navigation.
+                  return const Navigation();
+                },
+              ),
             ),
           ),
         ),
