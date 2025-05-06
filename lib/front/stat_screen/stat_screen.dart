@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:money_owl/backend/utils/app_style.dart';
 import 'package:money_owl/backend/utils/defaults.dart';
+import 'package:money_owl/front/common/loading_widget.dart';
 import 'package:money_owl/front/shared/filter_cubit/filter_cubit.dart';
 import 'package:money_owl/front/transactions_screen/widgets/summary_bar_widget.dart';
 import 'package:money_owl/front/transactions_screen/widgets/date_bar_widget.dart';
@@ -11,6 +12,11 @@ import 'package:money_owl/front/shared/data_management_cubit/data_management_cub
 import 'cubit/chart_cubit.dart';
 import 'cubit/chart_state.dart';
 import 'package:flutter/foundation.dart' as foundation; // For listEquals
+
+// --- ADD AI Imports ---
+import 'package:money_owl/backend/services/mistral_service.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
+// --- END AI Imports ---
 
 // Enum to manage category chart type
 enum CategoryChartType { expense, income }
@@ -28,6 +34,18 @@ class StatScreen extends StatefulWidget {
 class _StatScreenState extends State<StatScreen> {
   Set<CategoryChartType> _selectedCategoryType = {CategoryChartType.expense};
   CategoryChartView _categoryChartView = CategoryChartView.pie;
+
+  // --- ADD AI State ---
+  bool _isAiLoading = false;
+  final TextEditingController _aiQueryController =
+      TextEditingController(); // Controller for the text field
+  // --- END AI State ---
+
+  @override
+  void dispose() {
+    _aiQueryController.dispose(); // Dispose the controller
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -83,7 +101,8 @@ class _StatScreenState extends State<StatScreen> {
                             final bool hasAnyData =
                                 hasCategoryData || hasBalanceData;
 
-                            if (!hasAnyData) {
+                            if (!hasAnyData && !_isAiLoading) {
+                              // Also check AI loading state
                               // Improved Empty State
                               return Container(
                                 padding: const EdgeInsets.symmetric(
@@ -142,6 +161,14 @@ class _StatScreenState extends State<StatScreen> {
                                     child: _buildCategorySection(
                                         context, chartState, currencySymbol),
                                   ),
+
+                                // --- ADD AI Analysis Card ---
+                                if (hasAnyData ||
+                                    _isAiLoading) // Show if there's data or AI is loading
+                                  const SizedBox(
+                                      height: AppStyle.paddingMedium),
+                                _buildAiAnalysisCard(context, dataState),
+                                // --- END AI Analysis Card ---
                               ],
                             );
                           },
@@ -705,4 +732,211 @@ class _StatScreenState extends State<StatScreen> {
       return AppStyle.accentColor; // Fallback
     }
   }
+
+  // --- UPDATE AI Analysis Card Builder ---
+  Widget _buildAiAnalysisCard(
+      BuildContext context, DataManagementState dataState) {
+    return _buildChartCard(
+      context: context,
+      title: 'AI Financial Analysis',
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+            vertical: AppStyle.paddingSmall), // Add padding
+        child: Column(
+          children: [
+            TextField(
+              controller: _aiQueryController,
+              decoration: AppStyle.getInputDecoration(
+                labelText: 'Ask a question about this data (optional)',
+                helperText: 'e.g., Where did I spend the most?',
+              ),
+              style: AppStyle.bodyText,
+              maxLines: 2, // Allow a couple of lines
+              minLines: 1,
+            ),
+            const SizedBox(height: AppStyle.paddingMedium),
+            ElevatedButton.icon(
+              icon: _isAiLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: ColorPalette.onPrimary,
+                      ),
+                    )
+                  : const Icon(Icons.insights, color: ColorPalette.onPrimary),
+              label: Text(_isAiLoading ? 'Analyzing...' : 'Get Analysis'),
+              style: AppStyle.primaryButtonStyle,
+              onPressed: _isAiLoading
+                  ? null
+                  : () => _showFinancialAnalysis(context, dataState,
+                      _aiQueryController.text), // Pass the query
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  // --- END AI Analysis Card Builder ---
+
+  // --- UPDATE AI Analysis Method Signature ---
+  Future<void> _showFinancialAnalysis(BuildContext context,
+      DataManagementState dataState, String userQuery) async {
+    if (!mounted) return;
+
+    final transactions = dataState.filteredTransactions;
+    final filterState =
+        context.read<FilterCubit>().state; // Get current filters
+
+    if (transactions.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No transactions found for analysis.'),
+          backgroundColor: AppStyle.warningColor,
+        ),
+      );
+      return;
+    }
+
+    // --- Prepare Anonymized Data ---
+    final Map<String, double> categorySpending = {};
+    for (final transaction in transactions) {
+      final categoryTitle =
+          transaction.category.target?.title ?? 'Uncategorized';
+      final amount =
+          transaction.amount.abs(); // Use absolute value for spending
+      categorySpending.update(
+        categoryTitle,
+        (value) => value + amount,
+        ifAbsent: () => amount,
+      );
+    }
+
+    // Format the data as a string (e.g., "Category: Amount\nCategory: Amount")
+    final currencyFormat = NumberFormat.simpleCurrency(
+      name: filterState.selectedAccount?.currencySymbolOrCurrency ??
+          Defaults().defaultCurrencySymbol,
+      decimalDigits: 2, // Or adjust as needed
+    );
+    final anonymizedDataString = categorySpending.entries
+        .where((entry) => entry.value > 0.01) // Filter out negligible amounts
+        .map((entry) => '${entry.key}: ${currencyFormat.format(entry.value)}')
+        .join('\n');
+
+    // --- Format Date Range ---
+    final DateFormat dateFormat = DateFormat('MMM d, yyyy');
+    String dateRangeString = 'for the selected period'; // Default
+    if (filterState.startDate != null && filterState.endDate != null) {
+      if (filterState.singleDay) {
+        dateRangeString = 'on ${dateFormat.format(filterState.startDate!)}';
+      } else {
+        dateRangeString =
+            'from ${dateFormat.format(filterState.startDate!)} to ${dateFormat.format(filterState.endDate!)}';
+      }
+    } else if (filterState.startDate != null) {
+      dateRangeString =
+          'from ${dateFormat.format(filterState.startDate!)} onwards';
+    } else if (filterState.endDate != null) {
+      dateRangeString = 'up to ${dateFormat.format(filterState.endDate!)}';
+    }
+    // --- End Format Date Range ---
+
+    if (anonymizedDataString.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+              'No significant spending data found for analysis in the selected period.'),
+          backgroundColor: AppStyle.linkColor, // Use info color
+        ),
+      );
+      return;
+    }
+    // --- End Prepare Anonymized Data ---
+
+    setState(() {
+      _isAiLoading = true;
+    });
+
+    showLoadingPopup(context, message: 'Generating AI analysis...');
+
+    try {
+      // --- Pass Anonymized Data, User Query, and Date Range ---
+      final analysis = await MistralService.instance.provideFinancialAnalysis(
+        anonymizedDataString, // Pass the formatted string
+        userQuery.trim(), // Pass the trimmed user query
+        dateRangeString, // Pass the formatted date range
+      );
+      // --- End Pass Anonymized Data, User Query, and Date Range ---
+
+      if (!mounted) return;
+      hideLoadingPopup(context);
+
+      await showDialog(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          backgroundColor: AppStyle.cardColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppStyle.borderRadiusMedium),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.insights, color: AppStyle.primaryColor),
+              SizedBox(width: AppStyle.paddingSmall),
+              Text('Financial Analysis', style: AppStyle.heading2),
+            ],
+          ),
+          content: SizedBox(
+            width: double.maxFinite, // Use available width
+            child: SingleChildScrollView(
+              // Make content scrollable
+              child: MarkdownBody(
+                data: analysis,
+                styleSheet: MarkdownStyleSheet(
+                  p: AppStyle.bodyText,
+                  h1: AppStyle.heading1,
+                  h2: AppStyle.heading2,
+                  h3: AppStyle.titleStyle,
+                  listBullet: AppStyle.bodyText,
+                  code: AppStyle.captionStyle.copyWith(
+                    backgroundColor: AppStyle.dividerColor.withOpacity(0.1),
+                  ),
+                  codeblockDecoration: BoxDecoration(
+                    color: AppStyle.dividerColor.withOpacity(0.1),
+                    borderRadius:
+                        BorderRadius.circular(AppStyle.borderRadiusSmall),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              style: AppStyle.textButtonStyle,
+              child: const Text('Close'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      hideLoadingPopup(context);
+      print("Error getting AI analysis: $e"); // Logs the error
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error generating analysis: $e', // Displays the error
+              style: AppStyle.bodyText.copyWith(color: ColorPalette.onError)),
+          backgroundColor: ColorPalette.errorContainer,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isAiLoading = false;
+        });
+      }
+    }
+  }
+  // --- END AI Analysis Method ---
 }

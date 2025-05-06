@@ -5,7 +5,6 @@ import 'package:money_owl/backend/models/category.dart';
 import 'package:money_owl/backend/repositories/account_repository.dart';
 import 'package:money_owl/backend/repositories/category_repository.dart';
 import 'package:money_owl/backend/repositories/transaction_repository.dart';
-import 'package:money_owl/backend/services/mistral_service.dart';
 import 'package:money_owl/backend/utils/currency_utils.dart';
 import 'package:money_owl/backend/utils/defaults.dart';
 import 'package:money_owl/front/auth/auth_bloc/auth_bloc.dart';
@@ -14,7 +13,6 @@ import 'package:money_owl/front/shared/data_management_cubit/data_management_cub
 import 'package:money_owl/front/settings_screen/account_management_screen.dart';
 import 'package:money_owl/front/settings_screen/cubit/importer_cubit.dart';
 import 'package:money_owl/front/settings_screen/category_management_screen.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../common/loading_widget.dart';
 import 'package:money_owl/backend/utils/app_style.dart';
@@ -120,16 +118,6 @@ class SettingsScreen extends StatelessWidget {
               const SizedBox(height: AppStyle.paddingSmall),
               _buildDefaultAccountSelector(
                   context, enabledAccounts, Defaults().defaultAccount),
-              const SizedBox(height: AppStyle.paddingSmall),
-              const Divider(
-                  height: AppStyle.paddingMedium, color: AppStyle.dividerColor),
-              _buildSectionHeader('AI Financial Advisor'),
-              _buildSettingsListTile(
-                context: context,
-                icon: Icons.auto_awesome,
-                title: 'Ask AI Financial Advisor',
-                onTap: () => _showFinancialAnalysis(context),
-              ),
               const SizedBox(height: AppStyle.paddingSmall),
               const Divider(
                   height: AppStyle.paddingMedium, color: AppStyle.dividerColor),
@@ -454,100 +442,6 @@ class SettingsScreen extends StatelessWidget {
         }).toList();
       },
     );
-  }
-
-  Future<void> _showFinancialAnalysis(BuildContext context) async {
-    if (!context.mounted) return;
-    showLoadingPopup(context, message: 'Analyzing your data...');
-
-    try {
-      final transactions =
-          context.read<DataManagementCubit>().state.filteredTransactions;
-      final importerCubit = context.read<ImporterCubit>();
-      final jsonData = await importerCubit.exportTransactions(transactions);
-
-      if (!context.mounted) return;
-
-      final analysis =
-          await MistralService.instance.provideFinancialAnalysis(jsonData);
-
-      if (!context.mounted) return;
-
-      hideLoadingPopup(context);
-
-      showDialog(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          backgroundColor: AppStyle.cardColor,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppStyle.borderRadiusMedium),
-          ),
-          titlePadding: const EdgeInsets.fromLTRB(
-              AppStyle.paddingMedium,
-              AppStyle.paddingMedium,
-              AppStyle.paddingMedium,
-              AppStyle.paddingSmall),
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: AppStyle.paddingMedium),
-          actionsPadding: const EdgeInsets.all(AppStyle.paddingSmall),
-          title: Row(
-            children: [
-              Image.asset(
-                'assets/icons/money_owl_transparent.png',
-                width: 32,
-                height: 32,
-              ),
-              const SizedBox(width: AppStyle.paddingSmall),
-              const Expanded(
-                child: Text('Financial Analysis', style: AppStyle.heading2),
-              ),
-            ],
-          ),
-          content: SizedBox(
-            width: double.maxFinite,
-            height: MediaQuery.of(context).size.height * 0.6,
-            child: Scrollbar(
-              thumbVisibility: true,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.only(bottom: AppStyle.paddingMedium),
-                child: MarkdownBody(
-                  data: analysis.toString(),
-                  styleSheet:
-                      MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
-                    p: AppStyle.bodyText,
-                    h1: AppStyle.heading1.copyWith(fontSize: 24),
-                    h2: AppStyle.heading2.copyWith(fontSize: 20),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              style: AppStyle.textButtonStyle,
-              child: const Text('Close'),
-            ),
-          ],
-        ),
-      );
-    } catch (e) {
-      if (context.mounted) {
-        hideLoadingPopup(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error generating analysis: $e',
-                style: AppStyle.bodyText.copyWith(color: ColorPalette.onError)),
-            backgroundColor: ColorPalette.errorContainer,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-                borderRadius:
-                    BorderRadius.circular(AppStyle.borderRadiusMedium)),
-            margin: const EdgeInsets.all(AppStyle.paddingSmall),
-          ),
-        );
-      }
-    }
   }
 
   Future<void> _handleImport(BuildContext context) async {

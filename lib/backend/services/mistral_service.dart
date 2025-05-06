@@ -14,8 +14,10 @@ class MistralService {
 
   static final MistralService instance = MistralService._();
 
-  Future<String> provideFinancialAnalysis(String data) async {
-    final llmResponseText = await _askLLMForAnalysis(data);
+  Future<String> provideFinancialAnalysis(
+      String data, String userRequest, String dateRange) async {
+    final llmResponseText =
+        await _askLLMForAnalysis(data, userRequest, dateRange);
     final rawContent =
         jsonDecode(llmResponseText)['choices'][0]['message']['content'].trim();
 
@@ -133,21 +135,39 @@ $markdownTexts
     return utf8.decode(llmResponse.bodyBytes);
   }
 
-  Future<String> _askLLMForAnalysis(String markdownTexts) async {
+  Future<String> _askLLMForAnalysis(
+      String markdownTexts, String userRequest, String dateRange) async {
+    String content = '';
+    if (userRequest.isEmpty) {
+      content = '''
+- You are the best personal finance analyst.
+- You need to povide insightful personalized suggestions how to improve my finances.
+- If possible try to give insights if it's normal to spend this much money in described categories.
+- Don't tell me about total balance or total income or expenses.
+- Don't include beginning text like "Based on the provided transaction data..." and etc. Go straight to the point.
+
+- I have made these transactions in the period of: $dateRange
+Here is the list of my financial transactions categorized by the type of transaction:
+$markdownTexts
+''';
+    } else {
+      content = '''
+- You are the best personal finance analyst.
+$userRequest
+
+Here is the list of my financial transactions categorized by the type of transaction if it's needed:
+$markdownTexts
+
+- I have made these transactions in the period of: $dateRange
+''';
+    }
+
     final llmResponse = await _postRequest('chat/completions', {
       'model': 'mistral-large-latest',
       'messages': [
         {
           'role': 'user',
-          'content': '''
-- You are the best personal finance analyst.
-- You need to povide personalized suggestions how to improve my finances.
-- Don't tell me about total balance or total income or expenses.
-- Don't include beginning text like "Based on the provided transaction data..." and etc. Go straight to the point.
-
-These are the transactions I made:
-$markdownTexts
-''',
+          'content': content,
         }
       ],
       'temperature': 0.7,
