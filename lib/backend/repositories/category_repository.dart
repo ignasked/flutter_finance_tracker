@@ -466,23 +466,18 @@ class CategoryRepository extends BaseRepository<Category> {
       // Use super.put to save locally
       resultId = await super.put(categoryToSave, syncSource: syncSource);
 
-      // --- Push Change Immediately ---
+      // --- Push Change Immediately (Fire-and-Forget) ---
       if (resultId != 0 && syncService != null) {
-        // <-- Check if syncService is available
-        // Fetch the final saved item to ensure we push the correct state
         final savedItem = await box.getAsync(resultId);
         if (savedItem != null) {
           print(
-              "Pushing change for Category ID $resultId immediately after local put.");
-          // Use try-catch to avoid breaking flow if push fails
-          try {
-            // Use the public syncService field
-            await syncService!.pushSingleUpsert<Category>(savedItem);
-          } catch (pushError) {
+              "Pushing change for Category ID $resultId immediately after local put (no await).");
+          syncService!
+              .pushSingleUpsert<Category>(savedItem)
+              .catchError((pushError) {
             print(
-                "Error during immediate push after local put for Category ID $resultId: $pushError");
-            // Log error, but don't rethrow
-          }
+                "Background push error for Category ID $resultId: $pushError");
+          });
         } else {
           print(
               "Warning: Could not fetch Category ID $resultId after put for immediate push.");
@@ -493,7 +488,7 @@ class CategoryRepository extends BaseRepository<Category> {
       }
       // --- End Push Change ---
 
-      return resultId;
+      return resultId; // Return immediately
     } else {
       // Syncing down from Supabase
       if (category.userId == null) {
@@ -605,21 +600,73 @@ class CategoryRepository extends BaseRepository<Category> {
         : Transaction_.userId.isNull();
   }
 
-  /// Soft removes a category by ID if it belongs to the current context.
+  /// Soft removes a category by ID if it belongs to the current context,
+  /// is not a default category, and has no transactions.
   @override
   Future<bool> remove(int id) async {
-    // Prevent deletion of default categories (assuming IDs 1-19 are defaults)
+    final currentUserId = _authService.currentUser?.id;
+    // Prevent deletion of default categories
     if (id >= 1 && id <= defaultCategoriesData.length) {
-      print("Soft remove failed: Cannot remove default category ID $id.");
-      return false;
+      print("Error: Cannot delete default category ID $id.");
+      return false; // Indicate failure
     }
+
+    // Check for transactions
     final hasTransactions = await _hasTransactionsForCategory(id);
     if (hasTransactions) {
-      print(
-          "Soft remove failed: Category $id is still linked to active transactions.");
+      print("Error: Cannot delete category ID $id, it has transactions.");
+      return false; // Indicate failure
+    }
+
+    try {
+      // Fetch the item, ensuring it belongs to the user and is not deleted
+      final query = box
+          .query(Category_.id
+              .equals(id)
+              .and(_userIdCondition())
+              .and(_notDeletedCondition()))
+          .build();
+      final item = await query.findFirstAsync();
+      query.close();
+
+      if (item == null) {
+        print(
+            "Soft remove failed: Category $id not found, doesn't belong to user $currentUserId, or already deleted.");
+        return false;
+      }
+
+      // Prepare the update for soft delete
+      final now = DateTime.now();
+      final nowUtc = now.toUtc();
+      final itemToUpdate = item.copyWith(
+        deletedAt: nowUtc,
+        updatedAt: now, // Also update 'updatedAt' for sync mechanisms
+      );
+
+      // --- ADD: Push delete immediately (Fire-and-Forget) ---
+      if (syncService != null) {
+        print("Pushing soft delete for Category ID $id (no await).");
+        syncService!
+            .pushSingleUpsert<Category>(itemToUpdate)
+            .catchError((pushError) {
+          print(
+              "Background push error during remove for Category ID $id: $pushError");
+        });
+      } else {
+        print(
+            "Warning: syncService is null in CategoryRepository.remove. Cannot push delete immediately.");
+      }
+      // --- END ADD ---
+
+      // Perform the local update using box directly
+      await box.putAsync(itemToUpdate);
+      print("Soft removed Category $id locally.");
+      return true;
+    } catch (e, stacktrace) {
+      print("Error during soft remove for Category ID $id: $e");
+      print(stacktrace);
       return false;
     }
-    return await super.softRemove(id);
   }
 
   /// Restores a soft-deleted category by ID if it belongs to the current context.
@@ -716,19 +763,55 @@ class CategoryRepository extends BaseRepository<Category> {
 
     int successCount = 0;
     int skippedCount = 0;
+    final now = DateTime.now();
+    final nowUtc = now.toUtc();
+    final List<Category> itemsToSoftDelete =
+        []; // Collect items to push/update locally
+
     for (final item in categoriesToDelete) {
-      // Use super.softRemove directly as the check for transactions is complex here
-      // and we are explicitly deleting non-defaults.
-      // If you need the transaction check, call `remove(item.id)` instead.
-      if (await super.softRemove(item.id)) {
-        successCount++;
-      } else {
-        // This might happen if softRemove fails for other reasons
+      final hasTransactions = await _hasTransactionsForCategory(item.id);
+      if (hasTransactions) {
+        print("Skipping delete for Category ID ${item.id}: Has transactions.");
         skippedCount++;
+        continue;
+      }
+      itemsToSoftDelete.add(item.copyWith(
+        // Add to list
+        deletedAt: nowUtc,
+        updatedAt: now,
+      ));
+    }
+
+    // --- MODIFIED: Push deletes using pushUpsertMany (Fire-and-Forget) ---
+    if (syncService != null && itemsToSoftDelete.isNotEmpty) {
+      print(
+          "Pushing ${itemsToSoftDelete.length} category deletes using pushUpsertMany (no await).");
+      syncService!
+          .pushUpsertMany<Category>(itemsToSoftDelete)
+          .catchError((pushError) {
+        print(
+            "Background push error during pushUpsertMany for deleting Categories: $pushError");
+      });
+    } else if (syncService == null) {
+      print(
+          "Warning: syncService is null in removeNonDefaultForCurrentUser. Cannot push deletes immediately.");
+    }
+    // --- END MODIFIED ---
+
+    // Perform local batch update
+    if (itemsToSoftDelete.isNotEmpty) {
+      try {
+        await box.putManyAsync(itemsToSoftDelete);
+        successCount = itemsToSoftDelete.length;
+      } catch (e) {
+        print(
+            "Error during local putManyAsync in removeNonDefaultForCurrentUser: $e");
+        // Keep successCount based on push attempt
       }
     }
+
     print(
-        "Soft removed $successCount non-default categories (ID > 18) for user ${currentUserId ?? 'unauthenticated'}." +
+        "Attempted soft remove for $successCount non-default categories (ID > ${defaultCategoriesData.length}) for user ${_authService.currentUser?.id ?? 'unauthenticated'}." +
             (skippedCount > 0 ? " Skipped $skippedCount." : ""));
     return successCount;
   }
@@ -746,6 +829,7 @@ class CategoryRepository extends BaseRepository<Category> {
   @override
   Future<List<int>> putMany(List<Category> entities,
       {SyncSource syncSource = SyncSource.local}) async {
+    List<int> resultIds = [];
     if (syncSource == SyncSource.supabase) {
       final entitiesToSave = entities
           .map((e) => e.copyWith(
@@ -753,7 +837,7 @@ class CategoryRepository extends BaseRepository<Category> {
               updatedAt: e.updatedAt.toLocal(),
               deletedAt: e.deletedAt?.toLocal()))
           .toList();
-      return await super.putMany(entitiesToSave, syncSource: syncSource);
+      resultIds = await super.putMany(entitiesToSave, syncSource: syncSource);
     } else {
       final currentUserId = _authService.currentUser?.id;
       final now = DateTime.now();
@@ -789,8 +873,38 @@ class CategoryRepository extends BaseRepository<Category> {
         }
         processedEntities.add(entityToSave);
       }
-      return await super.putMany(processedEntities, syncSource: syncSource);
+      if (processedEntities.isNotEmpty) {
+        resultIds =
+            await super.putMany(processedEntities, syncSource: syncSource);
+
+        // --- MODIFIED: Use pushUpsertMany (Fire-and-Forget) ---
+        if (resultIds.isNotEmpty && syncService != null) {
+          print(
+              "Pushing ${resultIds.length} categories after local putMany using pushUpsertMany (no await).");
+          final savedItems = (await box.getManyAsync(resultIds))
+              .whereType<Category>()
+              .toList();
+          if (savedItems.isNotEmpty) {
+            syncService!
+                .pushUpsertMany<Category>(savedItems)
+                .catchError((pushError) {
+              print(
+                  "Background push error during pushUpsertMany for Categories: $pushError");
+            });
+          } else {
+            print(
+                "Warning: Could not fetch saved categories after putMany for push.");
+          }
+        } else if (syncService == null) {
+          print(
+              "Warning: syncService is null in CategoryRepository.putMany. Cannot push changes immediately.");
+        }
+        // --- END MODIFIED ---
+      } else {
+        resultIds = [];
+      }
     }
+    return resultIds;
   }
 
   /// Checks if any non-deleted categories exist with a null userId.

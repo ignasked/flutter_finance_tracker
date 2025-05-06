@@ -38,34 +38,33 @@ class DataManagementCubit extends Cubit<DataManagementState> {
     this._categoryRepository,
     this._filterCubit, // Accept FilterCubit
   ) : super(const DataManagementState()) {
-    _loadInitialData();
+    // Initial load is NOT a refresh
+    _loadInitialData(isRefresh: false); // Pass false explicitly
 
     // Listen to filter changes
     _filterSubscription = _filterCubit.stream.listen((filterState) {
-      _applyFiltersCache(filterState); // Apply filters when FilterCubit updates
+      // Call the corrected _applyFiltersCache
+      emit(state.copyWith(status: LoadingStatus.loading));
+      _applyFiltersCache(filterState);
+      //emit(state.copyWith(status: LoadingStatus.success));
     });
   }
 
   Future<void> refreshData() async {
-    _loadInitialData();
+    // This is a refresh, so pass true
+    await _loadInitialData(isRefresh: true);
   }
 
   Future<void> refreshTransactions() async {
-    emit(state.copyWith(status: LoadingStatus.loading));
-    try {
-      // Fetch all data again, which includes applying filters
-      await _loadInitialData(); // Corrected: Call _loadInitialData which handles filters
-    } catch (e) {
-      print("Error refreshing transactions: $e");
-      emit(state.copyWith(
-          status: LoadingStatus.failure,
-          errorMessage: "Error refreshing transactions: $e"));
-    }
+    // This is also a refresh context
+    await _loadInitialData(isRefresh: true);
   }
 
-  Future<void> _loadInitialData() async {
-    emit(state.copyWith(
-        status: LoadingStatus.loading)); // Emit loading ONCE at the start
+  Future<void> _loadInitialData({bool isRefresh = false}) async {
+    // Only emit loading if it's NOT a refresh triggered after sync/action
+    if (!isRefresh) {
+      emit(state.copyWith(status: LoadingStatus.loading));
+    }
     try {
       // Fetch all base data
       final allTransactions = await _transactionRepository.getAll();
@@ -123,15 +122,16 @@ class DataManagementCubit extends Cubit<DataManagementState> {
         displayedTransactions: viewModels,
         summary: summary,
         status: LoadingStatus.success, // Emit success HERE
+        clearError: true, // Clear any previous error
       ));
       // --- End direct application ---
     } catch (e, stacktrace) {
       // Added stacktrace
-      print("Error loading initial data: $e");
+      print("Error loading initial data (isRefresh: $isRefresh): $e");
       print(stacktrace); // Print stacktrace for better debugging
       emit(state.copyWith(
           status: LoadingStatus.failure,
-          errorMessage: "Error loading initial data: $e"));
+          errorMessage: "Error loading data: $e"));
     }
   }
 
@@ -148,14 +148,15 @@ class DataManagementCubit extends Cubit<DataManagementState> {
   }
 
   void _applyFiltersCache(FilterState filterState) async {
-    emit(state.copyWith(status: LoadingStatus.loading));
     try {
+      // Apply the new filterState using the repository
       final List<Transaction> filteredRaw =
           await _transactionRepository.getFiltered(filterState);
 
-      // Map filtered raw data to ViewModels
+      // Map filtered raw data to ViewModels using existing accounts/categories from state
       final List<TransactionViewModel> viewModels = [];
       final dateFormat = DateFormat.Md();
+      // Use accounts/categories already in the state
       final accountMap = {for (var acc in state.allAccounts) acc.id: acc};
       final categoryMap = {for (var cat in state.allCategories) cat.id: cat};
 
@@ -185,15 +186,19 @@ class DataManagementCubit extends Cubit<DataManagementState> {
         ));
       }
 
-      // Calculate Summary using the filtered RAW data and existing allTransactions
+      // Calculate Summary using the newly filtered RAW data and existing allTransactions
+      // Pass state.allTransactions for starting balance calculation
       final summary = await _calculateSummary(
           filteredRaw, filterState.selectedAccount, state.allTransactions);
 
+      // Emit success state with updated filtered/displayed lists and summary
+      // Keep existing allTransactions, allAccounts, allCategories
       emit(state.copyWith(
         filteredTransactions: filteredRaw,
         displayedTransactions: viewModels,
         summary: summary,
-        status: LoadingStatus.success,
+        status: LoadingStatus.success, // Go directly to success
+        clearError: true,
       ));
     } catch (e, stacktrace) {
       print("Error applying filters or mapping ViewModels: $e");
@@ -349,25 +354,63 @@ class DataManagementCubit extends Cubit<DataManagementState> {
     }
   }
 
-  Future deleteTransaction(int transactionId) async {
-    try {
-      final success = await _transactionRepository.remove(transactionId);
-      if (success) {
-        _applyFiltersCache(_filterCubit.state);
+  Future<void> deleteTransaction(int transactionId) async {
+    // 1. Find the items to remove from the current state synchronously
+    final List<TransactionViewModel> updatedDisplayed =
+        List.from(state.displayedTransactions)
+          ..removeWhere((vm) => vm.id == transactionId);
+    final List<Transaction> updatedFiltered =
+        List.from(state.filteredTransactions)
+          ..removeWhere((tx) => tx.id == transactionId);
+    final List<Transaction> updatedAll = List.from(state.allTransactions)
+      ..removeWhere((tx) => tx.id == transactionId);
+
+    // Check if the item was actually found and removed from displayed list
+    bool itemRemoved =
+        updatedDisplayed.length < state.displayedTransactions.length;
+
+    if (!itemRemoved) {
+      print(
+          "Warning: Transaction ID $transactionId not found in displayed list for immediate removal.");
+      // Optionally still proceed with repo delete, or emit failure?
+      // Let's proceed with repo delete attempt anyway.
+    }
+
+    // 2. Emit the updated state IMMEDIATELY (synchronously)
+    // Recalculate summary based on the synchronously updated filtered list
+    final summary = await _calculateSummary(
+        updatedFiltered, _filterCubit.state.selectedAccount, updatedAll);
+
+    emit(state.copyWith(
+      displayedTransactions: updatedDisplayed,
+      filteredTransactions: updatedFiltered,
+      allTransactions: updatedAll, // Also remove from allTransactions list
+      summary: summary,
+      status: LoadingStatus.success, // Maintain success status
+    ));
+
+    // 3. Perform the repository deletion in the background (fire-and-forget)
+    // No need to await this for the UI update
+    _transactionRepository.remove(transactionId).then((success) {
+      if (!success) {
+        print(
+            "Error deleting transaction $transactionId from repository (returned false). State might be inconsistent.");
+        // Optionally: Emit a specific error state or re-fetch data to correct inconsistency
+        // For now, just log the error. A subsequent refreshData would fix it.
+        // emit(state.copyWith(status: LoadingStatus.failure, errorMessage: "Failed to delete transaction from storage"));
       } else {
         print(
-            "Error deleting transaction $transactionId (repository returned false)");
-        emit(state.copyWith(
-            status: LoadingStatus.failure,
-            errorMessage: "Failed to delete transaction"));
+            "Successfully deleted transaction $transactionId from repository in background.");
+        // Optional: If you absolutely need filters reapplied *after* delete confirmation,
+        // you could call _applyFiltersCache here, but it might cause a flicker.
+        // _applyFiltersCache(_filterCubit.state);
       }
-    } catch (e, stacktrace) {
+    }).catchError((e, stacktrace) {
       print("Error deleting transaction $transactionId from repository: $e");
       print(stacktrace);
-      emit(state.copyWith(
-          status: LoadingStatus.failure,
-          errorMessage: "Failed to delete transaction: $e"));
-    }
+      // Optionally emit error state
+      // emit(state.copyWith(status: LoadingStatus.failure, errorMessage: "Failed to delete transaction: $e"));
+    });
   }
 
   Future deleteAllTransactions() async {

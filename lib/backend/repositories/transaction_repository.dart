@@ -103,23 +103,21 @@ class TransactionRepository extends BaseRepository<Transaction> {
       // Use super.put to save locally
       resultId = await super.put(transactionToSave, syncSource: syncSource);
 
-      // --- Push Change Immediately ---
+      // --- Push Change Immediately (Fire-and-Forget) ---
       if (resultId != 0 && syncService != null) {
-        // <-- Check if syncService is available
         // Fetch the final saved item to ensure we push the correct state
         final savedItem = await box.getAsync(resultId);
         if (savedItem != null) {
           print(
-              "Pushing change for Transaction ID $resultId immediately after local put.");
-          // Use try-catch to avoid breaking flow if push fails
-          try {
-            // Use the public syncService field
-            await syncService!.pushSingleUpsert<Transaction>(savedItem);
-          } catch (pushError) {
+              "Pushing change for Transaction ID $resultId immediately after local put (no await).");
+          // Use try-catch within an unawaited Future for background error handling
+          syncService!
+              .pushSingleUpsert<Transaction>(savedItem)
+              .catchError((pushError) {
             print(
-                "Error during immediate push after local put for Transaction ID $resultId: $pushError");
-            // Log error, but don't rethrow
-          }
+                "Background push error for Transaction ID $resultId: $pushError");
+            // Log error, but don't rethrow as it's in the background
+          });
         } else {
           print(
               "Warning: Could not fetch Transaction ID $resultId after put for immediate push.");
@@ -130,7 +128,7 @@ class TransactionRepository extends BaseRepository<Transaction> {
       }
       // --- End Push Change ---
 
-      return resultId;
+      return resultId; // Return immediately after local put
     } else {
       // Syncing down from Supabase
       if (transaction.userId == null) {
@@ -186,15 +184,57 @@ class TransactionRepository extends BaseRepository<Transaction> {
   /// Soft removes a transaction by ID if it belongs to the current context.
   @override
   Future<bool> remove(int id) async {
-    // Fetch first to ensure it belongs to the current user before soft deleting
-    final item = await getById(id); // Uses user context and notDeleted filter
-    if (item == null) {
-      print(
-          "Soft remove failed: Transaction $id not found or doesn't belong to user ${_authService.currentUser?.id}.");
+    final currentUserId = _authService.currentUser?.id;
+    try {
+      // Fetch first to ensure it belongs to the current user before soft deleting
+      final query = box
+          .query(Transaction_.id
+              .equals(id)
+              .and(_userIdCondition())
+              .and(_notDeletedCondition())) // Ensure it's not already deleted
+          .build();
+      final item = await query.findFirstAsync();
+      query.close();
+
+      if (item == null) {
+        print(
+            "Soft remove failed: Transaction $id not found, doesn't belong to user $currentUserId, or already deleted.");
+        return false;
+      }
+
+      // Prepare the update for soft delete
+      final now = DateTime.now();
+      final nowUtc = now.toUtc();
+      final itemToUpdate = item.copyWith(
+        deletedAt: nowUtc,
+        updatedAt: now, // Also update 'updatedAt' for sync mechanisms
+      );
+
+      // --- ADD: Push delete immediately (Fire-and-Forget) ---
+      if (syncService != null) {
+        print("Pushing soft delete for Transaction ID $id (no await).");
+        // Push the state *as it will be* after the local write
+        syncService!
+            .pushSingleUpsert<Transaction>(itemToUpdate)
+            .catchError((pushError) {
+          print(
+              "Background push error during remove for Transaction ID $id: $pushError");
+        });
+      } else {
+        print(
+            "Warning: syncService is null in TransactionRepository.remove. Cannot push delete immediately.");
+      }
+      // --- END ADD ---
+
+      // Perform the local update using box directly
+      await box.putAsync(itemToUpdate);
+      print("Soft removed Transaction $id locally.");
+      return true;
+    } catch (e, stacktrace) {
+      print("Error during soft remove for Transaction ID $id: $e");
+      print(stacktrace);
       return false;
     }
-    // If found, proceed with base soft remove
-    return await super.softRemove(id);
   }
 
   /// Restores a soft-deleted transaction by ID if it belongs to the current context.
@@ -303,14 +343,31 @@ class TransactionRepository extends BaseRepository<Transaction> {
     }
 
     try {
-      // Use box.putManyAsync directly to bypass context checks in overridden putMany
+      // --- MODIFIED: Push deletes using pushUpsertMany (Fire-and-Forget) ---
+      if (syncService != null && itemsToSoftDelete.isNotEmpty) {
+        print(
+            "Pushing ${itemsToSoftDelete.length} transaction deletes using pushUpsertMany (no await).");
+        // Push the state *as it will be* after the local write
+        syncService!
+            .pushUpsertMany<Transaction>(itemsToSoftDelete)
+            .catchError((pushError) {
+          print(
+              "Background push error during pushUpsertMany for deleting Transactions: $pushError");
+        });
+      } else if (syncService == null) {
+        print(
+            "Warning: syncService is null in removeAllForCurrentUser. Cannot push deletes immediately.");
+      }
+      // --- END MODIFIED ---
+
+      // Use box.putManyAsync directly
       await box.putManyAsync(itemsToSoftDelete);
       print(
-          "Soft removed ${itemsToSoftDelete.length} transactions for user: ${_authService.currentUser?.id ?? 'unauthenticated'}");
+          "Soft removed ${itemsToSoftDelete.length} transactions locally for user: ${_authService.currentUser?.id ?? 'unauthenticated'}");
       return itemsToSoftDelete.length;
     } catch (e) {
       print("Error during direct putManyAsync in removeAllForCurrentUser: $e");
-      return 0;
+      return 0; // Return 0 as local write failed, though push was attempted
     }
   }
 
@@ -327,26 +384,22 @@ class TransactionRepository extends BaseRepository<Transaction> {
   @override
   Future<List<int>> putMany(List<Transaction> entities,
       {SyncSource syncSource = SyncSource.local}) async {
+    List<int> resultIds = [];
     if (syncSource == SyncSource.supabase) {
-      // Syncing down from Supabase
       final entitiesToSave = entities
           .map((e) => e.copyWith(
               createdAt: e.createdAt.toLocal(),
               updatedAt: e.updatedAt.toLocal(),
               deletedAt: e.deletedAt?.toLocal()))
           .toList();
-      // Use super.putMany to bypass this override's logic
-      return await super.putMany(entitiesToSave, syncSource: syncSource);
+      resultIds = await super.putMany(entitiesToSave, syncSource: syncSource);
     } else {
-      // Local operation (e.g., adding multiple transactions, import, userId assignment)
       final currentUserId = _authService.currentUser?.id;
       final now = DateTime.now();
       final List<Transaction> processedEntities = [];
 
-      // Fetch existing entities to preserve createdAt and check context
       final existingIds =
           entities.map((e) => e.id).where((id) => id != 0).toList();
-      // Fetch WITHOUT user filter initially, as we might be assigning userId or restoring
       final existingMap = {
         for (var e
             in (await box.getManyAsync(existingIds)).whereType<Transaction>())
@@ -356,7 +409,6 @@ class TransactionRepository extends BaseRepository<Transaction> {
       for (final entity in entities) {
         Transaction entityToSave;
         if (entity.id == 0) {
-          // New entity
           entityToSave = entity.copyWith(
             userId: currentUserId,
             createdAt: now,
@@ -364,60 +416,76 @@ class TransactionRepository extends BaseRepository<Transaction> {
             deletedAt: entity.deletedAt,
           );
         } else {
-          // Existing entity
           final existing = existingMap[entity.id];
           if (existing == null) {
             print(
                 "Warning: Skipping update for transaction ID ${entity.id} in putMany (not found).");
-            continue; // Skip this entity
+            continue;
           }
 
-          // --- MODIFIED CONTEXT CHECK ---
-          // Allow update if:
-          // 1. The existing item has no user ID yet (userId assignment case)
-          // 2. The existing item's user ID matches the current user ID
           if (existing.userId != null && existing.userId != currentUserId) {
             print(
                 "Warning: Skipping update for transaction ID ${entity.id} in putMany (context mismatch: existing=${existing.userId}, current=$currentUserId).");
-            continue; // Skip this entity - Strict context mismatch
+            continue;
           }
-          // If existing.userId is null OR matches currentUserId, proceed with update.
-          // --- END MODIFIED CONTEXT CHECK ---
 
           entityToSave = entity.copyWith(
-            userId:
-                currentUserId, // Ensure context is set/updated to current user
-            updatedAt: now, // Always update timestamp
-            createdAt: existing.createdAt, // Preserve original createdAt
-            // copyWith handles deletedAt logic
+            userId: currentUserId,
+            updatedAt: now,
+            createdAt: existing.createdAt,
           );
         }
 
-        // Final check (redundant with above but safe)
         if (entityToSave.userId != currentUserId) {
           print(
               "Error: Mismatched userId (${entityToSave.userId}) during putMany processing for current context ($currentUserId). Skipping ID ${entity.id}.");
-          continue; // Skip this entity
+          continue;
         }
         processedEntities.add(entityToSave);
       }
-      // Use super.putMany to bypass this override's logic for the final write
+
       if (processedEntities.isNotEmpty) {
-        return await super.putMany(processedEntities, syncSource: syncSource);
+        resultIds =
+            await super.putMany(processedEntities, syncSource: syncSource);
+
+        // --- MODIFIED: Use pushUpsertMany (Fire-and-Forget) ---
+        if (resultIds.isNotEmpty && syncService != null) {
+          print(
+              "Pushing ${resultIds.length} transactions after local putMany using pushUpsertMany (no await).");
+          // Fetch the saved items to ensure we push the correct state
+          final savedItems = (await box.getManyAsync(resultIds))
+              .whereType<Transaction>()
+              .toList();
+          if (savedItems.isNotEmpty) {
+            // Call pushUpsertMany without await and catch errors
+            syncService!
+                .pushUpsertMany<Transaction>(savedItems)
+                .catchError((pushError) {
+              print(
+                  "Background push error during pushUpsertMany for Transactions: $pushError");
+            });
+          } else {
+            print(
+                "Warning: Could not fetch saved transactions after putMany for push.");
+          }
+        } else if (syncService == null) {
+          print(
+              "Warning: syncService is null in TransactionRepository.putMany. Cannot push changes immediately.");
+        }
+        // --- END MODIFIED ---
       } else {
-        return []; // Return empty list if all items were skipped
+        resultIds = [];
       }
     }
+    return resultIds;
   }
 
   /// Fetch filtered transactions for the current context, excluding soft-deleted ones.
   Future<List<Transaction>> getFiltered(FilterState filterState) async {
     try {
-      // Start with the base conditions (user context and not deleted)
       Condition<Transaction> queryCondition =
           _userIdCondition().and(_notDeletedCondition());
 
-      // Helper function to combine conditions safely
       Condition<Transaction> addCondition(
           Condition<Transaction>? currentCombined,
           Condition<Transaction> newCondition) {
@@ -426,7 +494,6 @@ class TransactionRepository extends BaseRepository<Transaction> {
             : currentCombined.and(newCondition);
       }
 
-      // Apply Date Filter
       Condition<Transaction>? combinedPropertyCondition;
       if (filterState.startDate != null) {
         Condition<Transaction>? dateCondition;
@@ -453,7 +520,6 @@ class TransactionRepository extends BaseRepository<Transaction> {
             addCondition(combinedPropertyCondition, dateCondition);
       }
 
-      // Apply Amount Filter (Optional)
       if (filterState.minAmount != null) {
         print(
             "Warning: Amount filtering might not work as expected with ObjectBox query conditions on absolute values. Filtering >= ${filterState.minAmount}");
@@ -463,29 +529,23 @@ class TransactionRepository extends BaseRepository<Transaction> {
             addCondition(combinedPropertyCondition, amountCondition);
       }
 
-      // Apply Income/Expense Filter (Optional)
       if (filterState.isIncome != null) {
         Condition<Transaction> typeCondition;
         if (filterState.isIncome!) {
-          // Income: amount > 0
           typeCondition = Transaction_.amount.greaterThan(0);
         } else {
-          // Expense: amount < 0
           typeCondition = Transaction_.amount.lessThan(0);
         }
         combinedPropertyCondition =
             addCondition(combinedPropertyCondition, typeCondition);
       }
 
-      // Combine base conditions with property conditions
       if (combinedPropertyCondition != null) {
         queryCondition = queryCondition.and(combinedPropertyCondition);
       }
 
-      // Build the query with the combined property conditions
       var queryBuilder = box.query(queryCondition);
 
-      // Apply Link conditions
       if (filterState.selectedAccount != null) {
         queryBuilder.link(Transaction_.fromAccount,
             Account_.id.equals(filterState.selectedAccount!.id));
@@ -497,7 +557,6 @@ class TransactionRepository extends BaseRepository<Transaction> {
             Transaction_.category, Category_.id.oneOf(categoryIds));
       }
 
-      // Apply Sorting (Date Descending)
       queryBuilder.order(Transaction_.date, flags: Order.descending);
 
       final query = queryBuilder.build();

@@ -112,13 +112,11 @@ class ReceiptAnalyzerWidget extends StatelessWidget {
     // Add transactions if the user confirmed
     if (addedTransactions != null && addedTransactions.isNotEmpty) {
       // Add to repository through TransactionsCubit
-      await context
-          .read<DataManagementCubit>()
-          .addTransactions(addedTransactions);
+      context.read<DataManagementCubit>().addTransactions(addedTransactions);
 
       // Show success message
-      _showSuccessSnackbar(context, addedTransactions.length);
-
+      //_showSuccessSnackbar(context, addedTransactions.length);
+      if (!context.mounted) return;
       // Close the bottom sheet
       Navigator.pop(context);
     }
@@ -327,22 +325,22 @@ class ReceiptAnalyzerWidget extends StatelessWidget {
   }
 
   // Show success snackbar
-  void _showSuccessSnackbar(BuildContext context, int count) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(
-            '$count transactions added!',
-            style: AppStyle.bodyText.copyWith(color: ColorPalette.onPrimary),
-          ),
-          backgroundColor: AppStyle.incomeColor,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppStyle.borderRadiusMedium),
-          ),
-          margin: const EdgeInsets.all(AppStyle.paddingSmall),
-        ),
-      );
-  }
+  // void _showSuccessSnackbar(BuildContext context, int count) {
+  //   ScaffoldMessenger.of(context)
+  //     ..hideCurrentSnackBar()
+  //     ..showSnackBar(
+  //       SnackBar(
+  //         content: Text(
+  //           '$count transactions added!',
+  //           style: AppStyle.bodyText.copyWith(color: ColorPalette.onPrimary),
+  //         ),
+  //         backgroundColor: AppStyle.incomeColor,
+  //         behavior: SnackBarBehavior.floating,
+  //         shape: RoundedRectangleBorder(
+  //           borderRadius: BorderRadius.circular(AppStyle.borderRadiusMedium),
+  //         ),
+  //         margin: const EdgeInsets.all(AppStyle.paddingSmall),
+  //       ),
+  //     );
+  // }
 }

@@ -311,17 +311,73 @@ class AccountRepository extends BaseRepository<Account> {
     }
   }
 
-  /// Soft removes an account by ID if it belongs to the current context.
-  /// Returns true if successful, false otherwise.
+  /// Soft removes an account by ID if it belongs to the current context,
+  /// is not a default account, and has no transactions.
   @override
   Future<bool> remove(int id) async {
-    final hasTransactions = await _hasTransactionsForAccount(id);
-    if (hasTransactions) {
-      print(
-          "Soft remove failed: Account $id is still linked to active transactions.");
+    final currentUserId = _authService.currentUser?.id;
+    // Prevent deletion of default accounts (assuming IDs 1 and 2)
+    if (id == 1 || id == 2) {
+      print("Error: Cannot delete default account ID $id.");
       return false;
     }
-    return await super.softRemove(id);
+
+    // Check for transactions
+    final hasTransactions = await _hasTransactionsForAccount(id);
+    if (hasTransactions) {
+      print("Error: Cannot delete account ID $id, it has transactions.");
+      return false;
+    }
+
+    try {
+      // Fetch the item, ensuring it belongs to the user and is not deleted
+      final query = box
+          .query(Account_.id
+              .equals(id)
+              .and(_userIdCondition())
+              .and(_notDeletedCondition()))
+          .build();
+      final item = await query.findFirstAsync();
+      query.close();
+
+      if (item == null) {
+        print(
+            "Soft remove failed: Account $id not found, doesn't belong to user $currentUserId, or already deleted.");
+        return false;
+      }
+
+      // Prepare the update for soft delete
+      final now = DateTime.now();
+      final nowUtc = now.toUtc();
+      final itemToUpdate = item.copyWith(
+        deletedAt: nowUtc,
+        updatedAt: now, // Also update 'updatedAt' for sync mechanisms
+      );
+
+      // --- ADD: Push delete immediately (Fire-and-Forget) ---
+      if (syncService != null) {
+        print("Pushing soft delete for Account ID $id (no await).");
+        syncService!
+            .pushSingleUpsert<Account>(itemToUpdate)
+            .catchError((pushError) {
+          print(
+              "Background push error during remove for Account ID $id: $pushError");
+        });
+      } else {
+        print(
+            "Warning: syncService is null in AccountRepository.remove. Cannot push delete immediately.");
+      }
+      // --- END ADD ---
+
+      // Perform the local update using box directly
+      await box.putAsync(itemToUpdate);
+      print("Soft removed Account $id locally.");
+      return true;
+    } catch (e, stacktrace) {
+      print("Error during soft remove for Account ID $id: $e");
+      print(stacktrace);
+      return false;
+    }
   }
 
   /// Restores a soft-deleted account by ID if it belongs to the current context.
@@ -415,22 +471,56 @@ class AccountRepository extends BaseRepository<Account> {
       return 0;
     }
 
-    // Iterates and calls remove(id) which performs soft delete
     int successCount = 0;
     int skippedCount = 0;
-    for (final account in accountsToDelete) {
-      if (await remove(account.id)) {
-        // remove calls super.softRemove
-        successCount++;
-      } else {
+    final now = DateTime.now();
+    final nowUtc = now.toUtc();
+    final List<Account> itemsToSoftDelete = []; // Collect items
+
+    for (final item in accountsToDelete) {
+      final hasTransactions = await _hasTransactionsForAccount(item.id);
+      if (hasTransactions) {
+        print("Skipping delete for Account ID ${item.id}: Has transactions.");
         skippedCount++;
+        continue;
+      }
+      itemsToSoftDelete.add(item.copyWith(
+        // Add to list
+        deletedAt: nowUtc,
+        updatedAt: now,
+      ));
+    }
+
+    // --- MODIFIED: Push deletes using pushUpsertMany (Fire-and-Forget) ---
+    if (syncService != null && itemsToSoftDelete.isNotEmpty) {
+      print(
+          "Pushing ${itemsToSoftDelete.length} account deletes using pushUpsertMany (no await).");
+      syncService!
+          .pushUpsertMany<Account>(itemsToSoftDelete)
+          .catchError((pushError) {
+        print(
+            "Background push error during pushUpsertMany for deleting Accounts: $pushError");
+      });
+    } else if (syncService == null) {
+      print(
+          "Warning: syncService is null in removeNonDefaultForCurrentUser (Account). Cannot push deletes immediately.");
+    }
+    // --- END MODIFIED ---
+
+    // Perform local batch update
+    if (itemsToSoftDelete.isNotEmpty) {
+      try {
+        await box.putManyAsync(itemsToSoftDelete);
+        successCount = itemsToSoftDelete.length;
+      } catch (e) {
+        print(
+            "Error during local putManyAsync in removeNonDefaultForCurrentUser (Account): $e");
       }
     }
+
     print(
-        "Soft removed $successCount accounts for user: ${currentUserId ?? 'unauthenticated'}." +
-            (skippedCount > 0
-                ? " Skipped $skippedCount due to active transactions."
-                : ""));
+        "Attempted soft remove for $successCount non-default accounts (ID > 2) for user ${_authService.currentUser?.id ?? 'unauthenticated'}." +
+            (skippedCount > 0 ? " Skipped $skippedCount." : ""));
     return successCount;
   }
 
@@ -506,23 +596,17 @@ class AccountRepository extends BaseRepository<Account> {
       // Use super.put to save locally
       resultId = await super.put(accountToSave, syncSource: syncSource);
 
-      // --- Push Change Immediately ---
+      // --- Push Change Immediately (Fire-and-Forget) ---
       if (resultId != 0 && syncService != null) {
-        // <-- Check if syncService is available
-        // Fetch the final saved item to ensure we push the correct state
         final savedItem = await box.getAsync(resultId);
         if (savedItem != null) {
           print(
-              "Pushing change for Account ID $resultId immediately after local put.");
-          // Use try-catch to avoid breaking flow if push fails
-          try {
-            // Use the public syncService field
-            await syncService!.pushSingleUpsert<Account>(savedItem);
-          } catch (pushError) {
-            print(
-                "Error during immediate push after local put for Account ID $resultId: $pushError");
-            // Log error, but don't rethrow
-          }
+              "Pushing change for Account ID $resultId immediately after local put (no await).");
+          syncService!
+              .pushSingleUpsert<Account>(savedItem)
+              .catchError((pushError) {
+            print("Background push error for Account ID $resultId: $pushError");
+          });
         } else {
           print(
               "Warning: Could not fetch Account ID $resultId after put for immediate push.");
@@ -552,6 +636,7 @@ class AccountRepository extends BaseRepository<Account> {
   @override
   Future<List<int>> putMany(List<Account> entities,
       {SyncSource syncSource = SyncSource.local}) async {
+    List<int> resultIds = [];
     if (syncSource == SyncSource.supabase) {
       final entitiesToSave = entities
           .map((e) => e.copyWith(
@@ -559,7 +644,7 @@ class AccountRepository extends BaseRepository<Account> {
               updatedAt: e.updatedAt.toLocal(),
               deletedAt: e.deletedAt?.toLocal()))
           .toList();
-      return await super.putMany(entitiesToSave, syncSource: syncSource);
+      resultIds = await super.putMany(entitiesToSave, syncSource: syncSource);
     } else {
       final currentUserId = _authService.currentUser?.id;
       final now = DateTime.now();
@@ -587,7 +672,36 @@ class AccountRepository extends BaseRepository<Account> {
         }
         processedEntities.add(entityToSave);
       }
-      return await super.putMany(processedEntities, syncSource: syncSource);
+      if (processedEntities.isNotEmpty) {
+        resultIds =
+            await super.putMany(processedEntities, syncSource: syncSource);
+
+        // --- MODIFIED: Use pushUpsertMany (Fire-and-Forget) ---
+        if (resultIds.isNotEmpty && syncService != null) {
+          print(
+              "Pushing ${resultIds.length} accounts after local putMany using pushUpsertMany (no await).");
+          final savedItems =
+              (await box.getManyAsync(resultIds)).whereType<Account>().toList();
+          if (savedItems.isNotEmpty) {
+            syncService!
+                .pushUpsertMany<Account>(savedItems)
+                .catchError((pushError) {
+              print(
+                  "Background push error during pushUpsertMany for Accounts: $pushError");
+            });
+          } else {
+            print(
+                "Warning: Could not fetch saved accounts after putMany for push.");
+          }
+        } else if (syncService == null) {
+          print(
+              "Warning: syncService is null in AccountRepository.putMany. Cannot push changes immediately.");
+        }
+        // --- END MODIFIED ---
+      } else {
+        resultIds = [];
+      }
     }
+    return resultIds;
   }
 }

@@ -488,6 +488,128 @@ class SyncService {
       // Do not rethrow, just log the error.
     }
   }
+
+  /// Pushes a list of entity inserts/updates to Supabase immediately.
+  /// Groups items by type and performs bulk upserts.
+  /// Logs errors but does not throw them to avoid breaking local operations.
+  Future<void> pushUpsertMany<T>(List<T> entities) async {
+    if (entities.isEmpty) {
+      return;
+    }
+
+    final currentUserId = _supabaseClient.auth.currentUser?.id;
+    if (currentUserId == null) {
+      print("PushUpsertMany: No user logged in, skipping push.");
+      return;
+    }
+
+    // Group entities by runtime type
+    final Map<Type, List<Map<String, dynamic>>> groupedJson = {};
+
+    for (final entity in entities) {
+      String tableName;
+      Map<String, dynamic> json;
+      Type entityType = entity.runtimeType;
+
+      try {
+        // Ensure userId matches context before adding to batch
+        if ((entity as dynamic).userId != currentUserId) {
+          print(
+              "PushUpsertMany: Skipping entity with mismatched userId (${(entity as dynamic).userId}) for type $entityType.");
+          continue; // Skip this entity
+        }
+
+        switch (entityType) {
+          case Transaction:
+            tableName = 'transactions';
+            json = (entity as Transaction).toJson();
+            break;
+          case Account:
+            tableName = 'accounts';
+            json = (entity as Account).toJson();
+            break;
+          case Category:
+            tableName = 'categories';
+            json = (entity as Category).toJson();
+            break;
+          default:
+            print("PushUpsertMany: Unsupported type $entityType");
+            continue; // Skip unsupported types
+        }
+
+        // Prepare JSON for Supabase
+        // Ensure timestamps are in UTC ISO format
+        if (json.containsKey('created_at') && json['created_at'] is DateTime) {
+          json['created_at'] =
+              (json['created_at'] as DateTime).toUtc().toIso8601String();
+        }
+        if (json.containsKey('updated_at') && json['updated_at'] is DateTime) {
+          json['updated_at'] =
+              (json['updated_at'] as DateTime).toUtc().toIso8601String();
+        }
+        if (json.containsKey('deleted_at') && json['deleted_at'] is DateTime?) {
+          json['deleted_at'] =
+              (json['deleted_at'] as DateTime?)?.toUtc().toIso8601String();
+        }
+        if (json.containsKey('date') && json['date'] is DateTime) {
+          // Transaction date
+          json['date'] = (json['date'] as DateTime).toUtc().toIso8601String();
+        }
+
+        // Remove local-only fields
+        json.remove('id');
+        json.remove('fromAccount');
+        json.remove('toAccount');
+        json.remove('category');
+
+        // Add to the correct group
+        groupedJson.putIfAbsent(entityType, () => []).add(json);
+      } catch (e, stacktrace) {
+        print(
+            "PushUpsertMany: Error processing entity of type $entityType for batch: $e");
+        print(stacktrace);
+        // Continue processing other entities
+      }
+    }
+
+    // Perform bulk upsert for each group
+    for (final entry in groupedJson.entries) {
+      Type entityType = entry.key;
+      List<Map<String, dynamic>> jsonList = entry.value;
+      String tableName;
+
+      if (jsonList.isEmpty) continue;
+
+      switch (entityType) {
+        case Transaction:
+          tableName = 'transactions';
+          break;
+        case Account:
+          tableName = 'accounts';
+          break;
+        case Category:
+          tableName = 'categories';
+          break;
+        default:
+          continue; // Should not happen based on grouping logic
+      }
+
+      print(
+          "PushUpsertMany: Pushing ${jsonList.length} items of type $entityType to $tableName...");
+
+      try {
+        // Perform the bulk upsert
+        await _supabaseClient
+            .from(tableName)
+            .upsert(jsonList, onConflict: 'uuid');
+        print("PushUpsertMany: Successfully pushed batch for $entityType.");
+      } catch (e, stacktrace) {
+        print("PushUpsertMany: Error pushing batch for type $entityType: $e");
+        print(stacktrace);
+        // Log error but continue to next batch type
+      }
+    }
+  }
 }
 
 /// Enum to indicate the source of a repository 'put' operation.
