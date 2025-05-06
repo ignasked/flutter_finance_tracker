@@ -3,9 +3,11 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:uuid/uuid.dart';
 
 class FilePickerService {
   static final FilePickerService instance = FilePickerService._();
+  static const _uuid = Uuid();
 
   FilePickerService._();
 
@@ -27,7 +29,8 @@ class FilePickerService {
     );
 
     final tempDir = await getTemporaryDirectory();
-    final tempFile = File('${tempDir.path}/compressed_receipt.jpg');
+    final uniqueFileName = '${_uuid.v4()}.jpg';
+    final tempFile = File('${tempDir.path}/$uniqueFileName');
     await tempFile.writeAsBytes(compressedBytes);
 
     return tempFile;
