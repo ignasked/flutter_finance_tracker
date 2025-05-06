@@ -12,6 +12,7 @@ class BulkTransactionsState extends Equatable {
   final double receiptTotalAmount;
   final double calculatedTotalExpenses;
   final bool discountsApplied; // Flag if discounts have been processed
+  final LoadingStatus loadingStatus; // Add loading status
 
   const BulkTransactionsState({
     required this.transactions,
@@ -23,6 +24,7 @@ class BulkTransactionsState extends Equatable {
     required this.receiptTotalAmount,
     this.calculatedTotalExpenses = 0.0,
     this.discountsApplied = false,
+    this.loadingStatus = LoadingStatus.initial, // Default to initial
   });
 
   BulkTransactionsState copyWith({
@@ -37,6 +39,7 @@ class BulkTransactionsState extends Equatable {
     double? receiptTotalAmount,
     double? calculatedTotalExpenses,
     bool? discountsApplied,
+    LoadingStatus? loadingStatus, // Add loading status to copyWith
   }) {
     return BulkTransactionsState(
       transactions: transactions ?? this.transactions,
@@ -52,6 +55,7 @@ class BulkTransactionsState extends Equatable {
       calculatedTotalExpenses:
           calculatedTotalExpenses ?? this.calculatedTotalExpenses,
       discountsApplied: discountsApplied ?? this.discountsApplied,
+      loadingStatus: loadingStatus ?? this.loadingStatus, // Add loading status
     );
   }
 
@@ -66,5 +70,6 @@ class BulkTransactionsState extends Equatable {
         receiptTotalAmount,
         calculatedTotalExpenses,
         discountsApplied,
+        loadingStatus, // Add loading status to props
       ];
 }

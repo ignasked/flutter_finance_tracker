@@ -112,7 +112,9 @@ class ReceiptAnalyzerWidget extends StatelessWidget {
     // Add transactions if the user confirmed
     if (addedTransactions != null && addedTransactions.isNotEmpty) {
       // Add to repository through TransactionsCubit
-      context.read<DataManagementCubit>().addTransactions(addedTransactions);
+      await context
+          .read<DataManagementCubit>()
+          .addTransactions(addedTransactions);
 
       // Show success message
       _showSuccessSnackbar(context, addedTransactions.length);

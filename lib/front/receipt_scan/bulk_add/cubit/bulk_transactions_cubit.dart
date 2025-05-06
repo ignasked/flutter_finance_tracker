@@ -11,7 +11,6 @@ import 'package:money_owl/backend/repositories/category_repository.dart'; // Imp
 import 'package:money_owl/backend/utils/defaults.dart';
 import 'package:money_owl/backend/utils/enums.dart';
 import 'package:money_owl/front/transactions_screen/viewmodel/transaction_viewmodel.dart'; // Import ViewModel
-import 'package:money_owl/backend/models/category.dart';
 
 part 'bulk_transactions_state.dart';
 
@@ -39,23 +38,33 @@ class BulkTransactionsCubit extends Cubit<BulkTransactionsState> {
           storeName: storeName,
           receiptTotalAmount: receiptTotalAmount,
           selectedAccount: Defaults().defaultAccount,
+          loadingStatus: LoadingStatus.initial, // Initialize status
         )) {
     _initializeAndMap(); // Load dependencies and perform initial mapping
   }
 
   // --- New method to load dependencies and map ---
   Future<void> _initializeAndMap() async {
-    // Fetch all categories and accounts once
-    allCategories = await _categoryRepository.getAll();
-    allAccounts = await _accountRepository.getAll();
+    emit(state.copyWith(loadingStatus: LoadingStatus.loading)); // Set loading
+    try {
+      // Fetch all categories and accounts once
+      allCategories = await _categoryRepository.getAll();
+      allAccounts = await _accountRepository.getAll();
 
-    // Apply defaults which might modify transactions
-    _applyAccountToAllTransactionsInternal();
-    _applyDateToAllTransactionsInternal();
+      // Apply defaults which might modify transactions
+      _applyAccountToAllTransactionsInternal();
+      _applyDateToAllTransactionsInternal();
 
-    // Perform initial mapping
-    _mapAndEmitTransactions();
-    _calculateTotalExpenses(); // Calculate initial total
+      // Perform initial mapping
+      _mapAndEmitTransactions();
+      _calculateTotalExpenses(); // Calculate initial total
+
+      emit(state.copyWith(loadingStatus: LoadingStatus.success)); // Set success
+    } catch (e) {
+      // Basic error handling, consider more specific error states if needed
+      emit(state.copyWith(loadingStatus: LoadingStatus.failure)); // Set failure
+      // Optionally log the error: print('Error initializing BulkTransactionsCubit: $e');
+    }
   }
 
   // --- New Mapping Method ---
@@ -340,7 +349,9 @@ class BulkTransactionsCubit extends Cubit<BulkTransactionsState> {
 
       categoryTotals[categoryId] =
           (categoryTotals[categoryId] ?? 0.0) + transaction.amount;
-      if (categoryId != null && !categoryMap.containsKey(categoryId)) {
+      // --- FIX: Remove redundant null check ---
+      if (!categoryMap.containsKey(categoryId)) {
+        // --- END FIX ---
         categoryMap[categoryId] = category;
       }
       metadataMap.putIfAbsent(categoryId, () => []).add(transaction.metadata);

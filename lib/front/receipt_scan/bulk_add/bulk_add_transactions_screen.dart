@@ -5,6 +5,7 @@ import 'package:money_owl/backend/models/transaction.dart';
 import 'package:money_owl/backend/repositories/account_repository.dart';
 import 'package:money_owl/backend/repositories/category_repository.dart';
 import 'package:money_owl/backend/utils/app_style.dart';
+import 'package:money_owl/backend/utils/enums.dart';
 import 'package:money_owl/front/receipt_scan/bulk_add/cubit/bulk_transactions_cubit.dart';
 import 'package:money_owl/front/transaction_form_screen/widgets/account_dropdown.dart';
 import 'package:money_owl/front/transactions_screen/widgets/transaction_list_widget.dart';
@@ -41,6 +42,9 @@ class BulkAddTransactionsScreen extends StatelessWidget {
       child: Scaffold(
         appBar: AppBar(
           title: Text('Review: $transactionName'),
+          backgroundColor: AppStyle.primaryColor,
+          foregroundColor: AppStyle.backgroundColor,
+          surfaceTintColor: AppStyle.primaryColor,
           actions: [
             BlocBuilder<BulkTransactionsCubit, BulkTransactionsState>(
               builder: (context, state) {
@@ -79,6 +83,16 @@ class BulkAddTransactionsScreen extends StatelessWidget {
         ),
         body: BlocBuilder<BulkTransactionsCubit, BulkTransactionsState>(
           builder: (context, state) {
+            if (state.loadingStatus == LoadingStatus.loading) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (state.loadingStatus == LoadingStatus.failure) {
+              return Center(
+                  child: Text(
+                'Failed to load transaction data.',
+                style: AppStyle.bodyText.copyWith(color: AppStyle.expenseColor),
+              ));
+            }
             return Column(
               children: [
                 _buildHeader(context, state),
@@ -89,23 +103,26 @@ class BulkAddTransactionsScreen extends StatelessWidget {
                     isBulkAddContext: true,
                   ),
                 ),
+                Padding(
+                  padding: const EdgeInsets.all(AppStyle.paddingMedium),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.check),
+                      label: const Text('Confirm'),
+                      style: AppStyle.primaryButtonStyle,
+                      onPressed: () {
+                        Navigator.pop(
+                            context,
+                            context
+                                .read<BulkTransactionsCubit>()
+                                .state
+                                .transactions);
+                      },
+                    ),
+                  ),
+                ),
               ],
-            );
-          },
-        ),
-        floatingActionButton: Builder(
-          builder: (buttonContext) {
-            return FloatingActionButton.extended(
-              onPressed: () {
-                Navigator.pop(
-                    buttonContext,
-                    buttonContext
-                        .read<BulkTransactionsCubit>()
-                        .state
-                        .transactions);
-              },
-              icon: const Icon(Icons.check),
-              label: const Text('Add Transactions'),
             );
           },
         ),
@@ -125,12 +142,11 @@ class BulkAddTransactionsScreen extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: ElevatedButton.icon(
+                child: OutlinedButton.icon(
                   icon: const Icon(Icons.calendar_today, size: 18),
                   label: Text(dateFormat.format(state.selectedDate)),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16.0),
-                    textStyle: AppStyle.bodyText,
+                  style: AppStyle.secondaryButtonStyle.copyWith(
+                    textStyle: MaterialStateProperty.all(AppStyle.bodyText),
                   ),
                   onPressed: () async {
                     final DateTime? pickedDate = await showDatePicker(
@@ -176,7 +192,8 @@ class BulkAddTransactionsScreen extends StatelessWidget {
               padding: const EdgeInsets.only(top: AppStyle.paddingSmall),
               child: Text(
                 'Warning: Calculated total does not match receipt total.',
-                style: AppStyle.captionStyle.copyWith(color: Colors.orange),
+                style: AppStyle.captionStyle
+                    .copyWith(color: AppStyle.warningColor),
                 textAlign: TextAlign.center,
               ),
             ),
