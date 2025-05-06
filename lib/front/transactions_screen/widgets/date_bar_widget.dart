@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
-import 'package:money_owl/backend/utils/app_style.dart'; // Import AppStyle
+import 'package:money_owl/backend/models/transaction.dart'; // Import Transaction
+import 'package:money_owl/backend/utils/app_style.dart';
+import 'package:money_owl/front/shared/data_management_cubit/data_management_cubit.dart'; // Import DataManagementCubit
 import 'package:money_owl/front/shared/data_management_cubit/date_cubit.dart';
 
 /// A widget that displays a date bar with navigation buttons and a calendar button.
@@ -103,11 +105,11 @@ class DateRangeDisplay extends StatelessWidget {
   ///
   /// If [endDate] is null, only the [startDate] is displayed.
   /// Otherwise, the range is displayed as "startDate - endDate".
-  String _formatDateRange(DateTime startDate, DateTime? endDate) {
+  String _formatDateRange(DateTime? startDate, DateTime? endDate) {
     final dateFormat = DateFormat('yyyy.MM.dd');
-    if (endDate == null) {
+    if (startDate != null && endDate == null) {
       return dateFormat.format(startDate); // Single day
-    } else {
+    } else if (startDate != null && endDate != null) {
       // Check if start and end date are the same day
       if (startDate.year == endDate.year &&
           startDate.month == endDate.month &&
@@ -116,6 +118,8 @@ class DateRangeDisplay extends StatelessWidget {
       }
       return '${dateFormat.format(startDate)} - ${dateFormat.format(endDate)}'; // Date range
     }
+    // Fallback for unexpected null combinations or initial state
+    return 'Select Date';
   }
 }
 
@@ -127,6 +131,10 @@ class DateSelectionOptionsSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dateCubit = context.read<DateCubit>(); // Get cubit instance
+    // Read DataManagementCubit to access all transactions
+    final dataManagementCubit = context.read<DataManagementCubit>();
+
     return Padding(
       padding:
           const EdgeInsets.all(AppStyle.paddingLarge), // Use AppStyle padding
@@ -147,6 +155,39 @@ class DateSelectionOptionsSheet extends StatelessWidget {
           const SizedBox(
               height: AppStyle.paddingMedium), // Use AppStyle padding
           const SelectDateRangeButton(),
+          const SizedBox(
+              height: AppStyle.paddingMedium), // Use AppStyle padding
+          // --- Modify "All History" Button ---
+          ElevatedButton(
+            style: AppStyle.primaryButtonStyle,
+            onPressed: () {
+              final allTransactions = dataManagementCubit.state.allTransactions;
+              if (allTransactions.isNotEmpty) {
+                // Find the actual min and max dates from all transactions
+                DateTime minDate = allTransactions.last.date;
+                DateTime maxDate = allTransactions.first.date;
+
+                for (var tx in allTransactions) {
+                  if (tx.date.isBefore(minDate)) {
+                    minDate = tx.date;
+                  }
+                  if (tx.date.isAfter(maxDate)) {
+                    maxDate = tx.date;
+                  }
+                }
+                // Select the full range covering all transactions
+                dateCubit.selectDateRange(minDate, maxDate, false);
+              } else {
+                // Optional: Show a message if no transactions exist
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('No transactions found.')),
+                );
+              }
+              Navigator.pop(context); // Close the sheet
+            },
+            child: const Text('Select Full Range'), // Changed text
+          ),
+          // --- End Modify Button ---
           const SizedBox(height: AppStyle.paddingLarge), // Use AppStyle padding
           ElevatedButton(
             onPressed: () {
