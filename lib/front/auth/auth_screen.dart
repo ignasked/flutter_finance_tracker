@@ -2,35 +2,50 @@ import 'package:flutter/material.dart';
 import 'package:supabase_auth_ui/supabase_auth_ui.dart';
 
 class AuthScreen extends StatelessWidget {
-  const AuthScreen({super.key});
+  final bool isMandatory; // <-- Add flag
+
+  const AuthScreen({
+    super.key,
+    this.isMandatory = true, // <-- Default to false
+  });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Login / Sign Up')),
+      // Change title based on flag
+      appBar: AppBar(
+          title: Text(isMandatory ? 'Login Required' : 'Login / Sign Up')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: SingleChildScrollView(
-          // Added SingleChildScrollView for smaller screens
           child: Column(
-            mainAxisAlignment:
-                MainAxisAlignment.center, // Center content vertically
-            crossAxisAlignment:
-                CrossAxisAlignment.stretch, // Stretch buttons horizontally
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // Conditionally show explanation text
+              if (isMandatory) ...[
+                Text(
+                  "Welcome Back!",
+                  style: Theme.of(context).textTheme.headlineMedium,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  "To keep your existing data safe and enable syncing, please log in or create an account.",
+                  style: Theme.of(context).textTheme.bodyMedium,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 30),
+              ],
               SupaEmailAuth(
+                // Keep existing callbacks
                 onSignInComplete: (response) {
-                  // AuthBloc listener handles state change, just pop screen
                   print('Sign in complete');
-                  if (Navigator.canPop(context)) {
-                    Navigator.of(context).pop();
-                  }
+                  // No navigation needed here, AuthBloc state change handles it
                 },
                 onSignUpComplete: (response) {
-                  // AuthBloc listener handles state change if auto-confirm is on
                   print('Sign up complete');
                   if (response.session == null && response.user != null) {
-                    // Needs email confirmation
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text(
@@ -38,14 +53,8 @@ class AuthScreen extends StatelessWidget {
                         duration: Duration(seconds: 5),
                       ),
                     );
-                    if (Navigator.canPop(context)) {
-                      Navigator.of(context)
-                          .pop(); // Pop even if confirmation needed
-                    }
-                  } else if (Navigator.canPop(context)) {
-                    // Auto-confirmed or already logged in
-                    Navigator.of(context).pop();
                   }
+                  // No navigation needed here
                 },
                 onError: (error) {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -67,11 +76,8 @@ class AuthScreen extends StatelessWidget {
                 redirectUrl:
                     'owlandroid://com.games_from_garage.money_owl', // Your redirect URL
                 onSuccess: (Session session) {
-                  // AuthBloc listener handles state change, just pop screen
                   print('Social sign in successful');
-                  if (Navigator.canPop(context)) {
-                    Navigator.of(context).pop();
-                  }
+                  // No navigation needed here
                 },
                 onError: (error) {
                   ScaffoldMessenger.of(context).showSnackBar(

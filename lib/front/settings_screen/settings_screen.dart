@@ -16,6 +16,7 @@ import 'package:money_owl/front/settings_screen/category_management_screen.dart'
 import 'package:shared_preferences/shared_preferences.dart';
 import '../common/loading_widget.dart';
 import 'package:money_owl/backend/utils/app_style.dart';
+import 'package:money_owl/backend/services/sync_service.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -83,7 +84,22 @@ class SettingsScreen extends StatelessWidget {
             children: [
               _buildSectionHeader('Account'),
               BlocBuilder<AuthBloc, AuthState>(builder: (context, state) {
-                if (state.status == AuthStatus.unauthenticated) {
+                if (state.status == AuthStatus.authenticated) {
+                  return Column(
+                    children: [
+                      _buildSyncButton(context),
+                      const SizedBox(height: AppStyle.paddingSmall),
+                      _buildSettingsListTile(
+                        context: context,
+                        icon: Icons.logout,
+                        title: 'Logout from Cloud Sync',
+                        onTap: () {
+                          _showLogoutConfirmation(context);
+                        },
+                      ),
+                    ],
+                  );
+                } else {
                   return _buildSettingsListTile(
                     context: context,
                     icon: Icons.login,
@@ -94,15 +110,6 @@ class SettingsScreen extends StatelessWidget {
                           builder: (_) => const AuthScreen(),
                         ),
                       );
-                    },
-                  );
-                } else {
-                  return _buildSettingsListTile(
-                    context: context,
-                    icon: Icons.logout,
-                    title: 'Logout from Cloud Sync',
-                    onTap: () {
-                      context.read<AuthBloc>().add(AuthLogoutRequested());
                     },
                   );
                 }
@@ -161,6 +168,119 @@ class SettingsScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Widget _buildSyncButton(BuildContext context) {
+    return ElevatedButton.icon(
+      onPressed: () async {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              content: Text('Starting manual sync...',
+                  style: AppStyle.bodyText
+                      .copyWith(color: ColorPalette.onPrimary)),
+              backgroundColor: AppStyle.primaryColor,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                  borderRadius:
+                      BorderRadius.circular(AppStyle.borderRadiusMedium)),
+              margin: const EdgeInsets.all(AppStyle.paddingSmall),
+            ),
+          );
+        try {
+          await context.read<SyncService>().syncAll();
+          if (!context.mounted) return;
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(
+              SnackBar(
+                content: Text('Manual sync successful!',
+                    style: AppStyle.bodyText
+                        .copyWith(color: ColorPalette.onPrimary)),
+                backgroundColor: AppStyle.incomeColor,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                    borderRadius:
+                        BorderRadius.circular(AppStyle.borderRadiusMedium)),
+                margin: const EdgeInsets.all(AppStyle.paddingSmall),
+              ),
+            );
+          await context.read<DataManagementCubit>().refreshData();
+        } catch (e) {
+          print("Error during manual sync button press: $e");
+          if (!context.mounted) return;
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(
+              SnackBar(
+                content: Text('Manual sync failed. Error: $e',
+                    style: AppStyle.bodyText
+                        .copyWith(color: ColorPalette.onError)),
+                backgroundColor: ColorPalette.errorContainer,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                    borderRadius:
+                        BorderRadius.circular(AppStyle.borderRadiusMedium)),
+                margin: const EdgeInsets.all(AppStyle.paddingSmall),
+                duration: const Duration(seconds: 6),
+              ),
+            );
+        }
+      },
+      style: AppStyle.primaryButtonStyle,
+      icon: const Icon(Icons.sync, color: ColorPalette.onPrimary),
+      label: const Text("Sync with Cloud"),
+    );
+  }
+
+  Future<void> _showLogoutConfirmation(BuildContext context) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppStyle.cardColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppStyle.borderRadiusMedium),
+        ),
+        title: const Text('Confirm Logout', style: AppStyle.heading2),
+        content: const Text('Are you sure you want to log out?',
+            style: AppStyle.bodyText),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            style: AppStyle.textButtonStyle,
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: AppStyle.dangerButtonStyle.copyWith(
+              backgroundColor:
+                  MaterialStateProperty.all(AppStyle.secondaryColor),
+            ),
+            child: const Text('Logout'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && context.mounted) {
+      context.read<AuthBloc>().add(AuthLogoutRequested());
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text('Logging out...',
+                style:
+                    AppStyle.bodyText.copyWith(color: ColorPalette.onPrimary)),
+            backgroundColor: AppStyle.primaryColor,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+                borderRadius:
+                    BorderRadius.circular(AppStyle.borderRadiusMedium)),
+            margin: const EdgeInsets.all(AppStyle.paddingSmall),
+          ),
+        );
+    }
   }
 
   Widget _buildSectionHeader(String title, {IconData? icon}) {

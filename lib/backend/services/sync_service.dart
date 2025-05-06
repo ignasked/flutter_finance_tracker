@@ -1,9 +1,13 @@
+import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart'
+    as foundation; // Import for VoidCallback
 import '../models/account.dart';
 import '../models/category.dart';
 import '../models/transaction.dart';
 import '../repositories/account_repository.dart';
+import '../repositories/base_repository.dart';
 import '../repositories/category_repository.dart';
 import '../repositories/transaction_repository.dart';
 
@@ -14,6 +18,8 @@ class SyncService {
   final TransactionRepository _transactionRepository;
   final AccountRepository _accountRepository;
   final CategoryRepository _categoryRepository;
+  final foundation.VoidCallback? onSyncStart; // <-- Add callback
+  final foundation.VoidCallback? onSyncEnd; // <-- Add callback
   SharedPreferences? _prefs;
 
   SyncService({
@@ -21,6 +27,8 @@ class SyncService {
     required TransactionRepository transactionRepository,
     required AccountRepository accountRepository,
     required CategoryRepository categoryRepository,
+    this.onSyncStart, // <-- Add to constructor
+    this.onSyncEnd, // <-- Add to constructor
   })  : _supabaseClient = supabaseClient,
         _transactionRepository = transactionRepository,
         _accountRepository = accountRepository,
@@ -48,39 +56,52 @@ class SyncService {
 
   /// Performs a full sync: downloads newer data from Supabase, uploads newer local data.
   Future<void> syncAll() async {
-    final lastSyncTime = await _getLastSyncTime();
-    // Use a consistent UTC time for the start of this sync operation
-    final syncStartTime = DateTime.now().toUtc();
+    final currentUserId = _supabaseClient.auth.currentUser?.id;
+    if (currentUserId == null) {
+      print("SyncAll: No user logged in, skipping sync.");
+      return;
+    }
 
-    print('Starting sync. Last sync time (UTC): $lastSyncTime');
+    onSyncStart?.call(); // <-- Call onSyncStart
+    print("SyncAll: Starting sync process...");
 
     try {
-      // --- Sync Down (Supabase -> ObjectBox) ---
-      // Fetch records from Supabase updated *at or after* the last sync time
+      final lastSyncTime = await _getLastSyncTime();
+      print("SyncAll: Last sync time: $lastSyncTime");
+      final nowUtc = DateTime.now().toUtc();
+
+      // --- Sync Down ---
+      print("SyncAll: Starting Sync Down...");
       await _syncDown<Account>(
           'accounts', _accountRepository, Account.fromJson, lastSyncTime);
       await _syncDown<Category>(
           'categories', _categoryRepository, Category.fromJson, lastSyncTime);
       await _syncDown<Transaction>('transactions', _transactionRepository,
           Transaction.fromJson, lastSyncTime);
+      print("SyncAll: Sync Down completed.");
 
-      // --- Sync Up (ObjectBox -> Supabase) ---
-      // Fetch local records updated *after* the last sync time
+      // --- Sync Up ---
+      print("SyncAll: Starting Sync Up...");
       await _syncUp<Account>(
           'accounts', _accountRepository.getAllModifiedSince(lastSyncTime));
       await _syncUp<Category>(
           'categories', _categoryRepository.getAllModifiedSince(lastSyncTime));
       await _syncUp<Transaction>('transactions',
           _transactionRepository.getAllModifiedSince(lastSyncTime));
+      print("SyncAll: Sync Up completed.");
 
-      // Only update last sync time if sync completed successfully
-      await _setLastSyncTime(syncStartTime);
-      print('Sync finished successfully. New sync time (UTC): $syncStartTime');
+      // --- Update Last Sync Time ---
+      await _setLastSyncTime(nowUtc);
+      print(
+          "SyncAll: Sync process finished successfully. New last sync time: $nowUtc");
     } catch (e, stacktrace) {
-      print('Sync failed: $e');
-      print('Stacktrace: $stacktrace');
-      // Decide how to handle errors: retry later, notify user, etc.
-      // Do NOT update the last sync time if sync failed.
+      print("SyncAll: Error during sync process: $e");
+      print(stacktrace);
+      // Optionally rethrow or handle specific errors
+      rethrow; // Rethrow to allow callers (like the button) to catch it
+    } finally {
+      print("SyncAll: Calling onSyncEnd callback.");
+      onSyncEnd?.call(); // <-- Call onSyncEnd in finally block
     }
   }
 
@@ -304,6 +325,7 @@ class SyncService {
             // and deciding on a merge/discard strategy, but that's complex.
             // For now, we just log it. The overall sync might partially succeed.
             // Consider NOT rethrowing here if partial success is acceptable.
+            // Do not rethrow here.
           } else {
             // Re-throw other Postgrest errors
             print('Sync Up: Postgrest error during insert for $tableName: $e');
@@ -378,6 +400,92 @@ class SyncService {
           {'id': id, 'user_id': currentUserId}); // Match both id and user_id
     } catch (e) {
       print('Error pushing single delete for $tableName: $e');
+    }
+  }
+
+  /// Pushes a single entity insert/update to Supabase immediately.
+  /// Logs errors but does not throw them to avoid breaking local operations.
+  Future<void> pushSingleUpsert<T>(T entity) async {
+    final currentUserId = _supabaseClient.auth.currentUser?.id;
+    if (currentUserId == null) {
+      print("PushSingleUpsert: No user logged in, skipping push for $T.");
+      return;
+    }
+
+    // Ensure the entity has the correct userId before pushing
+    // This assumes entity has a 'userId' property and 'copyWith'
+    try {
+      if ((entity as dynamic).userId != currentUserId) {
+        print(
+            "PushSingleUpsert: Entity userId (${(entity as dynamic).userId}) does not match current user ($currentUserId). Skipping push for $T.");
+        // Optionally, try to correct it if appropriate for the context
+        // entity = (entity as dynamic).copyWith(userId: currentUserId);
+        return; // Skip push if context doesn't match
+      }
+    } catch (e) {
+      print(
+          "PushSingleUpsert: Could not verify userId for entity of type $T. Proceeding with push cautiously. Error: $e");
+      // Proceed but log potential issue
+    }
+
+    String tableName;
+    Map<String, dynamic> json = {};
+
+    try {
+      switch (T) {
+        case Transaction:
+          tableName = 'transactions';
+          json = (entity as Transaction).toJson();
+          break;
+        case Account:
+          tableName = 'accounts';
+          json = (entity as Account).toJson();
+          break;
+        case Category:
+          tableName = 'categories';
+          json = (entity as Category).toJson();
+          break;
+        default:
+          print("PushSingleUpsert: Unsupported type $T");
+          return;
+      }
+
+      print(
+          "PushSingleUpsert: Pushing ${T.toString()} UUID: ${json['uuid']} to $tableName...");
+
+      // Ensure timestamps are in UTC ISO format for Supabase
+      if (json.containsKey('created_at') && json['created_at'] is DateTime) {
+        json['created_at'] =
+            (json['created_at'] as DateTime).toUtc().toIso8601String();
+      }
+      if (json.containsKey('updated_at') && json['updated_at'] is DateTime) {
+        json['updated_at'] =
+            (json['updated_at'] as DateTime).toUtc().toIso8601String();
+      }
+      if (json.containsKey('deleted_at') && json['deleted_at'] is DateTime?) {
+        json['deleted_at'] =
+            (json['deleted_at'] as DateTime?)?.toUtc().toIso8601String();
+      }
+      // Handle date field for transactions
+      if (json.containsKey('date') && json['date'] is DateTime) {
+        json['date'] = (json['date'] as DateTime).toUtc().toIso8601String();
+      }
+
+      // Remove local-only fields like 'id' before upserting
+      json.remove('id');
+      // Remove relation fields if they exist and are not just IDs/UUIDs
+      json.remove('fromAccount');
+      json.remove('toAccount');
+      json.remove('category');
+
+      await _supabaseClient.from(tableName).upsert(json, onConflict: 'uuid');
+      print(
+          "PushSingleUpsert: Successfully pushed ${T.toString()} UUID: ${json['uuid']}.");
+    } catch (e, stacktrace) {
+      print(
+          "PushSingleUpsert: Error pushing ${T.toString()} UUID: ${json['uuid'] ?? 'unknown'}: $e");
+      print(stacktrace);
+      // Do not rethrow, just log the error.
     }
   }
 }

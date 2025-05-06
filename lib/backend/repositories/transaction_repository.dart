@@ -4,13 +4,16 @@ import 'package:money_owl/backend/services/auth_service.dart';
 import 'package:money_owl/front/shared/filter_cubit/filter_state.dart'; // Import FilterState
 import 'package:money_owl/objectbox.g.dart';
 import 'package:objectbox/objectbox.dart';
-import 'package:money_owl/backend/services/sync_service.dart'; // Import SyncSource
+import 'package:money_owl/backend/services/sync_service.dart'; // Import SyncService
 import 'package:money_owl/backend/utils/enums.dart'; // Import TransactionType
 
 class TransactionRepository extends BaseRepository<Transaction> {
   final AuthService _authService;
+  SyncService? syncService; // <-- Make public and nullable
 
-  TransactionRepository(Store store, this._authService) : super(store);
+  // Modify constructor to accept nullable SyncService
+  TransactionRepository(Store store, this._authService, this.syncService)
+      : super(store);
 
   /// Get the user ID condition based on auth state.
   Condition<Transaction> _userIdCondition() {
@@ -38,11 +41,12 @@ class TransactionRepository extends BaseRepository<Transaction> {
     return results;
   }
 
-  /// Override put to update timestamps and set userId based on auth state.
+  /// Override put to update timestamps, set userId, and push changes.
   @override
   Future<int> put(Transaction transaction,
       {SyncSource syncSource = SyncSource.local}) async {
     final currentUserId = _authService.currentUser?.id;
+    int resultId = transaction.id; // Initialize with incoming ID
 
     if (syncSource == SyncSource.local) {
       final now = DateTime.now();
@@ -95,8 +99,38 @@ class TransactionRepository extends BaseRepository<Transaction> {
             "Error: Mismatched userId (${transactionToSave.userId}) during save for current context ($currentUserId).");
         throw Exception("Data integrity error: User ID mismatch.");
       }
-      // Use super.put to bypass this override's logic
-      return await super.put(transactionToSave, syncSource: syncSource);
+
+      // Use super.put to save locally
+      resultId = await super.put(transactionToSave, syncSource: syncSource);
+
+      // --- Push Change Immediately ---
+      if (resultId != 0 && syncService != null) {
+        // <-- Check if syncService is available
+        // Fetch the final saved item to ensure we push the correct state
+        final savedItem = await box.getAsync(resultId);
+        if (savedItem != null) {
+          print(
+              "Pushing change for Transaction ID $resultId immediately after local put.");
+          // Use try-catch to avoid breaking flow if push fails
+          try {
+            // Use the public syncService field
+            await syncService!.pushSingleUpsert<Transaction>(savedItem);
+          } catch (pushError) {
+            print(
+                "Error during immediate push after local put for Transaction ID $resultId: $pushError");
+            // Log error, but don't rethrow
+          }
+        } else {
+          print(
+              "Warning: Could not fetch Transaction ID $resultId after put for immediate push.");
+        }
+      } else if (syncService == null) {
+        print(
+            "Warning: syncService is null in TransactionRepository.put. Cannot push change immediately.");
+      }
+      // --- End Push Change ---
+
+      return resultId;
     } else {
       // Syncing down from Supabase
       if (transaction.userId == null) {
@@ -501,6 +535,21 @@ class TransactionRepository extends BaseRepository<Transaction> {
       final context = _authService.currentUser?.id ?? 'local (unauthenticated)';
       print('Error fetching multiple transactions for context $context: $e');
       return [];
+    }
+  }
+
+  /// Checks if any non-deleted transactions exist with a null userId.
+  Future<bool> hasLocalOnlyData() async {
+    try {
+      final query = box
+          .query(Transaction_.userId.isNull().and(_notDeletedCondition()))
+          .build();
+      final count = query.count();
+      query.close();
+      return count > 0;
+    } catch (e) {
+      print("Error checking for local-only transaction data: $e");
+      return false;
     }
   }
 }

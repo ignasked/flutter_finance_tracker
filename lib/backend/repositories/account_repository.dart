@@ -4,15 +4,18 @@ import 'package:money_owl/backend/repositories/base_repository.dart';
 import 'package:money_owl/backend/utils/defaults.dart';
 import 'package:money_owl/backend/utils/enums.dart';
 import 'package:money_owl/objectbox.g.dart';
-import 'package:money_owl/backend/services/sync_service.dart';
+import 'package:money_owl/backend/services/sync_service.dart'; // Import SyncService
 import 'package:money_owl/backend/services/auth_service.dart';
 import 'package:money_owl/backend/models/transaction.dart';
 import 'package:money_owl/backend/utils/app_style.dart'; // Import AppStyle
 
 class AccountRepository extends BaseRepository<Account> {
   final AuthService _authService;
+  SyncService? syncService; // <-- Make public and nullable
 
-  AccountRepository(Store store, this._authService) : super(store);
+  // Modify constructor to accept nullable SyncService
+  AccountRepository(Store store, this._authService, this.syncService)
+      : super(store);
 
   Future<void> init() async {
     await _initializeDefaultAccounts(); // Keep initialization
@@ -79,10 +82,10 @@ class AccountRepository extends BaseRepository<Account> {
 
   /// Factory method for asynchronous initialization
   static Future<AccountRepository> create(
-      Store store, AuthService authService) async {
+      Store store, AuthService authService, SyncService syncService) async {
     // Ensure Defaults are loaded before repository uses them
     await Defaults().loadDefaults();
-    return AccountRepository(store, authService);
+    return AccountRepository(store, authService, syncService);
   }
 
   /// Initializes default accounts if they don't exist (based on UUID)
@@ -440,11 +443,12 @@ class AccountRepository extends BaseRepository<Account> {
         "Use removeAllForCurrentUser() to soft-delete user-specific data.");
   }
 
-  /// Override put to update timestamps and set userId based on auth state.
+  /// Override put to update timestamps, set userId, and push changes.
   @override
   Future<int> put(Account account,
       {SyncSource syncSource = SyncSource.local}) async {
     final currentUserId = _authService.currentUser?.id;
+    int resultId = account.id; // Initialize with incoming ID
 
     if (syncSource == SyncSource.local) {
       final now = DateTime.now();
@@ -472,14 +476,19 @@ class AccountRepository extends BaseRepository<Account> {
         }
         // Check context
         if (existing.userId != currentUserId) {
+          // Allow update only if the existing userId is null (assignment case)
+          if (existing.userId != null) {
+            print(
+                "Error: Attempted to update account with mismatched userId context. Existing: ${existing.userId}, Current: $currentUserId");
+            throw Exception(
+                "Cannot modify data belonging to a different user context.");
+          }
           print(
-              "Error: Attempted to update account with mismatched userId context. Existing: ${existing.userId}, Current: $currentUserId");
-          throw Exception(
-              "Cannot modify data belonging to a different user context.");
+              "Info: Assigning userId $currentUserId to account ID ${account.id}");
         }
 
         accountToSave = account.copyWith(
-          userId: currentUserId, // Ensure context
+          userId: currentUserId, // Ensure context is set/updated
           updatedAt: now, // Always update timestamp
           createdAt: account.createdAt != DateTime.fromMillisecondsSinceEpoch(0)
               ? account.createdAt
@@ -493,7 +502,38 @@ class AccountRepository extends BaseRepository<Account> {
             "Error: Mismatched userId (${accountToSave.userId}) during save for current context ($currentUserId).");
         throw Exception("Data integrity error: User ID mismatch.");
       }
-      return await super.put(accountToSave, syncSource: syncSource);
+
+      // Use super.put to save locally
+      resultId = await super.put(accountToSave, syncSource: syncSource);
+
+      // --- Push Change Immediately ---
+      if (resultId != 0 && syncService != null) {
+        // <-- Check if syncService is available
+        // Fetch the final saved item to ensure we push the correct state
+        final savedItem = await box.getAsync(resultId);
+        if (savedItem != null) {
+          print(
+              "Pushing change for Account ID $resultId immediately after local put.");
+          // Use try-catch to avoid breaking flow if push fails
+          try {
+            // Use the public syncService field
+            await syncService!.pushSingleUpsert<Account>(savedItem);
+          } catch (pushError) {
+            print(
+                "Error during immediate push after local put for Account ID $resultId: $pushError");
+            // Log error, but don't rethrow
+          }
+        } else {
+          print(
+              "Warning: Could not fetch Account ID $resultId after put for immediate push.");
+        }
+      } else if (syncService == null) {
+        print(
+            "Warning: syncService is null in AccountRepository.put. Cannot push change immediately.");
+      }
+      // --- End Push Change ---
+
+      return resultId;
     } else {
       // Syncing down from Supabase
       if (account.userId == null) {

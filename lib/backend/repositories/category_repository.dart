@@ -11,8 +11,11 @@ import 'package:money_owl/backend/services/auth_service.dart';
 
 class CategoryRepository extends BaseRepository<Category> {
   final AuthService _authService;
+  SyncService? syncService; // <-- Make public and nullable
 
-  CategoryRepository(Store store, this._authService) : super(store);
+  // Modify constructor to accept nullable SyncService
+  CategoryRepository(Store store, this._authService, this.syncService)
+      : super(store);
 
   /// Asynchronous initialization method
   Future<void> init() async {
@@ -22,8 +25,8 @@ class CategoryRepository extends BaseRepository<Category> {
 
   /// Factory method for asynchronous initialization
   static Future<CategoryRepository> create(
-      Store store, AuthService authService) async {
-    return CategoryRepository(store, authService);
+      Store store, AuthService authService, SyncService syncService) async {
+    return CategoryRepository(store, authService, syncService);
   }
 
   /// Helper method to set default category asynchronously
@@ -405,17 +408,19 @@ class CategoryRepository extends BaseRepository<Category> {
     return results;
   }
 
-  /// Override put to update timestamps, set userId, and handle deletedAt.
+  /// Override put to update timestamps, set userId, and push changes.
   @override
   Future<int> put(Category category,
       {SyncSource syncSource = SyncSource.local}) async {
     final currentUserId = _authService.currentUser?.id;
+    int resultId = category.id; // Initialize with incoming ID
 
     if (syncSource == SyncSource.local) {
       final now = DateTime.now();
       Category categoryToSave;
 
       if (category.id == 0) {
+        // New category
         categoryToSave = category.copyWith(
           userId: currentUserId,
           createdAt: now,
@@ -423,25 +428,32 @@ class CategoryRepository extends BaseRepository<Category> {
           deletedAt: category.deletedAt,
         );
       } else {
+        // Existing category
         final existing = await box.getAsync(category.id);
         if (existing == null) {
           print(
               "Warning: Attempted to update non-existent category ID: ${category.id}");
           return category.id;
         }
+        // Check context
         if (existing.userId != currentUserId) {
+          if (existing.userId != null) {
+            print(
+                "Error: Attempted to update category with mismatched userId context. Existing: ${existing.userId}, Current: $currentUserId");
+            throw Exception(
+                "Cannot modify data belonging to a different user context.");
+          }
           print(
-              "Error: Attempted to update category with mismatched userId context. Existing: ${existing.userId}, Current: $currentUserId");
-          throw Exception(
-              "Cannot modify data belonging to a different user context.");
+              "Info: Assigning userId $currentUserId to category ID ${category.id}");
         }
+
         categoryToSave = category.copyWith(
-          userId: currentUserId,
-          updatedAt: now,
+          userId: currentUserId, // Ensure context
+          updatedAt: now, // Always update timestamp
           createdAt:
               category.createdAt != DateTime.fromMillisecondsSinceEpoch(0)
                   ? category.createdAt
-                  : existing.createdAt,
+                  : existing.createdAt, // Preserve original createdAt
         );
       }
 
@@ -450,19 +462,48 @@ class CategoryRepository extends BaseRepository<Category> {
             "Error: Mismatched userId (${categoryToSave.userId}) during save for current context ($currentUserId).");
         throw Exception("Data integrity error: User ID mismatch.");
       }
-      return await super.put(categoryToSave, syncSource: syncSource);
+
+      // Use super.put to save locally
+      resultId = await super.put(categoryToSave, syncSource: syncSource);
+
+      // --- Push Change Immediately ---
+      if (resultId != 0 && syncService != null) {
+        // <-- Check if syncService is available
+        // Fetch the final saved item to ensure we push the correct state
+        final savedItem = await box.getAsync(resultId);
+        if (savedItem != null) {
+          print(
+              "Pushing change for Category ID $resultId immediately after local put.");
+          // Use try-catch to avoid breaking flow if push fails
+          try {
+            // Use the public syncService field
+            await syncService!.pushSingleUpsert<Category>(savedItem);
+          } catch (pushError) {
+            print(
+                "Error during immediate push after local put for Category ID $resultId: $pushError");
+            // Log error, but don't rethrow
+          }
+        } else {
+          print(
+              "Warning: Could not fetch Category ID $resultId after put for immediate push.");
+        }
+      } else if (syncService == null) {
+        print(
+            "Warning: syncService is null in CategoryRepository.put. Cannot push change immediately.");
+      }
+      // --- End Push Change ---
+
+      return resultId;
     } else {
       // Syncing down from Supabase
       if (category.userId == null) {
         print(
             "Warning: Syncing down category with null userId. ID: ${category.id}");
       }
-      // Ensure dates are local
       final categoryToSave = category.copyWith(
           createdAt: category.createdAt.toLocal(),
           updatedAt: category.updatedAt.toLocal(),
           deletedAt: category.deletedAt?.toLocal());
-      // Use the processed categoryToSave and return the result
       return await super.put(categoryToSave, syncSource: syncSource);
     }
   }
@@ -749,6 +790,35 @@ class CategoryRepository extends BaseRepository<Category> {
         processedEntities.add(entityToSave);
       }
       return await super.putMany(processedEntities, syncSource: syncSource);
+    }
+  }
+
+  /// Checks if any non-deleted categories exist with a null userId.
+  Future<bool> hasLocalOnlyData() async {
+    try {
+      // Ensure default categories (ID 1-19) are excluded if they might have null userId initially
+      final defaultIds = defaultCategoriesData
+          .map((c) => c.id)
+          .where((id) => id != 0)
+          .toList();
+
+      // Base condition: userId is null and not deleted
+      Condition<Category> condition =
+          Category_.userId.isNull().and(_notDeletedCondition());
+
+      // Add condition to exclude default IDs if any exist
+      if (defaultIds.isNotEmpty) {
+        condition = condition.and(Category_.id.notOneOf(defaultIds));
+      }
+
+      final query = box.query(condition).build();
+      // Use synchronous count()
+      final count = query.count();
+      query.close();
+      return count > 0;
+    } catch (e) {
+      print("Error checking for local-only category data: $e");
+      return false;
     }
   }
 }

@@ -80,82 +80,57 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
     // Optimization: If status and user haven't changed, do nothing.
     if (newStatus == previousStatus && state.user?.id == user?.id) {
-      print(
-          "AuthBloc: Auth state unchanged ($newStatus, user: ${user?.id}), skipping processing.");
       return;
     }
 
     if (user != null) {
       print('AuthBloc: User Authenticated - ${user.id}');
-      // Emit authenticated state immediately, but without sync flag yet
-      // Check if we are already authenticated to avoid unnecessary emits if only user object changed slightly
+      // Emit authenticated state immediately if transitioning
       if (previousStatus != AuthStatus.authenticated) {
-        emit(AuthState.authenticated(user, isSyncing: false));
+        emit(AuthState.authenticated(user));
       }
 
       // Perform assignment and sync only if transitioning *to* authenticated
       if (previousStatus != AuthStatus.authenticated) {
         try {
-          print('AuthBloc: Assigning local data to user ${user.id}...');
-          int txUpdated =
+          // --- ASSIGN LOCAL DATA FIRST ---
+          print(
+              'AuthBloc: Assigning local data to user ${user.id} BEFORE sync...');
+
+          int txAssigned =
               await _transactionRepository.assignUserIdToNullEntries(user.id);
-          int accUpdated =
+          int accAssigned =
               await _accountRepository.assignUserIdToNullEntries(user.id);
-          int catUpdated =
+          int catAssigned =
               await _categoryRepository.assignUserIdToNullEntries(user.id);
           print(
-              'AuthBloc: Assigned user ID to $txUpdated transactions, $accUpdated accounts, $catUpdated categories.');
+              'AuthBloc: Assigned user ID to $txAssigned transactions, $accAssigned accounts, $catAssigned categories.');
+          // --- ASSIGNMENT COMPLETE ---
 
-          print(
-              'AuthBloc: Triggering sync after authentication and data assignment...');
+          print('AuthBloc: Triggering sync after assignment...');
 
-          // --- Show Sync Indicator ---
-          // Ensure we emit the state with the *current* user object
-          emit(AuthState.authenticated(user, isSyncing: true));
-          print('AuthBloc: Emitted isSyncing: true');
-
-          // REMOVED onSyncEnd parameter from syncAll call
+          // SyncService.syncAll will now trigger the loading popup via callbacks
           await _syncService.syncAll();
           print('AuthBloc: Sync completed successfully.');
 
           _onSyncComplete?.call(); // This signals the UI layer to refresh
           print('AuthBloc: onSyncComplete callback invoked.');
-
-          // --- Hide Sync Indicator ---
-          // Emit false *after* sync and refresh trigger
-          // Ensure we emit the state with the *current* user object
-          emit(AuthState.authenticated(user, isSyncing: false));
-          print('AuthBloc: Emitted isSyncing: false');
         } catch (e, stacktrace) {
           print(
               'AuthBloc: Failed during post-authentication steps (assignment or sync): $e');
           print(stacktrace);
-          // Ensure sync indicator is hidden even on error
-          // Check current state before emitting to avoid issues if state changed rapidly
-          if (state.status == AuthStatus.authenticated && state.isSyncing) {
-            // Ensure we emit the state with the *current* user object
-            emit(AuthState.authenticated(user, isSyncing: false));
-            print('AuthBloc: Emitted isSyncing: false after error.');
-          }
-          // Optionally call _onSyncComplete even on error? Depends on desired behavior.
-          // _onSyncComplete?.call();
         }
       } else {
         print('AuthBloc: User already authenticated, skipping migration/sync.');
-        // If the user was already authenticated, trigger the refresh callback
-        // as data might be stale from a previous session.
+        // Trigger refresh callback for already authenticated users in case data is stale
         _onSyncComplete?.call();
         print(
             'AuthBloc: User already authenticated, triggered onSyncComplete for potential refresh.');
       }
     } else {
-      // --- MODIFICATION START ---
-      // Always emit unauthenticated if user is null, regardless of previous state.
-      // This handles both logout transitions and initial startup when not logged in.
+      // Always emit unauthenticated if user is null
       print('AuthBloc: User is null. Emitting Unauthenticated.');
       emit(const AuthState.unauthenticated());
-      // Add any necessary cleanup logic for logout here if needed
-      // --- MODIFICATION END ---
     }
   }
 
