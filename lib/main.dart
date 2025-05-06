@@ -236,7 +236,6 @@ class MyApp extends StatelessWidget {
                     },
                   );
                 case auth_bloc.AuthStatus.unknown:
-                default:
                   // Initial state or error, show loading indicator
                   return const Scaffold(
                     body: Center(child: CircularProgressIndicator()),

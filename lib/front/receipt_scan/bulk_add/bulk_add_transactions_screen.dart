@@ -19,14 +19,14 @@ class BulkAddTransactionsScreen extends StatelessWidget {
   final AccountRepository accountRepository;
 
   const BulkAddTransactionsScreen({
-    Key? key,
+    super.key,
     required this.transactionName,
     required this.date,
     required this.totalExpensesFromReceipt,
     required this.transactions,
     required this.categoryRepository,
     required this.accountRepository,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -146,7 +146,7 @@ class BulkAddTransactionsScreen extends StatelessWidget {
                   icon: const Icon(Icons.calendar_today, size: 18),
                   label: Text(dateFormat.format(state.selectedDate)),
                   style: AppStyle.secondaryButtonStyle.copyWith(
-                    textStyle: MaterialStateProperty.all(AppStyle.bodyText),
+                    textStyle: WidgetStateProperty.all(AppStyle.bodyText),
                   ),
                   onPressed: () async {
                     final DateTime? pickedDate = await showDatePicker(

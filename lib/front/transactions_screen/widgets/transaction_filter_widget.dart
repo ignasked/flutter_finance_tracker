@@ -6,7 +6,7 @@ import 'package:money_owl/front/shared/data_management_cubit/data_management_cub
 import 'package:money_owl/front/shared/filter_cubit/filter_cubit.dart'; // Import FilterCubit
 
 class TransactionFilterSheet extends StatefulWidget {
-  const TransactionFilterSheet({Key? key}) : super(key: key);
+  const TransactionFilterSheet({super.key});
 
   static Future<void> show(BuildContext context) {
     // Capture the FilterCubit instance *before* the async gap.

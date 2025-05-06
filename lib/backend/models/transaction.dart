@@ -1,15 +1,14 @@
 import 'package:equatable/equatable.dart';
 import 'package:money_owl/backend/models/account.dart';
 import 'package:money_owl/backend/models/category.dart';
-import 'package:money_owl/backend/utils/defaults.dart';
-import 'package:money_owl/backend/utils/enums.dart';
 import 'package:money_owl/objectbox.g.dart'; // Ensure this import exists
 import 'package:objectbox/objectbox.dart';
 import 'package:uuid/uuid.dart'; // Import uuid package
 
 @Entity()
-// ignore: must_be_immutable
+
 /// Represents a financial transaction with details such as title, amount, type (income/expense), category, and date.
+// ignore: must_be_immutable
 class Transaction extends Equatable {
   @Id()
   int id;
@@ -129,13 +128,13 @@ class Transaction extends Equatable {
       finalToAccountId = null;
     } else {
       // Prioritize explicit ID, then existing targetId
-      finalToAccountId = toAccountId ?? this.toAccount.targetId;
+      finalToAccountId = toAccountId ?? toAccount.targetId;
       if (finalToAccountId == 0) finalToAccountId = null; // Treat 0 as null
     }
 
     // Prioritize explicit ID, then existing targetId
-    final finalCategoryId = categoryId ?? this.category.targetId;
-    final finalFromAccountId = fromAccountId ?? this.fromAccount.targetId;
+    final finalCategoryId = categoryId ?? category.targetId;
+    final finalFromAccountId = fromAccountId ?? fromAccount.targetId;
 
     // Use the factory constructor
     return Transaction.createWithIds(

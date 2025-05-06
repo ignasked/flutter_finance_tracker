@@ -249,7 +249,7 @@ class _TransactionForm extends StatelessWidget {
                                   RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(
                                         AppStyle.borderRadiusMedium),
-                                    side: BorderSide(
+                                    side: const BorderSide(
                                         color: unselectedBorderColor,
                                         width: 1.0),
                                   ),

@@ -332,7 +332,7 @@ class AppStyle {
       horizontal: paddingMedium,
       vertical: paddingSmall,
     ),
-    shape: RoundedRectangleBorder(
+    shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.all(
         Radius.circular(borderRadiusMedium),
       ),
@@ -360,12 +360,12 @@ class AppStyle {
     ColorPalette.warning, // Yellow
     ColorPalette.tertiary, // Warm Grey/Lavender
     ColorPalette.info, // Info Blue
-    Color(0xFFFD6A5C), // Salmon Pink/Coral
-    Color(0xFF8E44AD), // Purple
-    Color(0xFF3498DB), // Lighter Blue
-    Color(0xFFE67E22), // Orange
-    Color(0xFF7F8C8D), // Grey
-    Color(0xFF1ABC9C), // Turquoise
+    const Color(0xFFFD6A5C), // Salmon Pink/Coral
+    const Color(0xFF8E44AD), // Purple
+    const Color(0xFF3498DB), // Lighter Blue
+    const Color(0xFFE67E22), // Orange
+    const Color(0xFF7F8C8D), // Grey
+    const Color(0xFF1ABC9C), // Turquoise
   ];
 
   // Predefined Icons (Keep as is, or update if desired)

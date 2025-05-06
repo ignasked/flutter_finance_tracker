@@ -6,7 +6,7 @@ import 'package:money_owl/backend/utils/app_style.dart';
 class CategoryFormWidget extends StatefulWidget {
   final Category? initialCategory;
 
-  const CategoryFormWidget({this.initialCategory, Key? key}) : super(key: key);
+  const CategoryFormWidget({this.initialCategory, super.key});
 
   @override
   _CategoryFormWidgetState createState() => _CategoryFormWidgetState();

@@ -280,10 +280,6 @@ class ImporterCubit extends Cubit<ImporterState> {
     // Parse JSON data
     final List<dynamic> jsonList = jsonDecode(jsonData) as List;
 
-    // Create lookup maps (remains the same)
-    final categoryIdMap = {for (var cat in availableCategories) cat.id: cat};
-    final accountIdMap = {for (var acc in availableAccounts) acc.id: acc};
-
     // Process each transaction
     final List<Transaction> transactions = [];
     int errorCount = 0;

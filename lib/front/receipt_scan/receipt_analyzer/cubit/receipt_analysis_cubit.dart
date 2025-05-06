@@ -54,7 +54,7 @@ class ReceiptAnalysisCubit extends Cubit<ReceiptAnalysisState> {
       final receiptJson = await _mistralService.loadSavedApiOutput();
 
       if (receiptJson == null) {
-        emit(ReceiptAnalysisError('No saved scan found'));
+        emit(const ReceiptAnalysisError('No saved scan found'));
         return;
       }
 

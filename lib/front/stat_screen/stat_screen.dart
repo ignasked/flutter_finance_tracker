@@ -11,7 +11,7 @@ import 'package:intl/intl.dart';
 import 'package:money_owl/front/shared/data_management_cubit/data_management_cubit.dart';
 import 'cubit/chart_cubit.dart';
 import 'cubit/chart_state.dart';
-import 'package:flutter/foundation.dart' as foundation; // For listEquals
+// For listEquals
 
 // --- ADD AI Imports ---
 import 'package:money_owl/backend/services/mistral_service.dart';
@@ -417,7 +417,7 @@ class _StatScreenState extends State<StatScreen> {
       List<ChartData> dataSource,
       String currencySymbol) {
     if (dataSource.isEmpty) {
-      return Center(child: Text('No data for pie chart'));
+      return const Center(child: Text('No data for pie chart'));
     }
 
     final SelectionBehavior selectionBehavior = SelectionBehavior(
@@ -614,8 +614,9 @@ class _StatScreenState extends State<StatScreen> {
       double padding = (range.abs() < 0.01)
           ? (maxBalance.abs() * 0.1).clamp(5.0, 100.0)
           : range * 0.15;
-      if (padding < 5.0 && range.abs() < 0.01 && maxBalance.abs() < 1)
+      if (padding < 5.0 && range.abs() < 0.01 && maxBalance.abs() < 1) {
         padding = 5.0;
+      }
       axisMinimum = minBalance - padding;
       axisMaximum = maxBalance + padding;
     }

@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:money_owl/backend/models/account.dart';
 import 'package:money_owl/backend/repositories/base_repository.dart';
 import 'package:money_owl/backend/utils/defaults.dart';
@@ -203,7 +202,7 @@ class AccountRepository extends BaseRepository<Account> {
             .and(Transaction_.deletedAt.isNull())
             .and(_transactionUserIdCondition()))
         .build();
-    final count = await query.count();
+    final count = query.count();
     query.close();
     return count > 0;
   }
@@ -519,8 +518,7 @@ class AccountRepository extends BaseRepository<Account> {
     }
 
     print(
-        "Attempted soft remove for $successCount non-default accounts (ID > 2) for user ${_authService.currentUser?.id ?? 'unauthenticated'}." +
-            (skippedCount > 0 ? " Skipped $skippedCount." : ""));
+        "Attempted soft remove for $successCount non-default accounts (ID > 2) for user ${_authService.currentUser?.id ?? 'unauthenticated'}.${skippedCount > 0 ? " Skipped $skippedCount." : ""}");
     return successCount;
   }
 

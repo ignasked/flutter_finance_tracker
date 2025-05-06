@@ -4,7 +4,6 @@ import 'package:money_owl/backend/repositories/base_repository.dart';
 import 'package:money_owl/backend/utils/app_style.dart';
 import 'package:money_owl/backend/utils/defaults.dart';
 import 'package:money_owl/backend/utils/enums.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:money_owl/objectbox.g.dart';
 import 'package:money_owl/backend/services/sync_service.dart';
 import 'package:money_owl/backend/services/auth_service.dart';
@@ -612,7 +611,7 @@ class CategoryRepository extends BaseRepository<Category> {
     }
 
     // Check for transactions
-    final hasTransactions = await _hasTransactionsForCategory(id);
+    final hasTransactions = _hasTransactionsForCategory(id);
     if (hasTransactions) {
       print("Error: Cannot delete category ID $id, it has transactions.");
       return false; // Indicate failure
@@ -715,7 +714,7 @@ class CategoryRepository extends BaseRepository<Category> {
 
     if (updatedItems.isNotEmpty) {
       // Explicitly use 'this' to clarify it's a method call
-      await this.putMany(updatedItems, syncSource: SyncSource.local);
+      await putMany(updatedItems, syncSource: SyncSource.local);
       print(
           "Successfully assigned userId $newUserId to ${updatedItems.length} categories.");
       return updatedItems.length;
@@ -769,7 +768,7 @@ class CategoryRepository extends BaseRepository<Category> {
         []; // Collect items to push/update locally
 
     for (final item in categoriesToDelete) {
-      final hasTransactions = await _hasTransactionsForCategory(item.id);
+      final hasTransactions = _hasTransactionsForCategory(item.id);
       if (hasTransactions) {
         print("Skipping delete for Category ID ${item.id}: Has transactions.");
         skippedCount++;
@@ -811,8 +810,7 @@ class CategoryRepository extends BaseRepository<Category> {
     }
 
     print(
-        "Attempted soft remove for $successCount non-default categories (ID > ${defaultCategoriesData.length}) for user ${_authService.currentUser?.id ?? 'unauthenticated'}." +
-            (skippedCount > 0 ? " Skipped $skippedCount." : ""));
+        "Attempted soft remove for $successCount non-default categories (ID > ${defaultCategoriesData.length}) for user ${_authService.currentUser?.id ?? 'unauthenticated'}.${skippedCount > 0 ? " Skipped $skippedCount." : ""}");
     return successCount;
   }
 

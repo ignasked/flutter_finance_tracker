@@ -8,11 +8,11 @@ class AccountDropdown extends StatelessWidget {
   final List<Account> accounts;
 
   const AccountDropdown({
-    Key? key,
+    super.key,
     required this.selectedAccount,
     required this.onChanged,
     required this.accounts,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

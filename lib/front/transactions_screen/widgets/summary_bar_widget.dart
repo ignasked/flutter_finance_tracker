@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:money_owl/backend/repositories/account_repository.dart';
 import 'package:money_owl/backend/utils/app_style.dart'; // Import AppStyle
 import 'package:money_owl/front/shared/data_management_cubit/data_management_cubit.dart';
 import 'package:money_owl/front/transactions_screen/widgets/transaction_filter_widget.dart';
@@ -9,7 +8,7 @@ import 'package:money_owl/front/shared/filter_cubit/filter_cubit.dart'; // Impor
 import 'package:money_owl/front/shared/filter_cubit/filter_state.dart'; // Import FilterState
 
 class SummaryBarWidget extends StatelessWidget {
-  const SummaryBarWidget({Key? key}) : super(key: key);
+  const SummaryBarWidget({super.key});
 
   @override
   Widget build(BuildContext context) {

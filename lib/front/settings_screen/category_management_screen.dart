@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:money_owl/backend/models/category.dart';
-import 'package:money_owl/backend/utils/app_style.dart';
-import 'package:money_owl/backend/utils/defaults.dart';
 import 'package:money_owl/backend/utils/enums.dart';
 import 'package:money_owl/front/shared/data_management_cubit/data_management_cubit.dart';
 import 'package:money_owl/front/settings_screen/widgets/category_form_widget.dart';

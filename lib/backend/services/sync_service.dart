@@ -7,7 +7,6 @@ import '../models/account.dart';
 import '../models/category.dart';
 import '../models/transaction.dart';
 import '../repositories/account_repository.dart';
-import '../repositories/base_repository.dart';
 import '../repositories/category_repository.dart';
 import '../repositories/transaction_repository.dart';
 
@@ -352,26 +351,6 @@ class SyncService {
     }
   }
 
-  // Helper to get repository (ensure it returns the correct type)
-  dynamic _getRepositoryForTable(String tableName) {
-    if (tableName == 'transactions') return _transactionRepository;
-    if (tableName == 'accounts') return _accountRepository;
-    if (tableName == 'categories') return _categoryRepository;
-    return null;
-  }
-
-  // Helper needed in _syncUp to call the correct fromJson
-  T _fromJsonForTable<T>(String tableName, Map<String, dynamic> json) {
-    if (tableName == 'accounts') {
-      return Account.fromJson(json) as T;
-    } else if (tableName == 'categories') {
-      return Category.fromJson(json) as T;
-    } else if (tableName == 'transactions') {
-      return Transaction.fromJson(json) as T;
-    }
-    throw Exception("Cannot find fromJson for table: $tableName");
-  }
-
   Future<void> pushUpsert<T extends dynamic>(String tableName, T item) async {
     final currentUserId = _supabaseClient.auth.currentUser?.id;
     if (currentUserId == null) return; // Don't push if not logged in
@@ -507,7 +486,6 @@ class SyncService {
     final Map<Type, List<Map<String, dynamic>>> groupedJson = {};
 
     for (final entity in entities) {
-      String tableName;
       Map<String, dynamic> json;
       Type entityType = entity.runtimeType;
 
@@ -521,15 +499,12 @@ class SyncService {
 
         switch (entityType) {
           case Transaction:
-            tableName = 'transactions';
             json = (entity as Transaction).toJson();
             break;
           case Account:
-            tableName = 'accounts';
             json = (entity as Account).toJson();
             break;
           case Category:
-            tableName = 'categories';
             json = (entity as Category).toJson();
             break;
           default:

@@ -15,8 +15,7 @@ import 'package:money_owl/front/shared/data_management_cubit/data_management_cub
 class ReceiptAnalyzerButton extends StatelessWidget {
   final VoidCallback onTap;
 
-  const ReceiptAnalyzerButton({Key? key, required this.onTap})
-      : super(key: key);
+  const ReceiptAnalyzerButton({super.key, required this.onTap});
 
   @override
   Widget build(BuildContext context) {

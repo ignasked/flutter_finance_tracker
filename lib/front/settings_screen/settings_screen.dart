@@ -13,7 +13,6 @@ import 'package:money_owl/front/shared/data_management_cubit/data_management_cub
 import 'package:money_owl/front/settings_screen/account_management_screen.dart';
 import 'package:money_owl/front/settings_screen/cubit/importer_cubit.dart';
 import 'package:money_owl/front/settings_screen/category_management_screen.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../common/loading_widget.dart';
 import 'package:money_owl/backend/utils/app_style.dart';
 import 'package:money_owl/backend/services/sync_service.dart';
@@ -255,7 +254,7 @@ class SettingsScreen extends StatelessWidget {
             onPressed: () => Navigator.pop(dialogContext, true),
             style: AppStyle.dangerButtonStyle.copyWith(
               backgroundColor:
-                  MaterialStateProperty.all(AppStyle.secondaryColor),
+                  WidgetStateProperty.all(AppStyle.secondaryColor),
             ),
             child: const Text('Logout'),
           ),

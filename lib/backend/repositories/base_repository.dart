@@ -1,6 +1,5 @@
 import 'package:money_owl/backend/services/sync_service.dart'; // Import SyncSource
 import 'package:money_owl/objectbox.g.dart';
-import 'package:objectbox/objectbox.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 

@@ -3,9 +3,8 @@ import 'package:money_owl/backend/repositories/base_repository.dart'; // <-- Add
 import 'package:money_owl/backend/services/auth_service.dart';
 import 'package:money_owl/front/shared/filter_cubit/filter_state.dart'; // Import FilterState
 import 'package:money_owl/objectbox.g.dart';
-import 'package:objectbox/objectbox.dart';
 import 'package:money_owl/backend/services/sync_service.dart'; // Import SyncService
-import 'package:money_owl/backend/utils/enums.dart'; // Import TransactionType
+// Import TransactionType
 
 class TransactionRepository extends BaseRepository<Transaction> {
   final AuthService _authService;

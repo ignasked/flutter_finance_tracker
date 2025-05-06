@@ -19,11 +19,11 @@ class TransactionListWidget extends StatelessWidget {
   final bool isBulkAddContext;
 
   const TransactionListWidget({
-    Key? key,
+    super.key,
     required this.transactions,
     this.groupByMonth = false,
     this.isBulkAddContext = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

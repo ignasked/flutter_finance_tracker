@@ -423,7 +423,7 @@ class DataManagementCubit extends Cubit<DataManagementState> {
         filteredTransactions: [],
         displayedTransactions: [],
         status: LoadingStatus.success,
-        summary: TransactionSummaryState(),
+        summary: const TransactionSummaryState(),
       ));
     } catch (e, stacktrace) {
       print("Error deleting all transactions from repository: $e");

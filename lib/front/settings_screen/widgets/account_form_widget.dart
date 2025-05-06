@@ -8,7 +8,7 @@ import 'package:money_owl/backend/utils/app_style.dart';
 class AccountFormWidget extends StatefulWidget {
   final Account? initialAccount;
 
-  const AccountFormWidget({this.initialAccount, Key? key}) : super(key: key);
+  const AccountFormWidget({this.initialAccount, super.key});
 
   @override
   _AccountFormWidgetState createState() => _AccountFormWidgetState();

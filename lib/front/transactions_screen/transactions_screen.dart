@@ -11,7 +11,7 @@ import 'package:money_owl/front/transactions_screen/widgets/summary_bar_widget.d
 import 'package:money_owl/front/receipt_scan/receipt_analyzer/receipt_analyzer_widget.dart';
 
 class TransactionsScreen extends StatelessWidget {
-  const TransactionsScreen({Key? key}) : super(key: key);
+  const TransactionsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {

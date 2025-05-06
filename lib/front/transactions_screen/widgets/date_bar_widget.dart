@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
-import 'package:money_owl/backend/models/transaction.dart'; // Import Transaction
+// Import Transaction
 import 'package:money_owl/backend/utils/app_style.dart';
 import 'package:money_owl/front/shared/data_management_cubit/data_management_cubit.dart'; // Import DataManagementCubit
 import 'package:money_owl/front/shared/data_management_cubit/date_cubit.dart';
@@ -10,8 +10,8 @@ import 'package:money_owl/front/shared/data_management_cubit/date_cubit.dart';
 /// It allows users to navigate between dates and open a date selection sheet.
 class DateBarWidget extends StatelessWidget {
   const DateBarWidget({
-    Key? key,
-  }) : super(key: key);
+    super.key,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -127,7 +127,7 @@ class DateRangeDisplay extends StatelessWidget {
 ///
 /// Users can choose to select a single day, a month, or a date range.
 class DateSelectionOptionsSheet extends StatelessWidget {
-  const DateSelectionOptionsSheet({Key? key}) : super(key: key);
+  const DateSelectionOptionsSheet({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -205,7 +205,7 @@ class DateSelectionOptionsSheet extends StatelessWidget {
 
 /// A button that allows the user to select a single day.
 class SelectDayButton extends StatelessWidget {
-  const SelectDayButton({Key? key}) : super(key: key);
+  const SelectDayButton({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -236,7 +236,7 @@ class SelectDayButton extends StatelessWidget {
 
 /// A button that allows the user to select a month.
 class SelectMonthButton extends StatelessWidget {
-  const SelectMonthButton({Key? key}) : super(key: key);
+  const SelectMonthButton({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -272,7 +272,7 @@ class SelectMonthButton extends StatelessWidget {
 
 /// A button that allows the user to select a date range.
 class SelectDateRangeButton extends StatelessWidget {
-  const SelectDateRangeButton({Key? key}) : super(key: key);
+  const SelectDateRangeButton({super.key});
 
   @override
   Widget build(BuildContext context) {

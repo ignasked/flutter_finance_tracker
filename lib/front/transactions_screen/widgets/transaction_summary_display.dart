@@ -7,7 +7,7 @@ import 'package:money_owl/front/shared/filter_cubit/filter_state.dart';
 import 'package:money_owl/front/shared/data_management_cubit/data_management_cubit.dart';
 
 class TransactionSummaryDisplay extends StatelessWidget {
-  const TransactionSummaryDisplay({Key? key}) : super(key: key);
+  const TransactionSummaryDisplay({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -31,6 +31,7 @@ class TransactionSummaryDisplay extends StatelessWidget {
               // --- Balance Figure ---
               // Use Flexible or Expanded if you want them to take up equal width
               Flexible(
+                flex: 5,
                 child: _buildSummaryFigure(
                   label: 'Balance',
                   amountString: state.summary.balanceString,
@@ -45,7 +46,6 @@ class TransactionSummaryDisplay extends StatelessWidget {
                   icon: Icons.account_balance_wallet_outlined,
                   iconColor: AppStyle.primaryColor, // Or textColorSecondary
                 ),
-                flex: 5,
               ),
 
               // _buildVerticalDivider(),
@@ -72,6 +72,7 @@ class TransactionSummaryDisplay extends StatelessWidget {
 
               // --- Income Figure ---
               Flexible(
+                flex: 2,
                 child: _buildSummaryFigure(
                   label: '',
                   amountString: state.summary.totalIncomeString,
@@ -80,13 +81,13 @@ class TransactionSummaryDisplay extends StatelessWidget {
                   icon: Icons.arrow_upward,
                   iconColor: AppStyle.incomeColor,
                 ),
-                flex: 2,
               ),
 
               _buildVerticalDivider(),
 
               // --- Expense Figure ---
               Flexible(
+                flex: 2,
                 child: _buildSummaryFigure(
                   label: '',
                   amountString: state.summary.totalExpensesString,
@@ -95,7 +96,6 @@ class TransactionSummaryDisplay extends StatelessWidget {
                   icon: Icons.arrow_downward,
                   iconColor: AppStyle.expenseColor,
                 ),
-                flex: 2,
               ),
             ],
           ),
