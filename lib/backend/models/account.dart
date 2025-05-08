@@ -13,7 +13,7 @@ class Account extends Equatable {
 
   @Index() // Index UUID for faster lookups during sync
   @Unique(onConflict: ConflictStrategy.replace) // Ensure UUID is unique locally
-  String uuid; // NEW: Globally unique identifier
+  String uuid; // Globally unique identifier
 
   final String name;
   final String currency;
@@ -21,9 +21,9 @@ class Account extends Equatable {
   @Transient()
   double balance;
   @Property(type: PropertyType.int)
-  final int typeValue; // Store AccountType as int
-  final int colorValue; // Store color as int
-  final int iconCodePoint; // Store icon as int
+  final int typeValue; // Stores AccountType as int
+  final int colorValue; // Stores color as int
+  final int iconCodePoint; // Stores icon as int
   final bool isEnabled; // Track if the account is active
 
   @Property(type: PropertyType.date)
@@ -35,7 +35,6 @@ class Account extends Equatable {
   @Index() // Index for faster lookups by userId
   final String? userId;
 
-  // Add deletedAt field
   @Property(type: PropertyType.date)
   @Index()
   DateTime? deletedAt; // Nullable: Tracks deletion time (UTC)
@@ -48,20 +47,15 @@ class Account extends Equatable {
   @Backlink('toAccount')
   final ToMany<Transaction> transactionsTo = ToMany<Transaction>();
 
-  // Getter for type
   AccountType get type => AccountType.values[typeValue];
-  // Getter for color
   Color get color => Color(colorValue);
-  // Getter for icon
   IconData get icon => IconData(iconCodePoint, fontFamily: 'MaterialIcons');
-  // Helper getter for deletion status
   bool get isDeleted => deletedAt != null;
-  // Helper getter for currency symbol or code
   String get currencySymbolOrCurrency => currencySymbol ?? currency;
 
   Account({
-    this.id = 0, // ObjectBox will assign if 0
-    String? uuid, // Accept optional UUID
+    this.id = 0, // ObjectBox will assign an ID if 0
+    String? uuid, // Accept optional UUID (e.g., from sync)
     required this.name,
     required this.currency,
     this.currencySymbol,
@@ -73,15 +67,15 @@ class Account extends Equatable {
     DateTime? createdAt,
     DateTime? updatedAt,
     this.userId,
-    this.deletedAt,
+    this.deletedAt, // Allow setting deletedAt on creation
   })  : uuid = uuid ?? const Uuid().v4(), // Generate UUID if not provided
-        createdAt = createdAt ?? DateTime.now(),
-        updatedAt = updatedAt ?? (createdAt ?? DateTime.now());
+        createdAt = createdAt ?? DateTime.now().toUtc(),
+        updatedAt = updatedAt ?? DateTime.now().toUtc();
 
   @override
   List<Object?> get props => [
         id,
-        uuid, // Add UUID
+        uuid,
         name,
         currency,
         currencySymbol,
@@ -98,7 +92,7 @@ class Account extends Equatable {
 
   Account copyWith({
     int? id,
-    String? uuid, // Allow copying UUID
+    String? uuid,
     String? name,
     String? currency,
     String? currencySymbol,
@@ -115,7 +109,7 @@ class Account extends Equatable {
   }) {
     return Account(
       id: id ?? this.id,
-      uuid: uuid ?? this.uuid, // Copy UUID
+      uuid: uuid ?? this.uuid,
       name: name ?? this.name,
       currency: currency ?? this.currency,
       currencySymbol: currencySymbol ?? this.currencySymbol,
@@ -125,60 +119,53 @@ class Account extends Equatable {
       iconCodePoint: iconCodePoint ?? this.iconCodePoint,
       isEnabled: isEnabled ?? this.isEnabled,
       createdAt: createdAt ?? this.createdAt,
-      updatedAt: updatedAt ?? DateTime.now(), // Always update timestamp
+      updatedAt: updatedAt ?? DateTime.now(),
       userId: userId ?? this.userId,
       deletedAt:
           setDeletedAtNull == true ? null : (deletedAt ?? this.deletedAt),
     );
   }
 
-  // --- Updated toJson (Matches repository version) ---
   Map<String, dynamic> toJson() {
     return {
-      'id': id == 0
-          ? null
-          : id, // Send ID (null if 0, though should have ID when syncing up existing)
-      'uuid': uuid, // ALWAYS send UUID
+      'id': id == 0 ? null : id,
+      'uuid': uuid,
       'name': name,
       'currency': currency,
       'currency_symbol': currencySymbol,
       'balance': balance,
-      'type_value': typeValue, // Send int value
+      'type_value': typeValue,
       'color_value': colorValue,
       'icon_code_point': iconCodePoint,
       'is_enabled': isEnabled,
       'created_at': createdAt.toUtc().toIso8601String(),
-      'updated_at':
-          DateTime.now().toUtc().toIso8601String(), // Send current time
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
       'user_id': userId,
       'deleted_at': deletedAt?.toUtc().toIso8601String(),
     };
   }
 
-  // Create Account from JSON (Supabase)
   factory Account.fromJson(Map<String, dynamic> json) {
     DateTime? parseDate(dynamic value) =>
         value == null ? null : DateTime.tryParse(value as String)?.toLocal();
 
     return Account(
-      id: (json['id'] as num?)?.toInt() ?? 0, // Use Supabase ID if available
-      uuid: json['uuid'] as String?, // Use Supabase UUID if available
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      uuid: json['uuid'] as String?,
       name: json['name'] as String? ?? 'Unknown Account',
       currency: json['currency'] as String? ?? 'USD',
-      currencySymbol: json['currency_symbol'] as String?, // Nullable
+      currencySymbol: json['currency_symbol'] as String?,
       balance: (json['balance'] as num?)?.toDouble() ?? 0.0,
-      typeValue: (json['type_value'] as num?)?.toInt() ??
-          AccountType.bank.index, // Parse int
+      typeValue:
+          (json['type_value'] as num?)?.toInt() ?? AccountType.bank.index,
       colorValue: (json['color_value'] as num?)?.toInt() ?? Colors.grey.value,
       iconCodePoint: (json['icon_code_point'] as num?)?.toInt() ??
           Icons.question_mark.codePoint,
       isEnabled: json['is_enabled'] as bool? ?? true,
-      createdAt:
-          parseDate(json['created_at']), // Let constructor handle default
-      updatedAt:
-          parseDate(json['updated_at']), // Let constructor handle default
+      createdAt: parseDate(json['created_at']),
+      updatedAt: parseDate(json['updated_at']),
       userId: json['user_id'] as String?,
-      deletedAt: parseDate(json['deleted_at']), // Nullable
+      deletedAt: parseDate(json['deleted_at']),
     );
   }
 

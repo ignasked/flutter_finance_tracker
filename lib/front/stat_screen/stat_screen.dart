@@ -11,12 +11,8 @@ import 'package:intl/intl.dart';
 import 'package:money_owl/front/shared/data_management_cubit/data_management_cubit.dart';
 import 'cubit/chart_cubit.dart';
 import 'cubit/chart_state.dart';
-// For listEquals
-
-// --- ADD AI Imports ---
 import 'package:money_owl/backend/services/mistral_service.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
-// --- END AI Imports ---
 
 // Enum to manage category chart type
 enum CategoryChartType { expense, income }
@@ -35,11 +31,9 @@ class _StatScreenState extends State<StatScreen> {
   Set<CategoryChartType> _selectedCategoryType = {CategoryChartType.expense};
   CategoryChartView _categoryChartView = CategoryChartView.pie;
 
-  // --- ADD AI State ---
   bool _isAiLoading = false;
   final TextEditingController _aiQueryController =
       TextEditingController(); // Controller for the text field
-  // --- END AI State ---
 
   @override
   void dispose() {
@@ -162,13 +156,11 @@ class _StatScreenState extends State<StatScreen> {
                                         context, chartState, currencySymbol),
                                   ),
 
-                                // --- ADD AI Analysis Card ---
                                 if (hasAnyData ||
-                                    _isAiLoading) // Show if there's data or AI is loading
+                                    _isAiLoading) // Show AI card if there's data or AI is processing
                                   const SizedBox(
                                       height: AppStyle.paddingMedium),
                                 _buildAiAnalysisCard(context, dataState),
-                                // --- END AI Analysis Card ---
                               ],
                             );
                           },
@@ -185,18 +177,19 @@ class _StatScreenState extends State<StatScreen> {
     );
   }
 
-  /// Helper to wrap charts in a consistent Card/Container style
+  /// Helper to wrap charts in a consistent Card/Container style.
   Widget _buildChartCard({
     required BuildContext context,
-    String? title, // Make title optional
-    Widget? titleWidget, // Allow custom title widget
+    String? title, // Optional title for the chart card
+    Widget? titleWidget, // Allow a custom widget for the title area
     required Widget child,
   }) {
     return Container(
-      padding: const EdgeInsets.all(AppStyle.paddingSmall), // Internal padding
+      padding: const EdgeInsets.all(
+          AppStyle.paddingSmall), // Internal padding for content
       decoration: AppStyle.cardDecoration.copyWith(
         // Use card style from AppStyle
-        color: AppStyle.cardColor, // Ensure background color
+        color: AppStyle.cardColor, // Ensure background color for the card
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -674,7 +667,7 @@ class _StatScreenState extends State<StatScreen> {
             format: 'point.x : point.y',
             decimalPlaces: 0,
             textStyle:
-                AppStyle.captionStyle.copyWith(color: ColorPalette.onPrimary),
+                AppStyle.captionStyle.copyWith(color: ColorPalette.onError),
             color: AppStyle.secondaryColor.withOpacity(0.9),
             borderColor: Colors.transparent,
             borderRadius: AppStyle.borderRadiusSmall,
@@ -691,7 +684,6 @@ class _StatScreenState extends State<StatScreen> {
     );
   }
 
-  // --- ADD Helper to get Category Color and Icon ---
   ({Color color, int iconCodePoint}) _getCategoryStyle(
       String categoryTitle, BuildContext context) {
     try {
@@ -711,21 +703,14 @@ class _StatScreenState extends State<StatScreen> {
       );
     }
   }
-  // --- END ADD Helper ---
 
-  // Helper to get category color (ensure access to categories) - Keep original for now if used elsewhere, or remove if only _getCategoryStyle is needed
   Color _getColorForCategory(String categoryTitle, BuildContext context) {
-    // Access categories from DataManagementCubit's state
     try {
-      // Use context.read inside build methods or helpers called directly from build
-      // Be cautious if calling this from callbacks where context might be outdated
       final categories =
           context.read<DataManagementCubit>().state.allCategories;
       final category = categories.firstWhere(
         (cat) => cat.title == categoryTitle,
-        // Provide orElse for safety if category might genuinely not exist
-        orElse: () =>
-            Defaults().defaultCategory, // Fallback to a default category
+        orElse: () => Defaults().defaultCategory, // Fallback
       );
       return category.color;
     } catch (e) {
@@ -734,7 +719,6 @@ class _StatScreenState extends State<StatScreen> {
     }
   }
 
-  // --- UPDATE AI Analysis Card Builder ---
   Widget _buildAiAnalysisCard(
       BuildContext context, DataManagementState dataState) {
     return _buildChartCard(
@@ -779,9 +763,7 @@ class _StatScreenState extends State<StatScreen> {
       ),
     );
   }
-  // --- END AI Analysis Card Builder ---
 
-  // --- UPDATE AI Analysis Method Signature ---
   Future<void> _showFinancialAnalysis(BuildContext context,
       DataManagementState dataState, String userQuery) async {
     if (!mounted) return;
@@ -800,7 +782,6 @@ class _StatScreenState extends State<StatScreen> {
       return;
     }
 
-    // --- Prepare Anonymized Data ---
     final Map<String, double> categorySpending = {};
     for (final transaction in transactions) {
       final categoryTitle =
@@ -814,20 +795,18 @@ class _StatScreenState extends State<StatScreen> {
       );
     }
 
-    // Format the data as a string (e.g., "Category: Amount\nCategory: Amount")
     final currencyFormat = NumberFormat.simpleCurrency(
       name: filterState.selectedAccount?.currencySymbolOrCurrency ??
           Defaults().defaultCurrencySymbol,
-      decimalDigits: 2, // Or adjust as needed
+      decimalDigits: 2,
     );
     final anonymizedDataString = categorySpending.entries
-        .where((entry) => entry.value > 0.01) // Filter out negligible amounts
+        .where((entry) => entry.value > 0.01)
         .map((entry) => '${entry.key}: ${currencyFormat.format(entry.value)}')
         .join('\n');
 
-    // --- Format Date Range ---
     final DateFormat dateFormat = DateFormat('MMM d, yyyy');
-    String dateRangeString = 'for the selected period'; // Default
+    String dateRangeString = 'for the selected period';
     if (filterState.startDate != null && filterState.endDate != null) {
       if (filterState.singleDay) {
         dateRangeString = 'on ${dateFormat.format(filterState.startDate!)}';
@@ -841,19 +820,17 @@ class _StatScreenState extends State<StatScreen> {
     } else if (filterState.endDate != null) {
       dateRangeString = 'up to ${dateFormat.format(filterState.endDate!)}';
     }
-    // --- End Format Date Range ---
 
     if (anonymizedDataString.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
               'No significant spending data found for analysis in the selected period.'),
-          backgroundColor: AppStyle.linkColor, // Use info color
+          backgroundColor: AppStyle.linkColor,
         ),
       );
       return;
     }
-    // --- End Prepare Anonymized Data ---
 
     setState(() {
       _isAiLoading = true;
@@ -862,13 +839,11 @@ class _StatScreenState extends State<StatScreen> {
     showLoadingPopup(context, message: 'Generating AI analysis...');
 
     try {
-      // --- Pass Anonymized Data, User Query, and Date Range ---
       final analysis = await MistralService.instance.provideFinancialAnalysis(
-        anonymizedDataString, // Pass the formatted string
-        userQuery.trim(), // Pass the trimmed user query
-        dateRangeString, // Pass the formatted date range
+        anonymizedDataString,
+        userQuery.trim(),
+        dateRangeString,
       );
-      // --- End Pass Anonymized Data, User Query, and Date Range ---
 
       if (!mounted) return;
       hideLoadingPopup(context);
@@ -888,9 +863,8 @@ class _StatScreenState extends State<StatScreen> {
             ],
           ),
           content: SizedBox(
-            width: double.maxFinite, // Use available width
+            width: double.maxFinite,
             child: SingleChildScrollView(
-              // Make content scrollable
               child: MarkdownBody(
                 data: analysis,
                 styleSheet: MarkdownStyleSheet(
@@ -923,10 +897,10 @@ class _StatScreenState extends State<StatScreen> {
     } catch (e) {
       if (!mounted) return;
       hideLoadingPopup(context);
-      print("Error getting AI analysis: $e"); // Logs the error
+      print("Error getting AI analysis: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error generating analysis: $e', // Displays the error
+          content: Text('Error generating analysis: $e',
               style: AppStyle.bodyText.copyWith(color: ColorPalette.onError)),
           backgroundColor: ColorPalette.errorContainer,
         ),
@@ -939,5 +913,4 @@ class _StatScreenState extends State<StatScreen> {
       }
     }
   }
-  // --- END AI Analysis Method ---
 }

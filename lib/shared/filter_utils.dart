@@ -5,14 +5,12 @@ List<Transaction> applyFilters(
     List<Transaction> transactions, FilterState state) {
   List<Transaction> filtered = List.from(transactions);
 
-  // Apply Account Filter
   if (state.selectedAccount != null) {
     filtered = filtered
         .where((t) => t.fromAccount.target?.id == state.selectedAccount!.id)
         .toList();
   }
 
-  // Apply Category Filter
   if (state.selectedCategories.isNotEmpty) {
     final categoryIds = state.selectedCategories.map((c) => c.id).toSet();
     filtered = filtered
@@ -20,10 +18,8 @@ List<Transaction> applyFilters(
         .toList();
   }
 
-  // Apply Date Filter
   if (state.startDate != null) {
     if (state.singleDay) {
-      // Filter for a single day (ignore time part)
       final startOfDay = DateTime(
           state.startDate!.year, state.startDate!.month, state.startDate!.day);
       final endOfDay = startOfDay.add(const Duration(days: 1));
@@ -33,7 +29,6 @@ List<Transaction> applyFilters(
               (t.date.isAfter(startOfDay) && t.date.isBefore(endOfDay)))
           .toList();
     } else {
-      // Filter for a date range (inclusive start, exclusive end for end date)
       final rangeStart = state.startDate!;
       final rangeEnd = state.endDate?.add(const Duration(days: 1));
 
@@ -47,13 +42,11 @@ List<Transaction> applyFilters(
     }
   }
 
-  // Apply Amount Filter (Optional)
   if (state.minAmount != null) {
     filtered =
         filtered.where((t) => t.amount.abs() >= state.minAmount!).toList();
   }
 
-  // Apply Income/Expense Filter (Optional)
   if (state.isIncome != null) {
     filtered = filtered.where((t) => t.isIncome == state.isIncome).toList();
   }

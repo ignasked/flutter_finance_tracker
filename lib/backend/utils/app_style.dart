@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 // ==========================================================================
-// NEW Color Palette - Professional Blue/Teal Theme
+// Professional Blue/Teal Theme
 // ==========================================================================
 class ColorPalette {
   // --- Primary (Blue) ---
@@ -51,8 +51,7 @@ class ColorPalette {
   static const Color onErrorContainer = Color(0xFF410002);
 
   static const Color income = Color(0xFF28A745); // A clear, positive green
-  static const Color expense =
-      Color(0xFFDC3545); // A clear, warning red (matches error slightly)
+  static const Color expense = Color(0xFFDC3545); // A clear, warning red
 
   static const Color warning = Color(0xFFFFC107); // Standard warning yellow
   static const Color onWarning = Color(0xFF332700); // Dark text for warning bg
@@ -78,51 +77,51 @@ class ColorPalette {
 }
 
 // ==========================================================================
-// AppStyle - References the NEW ColorPalette
+// AppStyle - References the ColorPalette
 // ==========================================================================
 class AppStyle {
-  // --- Colors (Referencing new ColorPalette) ---
+  // --- Colors (Referencing ColorPalette) ---
   static const Color primaryColor = ColorPalette.primary;
   static const Color accentColor =
-      ColorPalette.secondary; // Use new secondary as accent
+      ColorPalette.secondary; // Using secondary as accent
   static const Color secondaryColor = ColorPalette.secondary;
   static const Color tertiaryColor = ColorPalette.tertiary;
   static const Color backgroundColor = ColorPalette.background;
-  static const Color cardColor = ColorPalette.surface; // White cards
+  static const Color cardColor = ColorPalette.surface; // Cards are white
   static const Color chipBackgroundColor =
       ColorPalette.primaryContainer; // Light blue chips
   static const Color textColorPrimary = ColorPalette.textPrimary;
   static const Color textColorSecondary = ColorPalette.textSecondary;
-  static const Color incomeColor = ColorPalette.income; // New income green
-  static const Color expenseColor = ColorPalette.expense; // New expense red
-  static const Color dividerColor = ColorPalette.divider; // New divider grey
+  static const Color incomeColor = ColorPalette.income; // Green for income
+  static const Color expenseColor = ColorPalette.expense; // Red for expense
+  static const Color dividerColor = ColorPalette.divider; // Grey for dividers
   static const Color warningColor = ColorPalette.warning;
-  static const Color linkColor = ColorPalette.link; // Uses primary blue
+  static const Color linkColor =
+      ColorPalette.link; // Uses primary blue for links
 
-  // --- Padding & Spacing (Unchanged) ---
+  // --- Padding & Spacing ---
   static const double paddingXSmall = 4.0;
   static const double paddingSmall = 8.0;
   static const double paddingMedium = 16.0;
   static const double paddingLarge = 24.0;
   static const double paddingXLarge = 32.0;
 
-  // --- Border Radius (Unchanged) ---
+  // --- Border Radius ---
   static const double borderRadiusSmall = 8.0;
   static const double borderRadiusMedium = 12.0;
   static const double borderRadiusLarge = 16.0;
   static const double borderRadiusXLarge = 24.0;
 
-  // --- Elevation (Shadow) (Unchanged) ---
-  static const double elevationSmall =
-      1.0; // Slightly reduced elevation for flatter look
+  // --- Elevation ---
+  static const double elevationSmall = 1.0; // Slightly reduced elevation
   static const double elevationMedium = 3.0;
   static const double cardElevation = elevationMedium; // Alias for common usage
 
-  // --- Text Styles (Updated Colors) ---
+  // --- Text Styles ---
   static const TextStyle heading1 = TextStyle(
     fontSize: 28.0,
     fontWeight: FontWeight.bold,
-    color: textColorPrimary, // Updated color
+    color: textColorPrimary,
     letterSpacing: -0.5,
     height: 1.2,
   );
@@ -130,7 +129,7 @@ class AppStyle {
   static const TextStyle heading2 = TextStyle(
     fontSize: 22.0,
     fontWeight: FontWeight.w600,
-    color: textColorPrimary, // Updated color
+    color: textColorPrimary,
     letterSpacing: -0.25,
     height: 1.3,
   );
@@ -140,7 +139,7 @@ class AppStyle {
   static const TextStyle titleStyle = TextStyle(
     fontSize: 18.0,
     fontWeight: FontWeight.w500, // Medium weight
-    color: textColorPrimary, // Updated color
+    color: textColorPrimary,
     letterSpacing: 0.1, // Slightly tighter spacing
     height: 1.4,
   );
@@ -148,7 +147,7 @@ class AppStyle {
   static const TextStyle subtitleStyle = TextStyle(
     fontSize: 16.0,
     fontWeight: FontWeight.normal, // Normal weight for subtitle
-    color: textColorSecondary, // Updated color
+    color: textColorSecondary,
     letterSpacing: 0.1,
     height: 1.5,
   );
@@ -156,7 +155,7 @@ class AppStyle {
   static const TextStyle bodyText = TextStyle(
     fontSize: 16.0,
     fontWeight: FontWeight.normal,
-    color: textColorPrimary, // Updated color
+    color: textColorPrimary,
     letterSpacing: 0.3, // Adjusted spacing
     height: 1.5,
   );
@@ -166,7 +165,7 @@ class AppStyle {
   static const TextStyle captionStyle = TextStyle(
     fontSize: 14.0,
     fontWeight: FontWeight.normal,
-    color: textColorSecondary, // Updated color
+    color: textColorSecondary,
     letterSpacing: 0.25,
     height: 1.4,
   );
@@ -174,36 +173,35 @@ class AppStyle {
   static const TextStyle amountIncomeStyle = TextStyle(
     fontSize: 16.0,
     fontWeight: FontWeight.w600, // Semibold for amounts
-    color: incomeColor, // Updated color
+    color: incomeColor,
     letterSpacing: 0.1,
   );
 
   static const TextStyle amountExpenseStyle = TextStyle(
     fontSize: 16.0,
     fontWeight: FontWeight.w600, // Semibold for amounts
-    color: expenseColor, // Updated color
+    color: expenseColor,
     letterSpacing: 0.1,
   );
 
-  // Button text is usually onPrimary or on<Color>
+  // Button text color is typically onPrimary or on<Color>, defined by ButtonStyle's foregroundColor.
   static const TextStyle buttonTextStyle = TextStyle(
     fontSize: 16.0,
     fontWeight: FontWeight.w500,
     letterSpacing: 0.5, // Less spacing for buttons
-    // Color is defined by ButtonStyle foregroundColor
   );
 
   static const TextStyle linkTextStyle = TextStyle(
     fontSize: 16.0,
     fontWeight: FontWeight.w500,
     letterSpacing: 0.5,
-    color: linkColor, // Updated color
+    color: linkColor,
   );
 
-  // --- Button Styles (Updated Colors & Minor Tweaks) ---
+  // --- Button Styles ---
   static final ButtonStyle primaryButtonStyle = ElevatedButton.styleFrom(
-    backgroundColor: primaryColor, // Updated color
-    foregroundColor: ColorPalette.onPrimary, // Updated color
+    backgroundColor: primaryColor,
+    foregroundColor: ColorPalette.onPrimary,
     padding: const EdgeInsets.symmetric(
         horizontal: paddingLarge, vertical: paddingMedium),
     textStyle: buttonTextStyle,
@@ -214,30 +212,28 @@ class AppStyle {
   );
 
   static final ButtonStyle secondaryButtonStyle = OutlinedButton.styleFrom(
-    foregroundColor: primaryColor, // Updated color
-    side: const BorderSide(color: primaryColor, width: 1.5), // Updated color
+    foregroundColor: primaryColor,
+    side: const BorderSide(color: primaryColor, width: 1.5),
     padding: const EdgeInsets.symmetric(
         horizontal: paddingLarge, vertical: paddingMedium),
-    textStyle: buttonTextStyle.copyWith(
-        color: primaryColor), // Text color matches foreground
+    textStyle: buttonTextStyle.copyWith(color: primaryColor),
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(borderRadiusMedium),
     ),
   );
 
   static final ButtonStyle textButtonStyle = TextButton.styleFrom(
-    foregroundColor: primaryColor, // Updated color
+    foregroundColor: primaryColor,
     padding: const EdgeInsets.symmetric(
         horizontal: paddingMedium, vertical: paddingSmall),
-    textStyle: buttonTextStyle.copyWith(
-        color: primaryColor), // Text color matches foreground
+    textStyle: buttonTextStyle.copyWith(color: primaryColor),
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(borderRadiusMedium),
     ),
   );
 
   static final ButtonStyle dangerButtonStyle = ElevatedButton.styleFrom(
-    backgroundColor: expenseColor, // Updated color (using expense red)
+    backgroundColor: expenseColor, // Using expense red
     foregroundColor: ColorPalette.onError, // Text on error color
     padding: const EdgeInsets.symmetric(
         horizontal: paddingLarge, vertical: paddingMedium),
@@ -248,31 +244,30 @@ class AppStyle {
     ),
   );
 
-  // --- Input Decoration (Updated Colors) ---
+  // --- Input Decoration ---
   static InputDecoration getInputDecoration({
     required String labelText,
     String? helperText,
     String? errorText,
-    Widget? prefixIcon, // Added optional prefix/suffix icons
-    Widget? suffixIcon,
-    Color? fillColor, // Allow overriding fill color
-    InputBorder? border, // Allow overriding border
-    EdgeInsets? contentPadding, // Allow overriding padding
+    Widget? prefixIcon, // Optional prefix icon
+    Widget? suffixIcon, // Optional suffix icon
+    Color? fillColor,
+    InputBorder? border,
+    EdgeInsets? contentPadding,
   }) {
     return InputDecoration(
       labelText: labelText,
-      labelStyle:
-          captionStyle.copyWith(color: textColorSecondary), // Updated color
+      labelStyle: captionStyle.copyWith(color: textColorSecondary),
       helperText: helperText,
-      helperStyle: captionStyle.copyWith(
-          fontSize: 12, color: textColorSecondary), // Updated color
+      helperStyle:
+          captionStyle.copyWith(fontSize: 12, color: textColorSecondary),
       errorText: errorText,
-      errorStyle: captionStyle.copyWith(
-          color: ColorPalette.error, fontSize: 12), // Updated color
+      errorStyle:
+          captionStyle.copyWith(color: ColorPalette.error, fontSize: 12),
       prefixIcon: prefixIcon,
       suffixIcon: suffixIcon,
       filled: true,
-      fillColor: fillColor ?? cardColor, // Default to cardColor (white)
+      fillColor: fillColor ?? cardColor, // Default to cardColor
       contentPadding: contentPadding ??
           const EdgeInsets.symmetric(
               horizontal: paddingMedium, vertical: paddingMedium),
@@ -280,44 +275,40 @@ class AppStyle {
           OutlineInputBorder(
             // Default border style
             borderRadius: BorderRadius.circular(borderRadiusMedium),
-            borderSide: const BorderSide(
-                color: ColorPalette.outline), // Use outline color
+            borderSide: const BorderSide(color: ColorPalette.outline),
           ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(borderRadiusMedium),
-        borderSide:
-            const BorderSide(color: ColorPalette.outline), // Use outline color
+        borderSide: const BorderSide(color: ColorPalette.outline),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(borderRadiusMedium),
-        borderSide:
-            const BorderSide(color: primaryColor, width: 2.0), // Updated color
+        borderSide: const BorderSide(color: primaryColor, width: 2.0),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(borderRadiusMedium),
-        borderSide:
-            const BorderSide(color: ColorPalette.error), // Updated color
+        borderSide: const BorderSide(color: ColorPalette.error),
       ),
       focusedErrorBorder: OutlineInputBorder(
-        // Added focused error border
+        // Style for focused error state
         borderRadius: BorderRadius.circular(borderRadiusMedium),
         borderSide: const BorderSide(color: ColorPalette.error, width: 2.0),
       ),
       disabledBorder: OutlineInputBorder(
-        // Added disabled border
+        // Style for disabled state
         borderRadius: BorderRadius.circular(borderRadiusMedium),
         borderSide: BorderSide(color: ColorPalette.outline.withOpacity(0.5)),
       ),
     );
   }
 
-  // --- Card Decoration (Updated Shadow) ---
+  // --- Card Decoration ---
   static BoxDecoration cardDecoration = BoxDecoration(
-    color: cardColor, // Updated color (white)
+    color: cardColor,
     borderRadius: BorderRadius.circular(borderRadiusMedium),
     boxShadow: [
       BoxShadow(
-        color: Colors.black.withOpacity(0.06), // Even subtler shadow
+        color: Colors.black.withOpacity(0.06), // Subtle shadow
         spreadRadius: 0, // No spread
         blurRadius: 10, // Soft blur
         offset: const Offset(0, 4), // Slightly larger offset
@@ -325,9 +316,8 @@ class AppStyle {
     ],
   );
 
-  // --- List Tile Style (Unchanged, relies on theme) ---
+  // --- List Tile Style ---
   static ListTileThemeData listTileTheme = ListTileThemeData(
-    // Define it explicitly
     contentPadding: const EdgeInsets.symmetric(
       horizontal: paddingMedium,
       vertical: paddingSmall,
@@ -337,22 +327,21 @@ class AppStyle {
         Radius.circular(borderRadiusMedium),
       ),
     ),
-    tileColor: cardColor, // Set default tile color if needed
+    tileColor: cardColor, // Default tile color
     selectedTileColor: primaryColor.withOpacity(0.1), // Example selection color
   );
 
-  // --- Chart Styles (Updated Colors) ---
-  // Note: ChartStyle class itself doesn't need changes, just its usage
+  // --- Chart Styles ---
   static ChartStyle chartStyle = ChartStyle(
-    backgroundColor: cardColor, // Updated color
-    titleStyle: titleStyle, // Uses updated text style
-    labelStyle: captionStyle, // Uses updated text style
-    axisLineColor: dividerColor, // Updated color
-    gridLineColor: dividerColor.withOpacity(0.5), // Updated color
+    backgroundColor: cardColor,
+    titleStyle: titleStyle, // Uses AppStyle.titleStyle
+    labelStyle: captionStyle, // Uses AppStyle.captionStyle
+    axisLineColor: dividerColor,
+    gridLineColor: dividerColor.withOpacity(0.5),
   );
 
-  // --- Predefined Colors & Icons (Updated Palette) ---
-  // Use these for default category colors etc.
+  // --- Predefined Colors & Icons ---
+  // For default category colors etc.
   static final List<Color> predefinedColors = [
     ColorPalette.primary, // Blue
     ColorPalette.secondary, // Teal
@@ -368,34 +357,34 @@ class AppStyle {
     const Color(0xFF1ABC9C), // Turquoise
   ];
 
-  // Predefined Icons (Keep as is, or update if desired)
+  // Predefined Icons
   static const List<IconData> predefinedIcons = [
-    Icons.category, // Filled
-    Icons.fastfood, // Filled
-    Icons.directions_car, // Filled (standard car)
-    Icons.movie, // Filled
-    Icons.attach_money, // Filled (already was)
-    Icons.local_hospital, // Filled
-    Icons.lightbulb, // Filled
-    Icons.restaurant, // Filled
-    Icons.shopping_cart, // Filled
-    Icons.home, // Filled
-    Icons.miscellaneous_services, // Filled
-    Icons.fitness_center, // Filled
-    Icons.sports_esports, // Filled
-    Icons.power_settings_new, // Filled (kept this specific one)
-    Icons.shopping_bag, // Filled
-    Icons.recycling, // Filled
-    Icons.card_giftcard, // Filled
-    Icons.business_center, // Filled
-    Icons.local_offer, // Filled
-    Icons.more_horiz, // Filled (already was)
-    Icons.account_balance, // Filled
-    Icons.account_balance_wallet, // Filled
+    Icons.category,
+    Icons.fastfood,
+    Icons.directions_car,
+    Icons.movie,
+    Icons.attach_money,
+    Icons.local_hospital,
+    Icons.lightbulb,
+    Icons.restaurant,
+    Icons.shopping_cart,
+    Icons.home,
+    Icons.miscellaneous_services,
+    Icons.fitness_center,
+    Icons.sports_esports,
+    Icons.power_settings_new,
+    Icons.shopping_bag,
+    Icons.recycling,
+    Icons.card_giftcard,
+    Icons.business_center,
+    Icons.local_offer,
+    Icons.more_horiz,
+    Icons.account_balance,
+    Icons.account_balance_wallet,
   ];
 }
 
-// ChartStyle class (Keep as is)
+// ChartStyle class
 class ChartStyle {
   final Color backgroundColor;
   final TextStyle titleStyle;

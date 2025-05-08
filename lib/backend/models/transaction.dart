@@ -26,7 +26,8 @@ class Transaction extends Equatable {
   final DateTime createdAt;
   @Property(type: PropertyType.date)
   final DateTime? deletedAt; // Nullable: Tracks deletion time (UTC)
-  DateTime updatedAt; // Make mutable for easier updates
+
+  DateTime updatedAt; // Mutable for easier updates
 
   @Index()
   String? userId;
@@ -35,23 +36,23 @@ class Transaction extends Equatable {
   // ObjectBox links these to the targetId stored internally
   final ToOne<Category> category = ToOne<Category>();
   final ToOne<Account> fromAccount = ToOne<Account>();
-  final ToOne<Account> toAccount = ToOne<Account>(); //
+  final ToOne<Account> toAccount = ToOne<Account>();
 
   @Transient()
   Map<String, dynamic>? metadata;
 
   bool get isIncome => amount > 0;
   bool get isExpense => amount < 0;
-  // Use targetId safely here as it's internal to ToOne
+  // isTransfer uses targetId, which is an internal ObjectBox property for ToOne relations
   bool get isTransfer => toAccount.targetId != 0;
 
   /// Getter to determine if the transaction is deleted
   bool get isDeleted => deletedAt != null;
 
-  // --- Main Constructor (Used by ObjectBox) ---
+  // --- Main Constructor (Used by ObjectBox and app code) ---
   Transaction({
-    this.id = 0, // ObjectBox will assign if 0
-    String? uuid, // Accept optional UUID (e.g., from sync down)
+    this.id = 0, // ObjectBox will assign an ID if 0
+    String? uuid, // Accept optional UUID (e.g., from sync)
     required this.title,
     required this.amount,
     this.description,
@@ -164,21 +165,20 @@ class Transaction extends Equatable {
     DateTime? parseDate(dynamic value) =>
         value == null ? null : DateTime.tryParse(value as String)?.toLocal();
 
-    // --- Extract integer IDs for local linking ---
+    // Extract integer IDs for local linking
     final categoryIdFromJson = (json['category_id'] as num?)?.toInt();
     final fromAccountIdFromJson = (json['from_account_id'] as num?)?.toInt();
     final toAccountIdFromJson = (json['to_account_id'] as num?)?.toInt();
 
-    // --- Use createWithIds factory for convenience ---
-    // This factory handles setting the targetIds correctly.
+    // Use createWithIds factory for convenience, as it handles setting targetIds.
     return Transaction.createWithIds(
-      // id: (json['id'] as num?)?.toInt() ?? 0, // Let ObjectBox handle local ID
-      uuid: json['uuid'] as String?, // Get UUID from Supabase/JSON
+      // id: (json['id'] as num?)?.toInt() ?? 0, // Local ID is handled by ObjectBox or createWithIds
+      uuid: json['uuid'] as String?, // Use UUID from JSON if available
       title: json['title'] as String? ?? 'Unknown Title',
       amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
       description: json['description'] as String?,
       date: parseDate(json['date']) ?? DateTime.now(),
-      // --- Pass the parsed integer IDs ---
+      // Pass the parsed integer IDs
       categoryId: categoryIdFromJson ?? 0, // Default to 0 if null
       fromAccountId: fromAccountIdFromJson ?? 0, // Default to 0 if null
       toAccountId: toAccountIdFromJson, // Can be null
@@ -205,7 +205,7 @@ class Transaction extends Equatable {
       'title': title,
       'description': description,
       'amount': amount,
-      // --- Send BOTH IDs and UUIDs ---
+      // Send BOTH IDs and UUIDs
       'category_id': category.targetId == 0 ? null : category.targetId,
       'category_uuid': categoryObj?.uuid,
       'from_account_id':
@@ -213,7 +213,6 @@ class Transaction extends Equatable {
       'from_account_uuid': fromAccountObj?.uuid,
       'to_account_id': toAccount.targetId == 0 ? null : toAccount.targetId,
       'to_account_uuid': toAccountObj?.uuid,
-      // ------------------------------
       'date': date.toUtc().toIso8601String(),
       'created_at': createdAt.toUtc().toIso8601String(),
       'updated_at':

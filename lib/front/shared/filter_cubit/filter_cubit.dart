@@ -1,34 +1,33 @@
 import 'package:bloc/bloc.dart';
 import 'package:money_owl/backend/models/account.dart';
 import 'package:money_owl/backend/models/category.dart';
-import 'package:money_owl/front/shared/data_management_cubit/date_cubit.dart'; // Import DateCubit
-import 'dart:async'; // Import for StreamSubscription
-// Import the utility function
+import 'package:money_owl/front/shared/data_management_cubit/date_cubit.dart';
+import 'dart:async'; // For StreamSubscription
 
 import 'filter_state.dart';
 
 class FilterCubit extends Cubit<FilterState> {
   late final StreamSubscription<DateState> _dateSubscription;
-  final DateCubit _dateCubit; // Keep DateCubit for date UI changes
+  final DateCubit _dateCubit; // Holds DateCubit to listen for date UI changes.
 
   FilterCubit(this._dateCubit) : super(const FilterState()) {
-    // Initialize with DateCubit's initial state
+    // Initialize filter state with DateCubit's current state.
     _updateDateFromDateCubit(_dateCubit.state);
 
-    // Listen to DateCubit changes
+    // Listen to DateCubit changes to update the filter accordingly.
     _dateSubscription = _dateCubit.stream.listen(_updateDateFromDateCubit);
   }
 
-  // Helper method to update filter state based on DateCubit state
+  // Updates the filter state based on changes from DateCubit.
   void _updateDateFromDateCubit(DateState dateState) {
     if (dateState.selectedEndDate == null) {
-      // Single day selected
+      // Single day selected.
       emit(state.copyWith(
         startDate: dateState.selectedStartDate,
         singleDay: true,
       ));
     } else {
-      // Date range selected
+      // Date range selected.
       emit(state.copyWith(
         startDate: dateState.selectedStartDate,
         endDate: dateState.selectedEndDate,
@@ -58,14 +57,14 @@ class FilterCubit extends Cubit<FilterState> {
   }
 
   void resetFilters() {
-    // Reset filters in FilterCubit state, keep date filters
+    // Reset filters in FilterCubit state while retaining date filters.
     emit(state.resetFilters());
-    _dateCubit.resetDate(); // Assuming DateCubit has a reset method
+    _dateCubit.resetDate(); // Assuming DateCubit has a reset method.
   }
 
   @override
   Future<void> close() {
-    _dateSubscription.cancel(); // Cancel subscription
+    _dateSubscription.cancel(); // Cancel subscription.
     return super.close();
   }
 }

@@ -47,7 +47,7 @@ class AccountDropdown extends StatelessWidget {
               ),
               const SizedBox(width: AppStyle.paddingMedium),
               Text(
-                '${account.balance.toStringAsFixed(2)} ${account.currencySymbolOrCurrency}',
+                '${account.currencySymbolOrCurrency}',
                 style: AppStyle.captionStyle,
               ),
             ],
@@ -77,7 +77,7 @@ class AccountDropdown extends StatelessWidget {
                 ),
               ),
               Text(
-                '${account.balance.toStringAsFixed(2)} ${account.currencySymbolOrCurrency}',
+                '${account.currencySymbolOrCurrency}',
                 style: AppStyle.captionStyle,
               ),
             ],

@@ -13,16 +13,16 @@ class Category extends Equatable {
 
   @Index() // Index UUID for faster lookups during sync
   @Unique(onConflict: ConflictStrategy.replace) // Ensure UUID is unique locally
-  String uuid; //
+  String uuid;
 
   final String title;
-  final String? descriptionForAI; // Description for AI interpretation
-  final int iconCodePoint; // Store IconData as an int
-  final int typeValue; // Store TransactionType as an int
+  final String? descriptionForAI; // Optional description for AI interpretation
+  final int iconCodePoint; // Stores IconData as an int
+  final int typeValue; // Stores TransactionType as an int
   final bool isEnabled; // To allow enabling/disabling categories
-  final int colorValue; // Store Color as an int
+  final int colorValue; // Stores Color as an int
 
-  @Index() // Index userId
+  @Index() // Index userId for faster lookups
   final String? userId;
 
   @Property(type: PropertyType.date)
@@ -35,15 +35,14 @@ class Category extends Equatable {
   @Backlink('category')
   final ToMany<Transaction> transactions = ToMany<Transaction>();
 
-  TransactionType get type => TransactionType.values[typeValue]; // Getter
-  Color get color => Color(colorValue); // Getter
-  IconData get icon =>
-      IconData(iconCodePoint, fontFamily: 'MaterialIcons'); // Getter
-  bool get isDeleted => deletedAt != null; // Helper getter
+  TransactionType get type => TransactionType.values[typeValue];
+  Color get color => Color(colorValue);
+  IconData get icon => IconData(iconCodePoint, fontFamily: 'MaterialIcons');
+  bool get isDeleted => deletedAt != null;
 
   Category({
-    this.id = 0, // ObjectBox will assign if 0
-    String? uuid, // Accept optional UUID
+    this.id = 0, // ObjectBox will assign an ID if 0
+    String? uuid, // Accept optional UUID (e.g., from sync)
     required this.title,
     this.descriptionForAI,
     required this.colorValue,
