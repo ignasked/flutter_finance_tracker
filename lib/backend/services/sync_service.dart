@@ -498,15 +498,14 @@ class SyncService {
         json['date'] = (json['date'] as DateTime).toUtc().toIso8601String();
       }
 
-      // Remove local-only fields like 'id' before upserting
-      json.remove('id'); // Always remove local ObjectBox id
+      // Do NOT remove 'id' field! We want to persist ObjectBox id for relationship mapping.
       // Remove relation fields if they exist and are not just IDs/UUIDs
       json.remove('fromAccount');
       json.remove('toAccount');
       json.remove('category');
 
       // Foreign key clarification: Only remote UUIDs should be present for relationships in the JSON.
-      // Do not include local IDs or full objects.
+      // Do not include local IDs or full objects, but DO include 'id' for mapping.
 
       await _supabaseClient.from(tableName).upsert(json, onConflict: 'uuid');
       print(

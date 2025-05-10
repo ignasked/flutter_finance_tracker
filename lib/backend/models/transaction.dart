@@ -8,7 +8,7 @@ import 'package:uuid/uuid.dart'; // Import uuid package
 @Entity()
 
 /// Represents a financial transaction with details such as title, amount, type (income/expense), category, and date.
-// ignore: must_be_immutable
+// ignore: must-be-immutable
 class Transaction extends Equatable {
   @Id()
   int id;
@@ -166,13 +166,14 @@ class Transaction extends Equatable {
         value == null ? null : DateTime.tryParse(value as String)?.toLocal();
 
     // Extract integer IDs for local linking
+    final idFromJson = (json['id'] as num?)?.toInt() ?? 0;
     final categoryIdFromJson = (json['category_id'] as num?)?.toInt();
     final fromAccountIdFromJson = (json['from_account_id'] as num?)?.toInt();
     final toAccountIdFromJson = (json['to_account_id'] as num?)?.toInt();
 
     // Use createWithIds factory for convenience, as it handles setting targetIds.
     return Transaction.createWithIds(
-      // id: (json['id'] as num?)?.toInt() ?? 0, // Local ID is handled by ObjectBox or createWithIds
+      id: idFromJson, // <-- Set local ObjectBox ID from JSON
       uuid: json['uuid'] as String?, // Use UUID from JSON if available
       title: json['title'] as String? ?? 'Unknown Title',
       amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
@@ -201,6 +202,9 @@ class Transaction extends Equatable {
     final toAccountObj = toAccount.target;
 
     return {
+      'id': id == 0
+          ? null
+          : id, // Send ID (null if 0, though should have ID when syncing up existing)-- Add this line
       'uuid': uuid,
       'title': title,
       'description': description,

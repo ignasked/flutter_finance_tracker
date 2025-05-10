@@ -150,7 +150,8 @@ class Account extends Equatable {
         value == null ? null : DateTime.tryParse(value as String)?.toLocal();
 
     return Account(
-      id: (json['id'] as num?)?.toInt() ?? 0,
+      id: (json['id'] as num?)?.toInt() ??
+          0, // Use ID from Supabase if available
       uuid: json['uuid'] as String?,
       name: json['name'] as String? ?? 'Unknown Account',
       currency: json['currency'] as String? ?? 'USD',
