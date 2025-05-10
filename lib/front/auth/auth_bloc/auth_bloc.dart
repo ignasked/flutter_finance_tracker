@@ -86,7 +86,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       print('AuthBloc: User Authenticated - ${user.id}');
       // Emit authenticated state immediately if transitioning
       if (previousStatus != AuthStatus.authenticated) {
-        emit(AuthState.authenticated(user));
+        emit(AuthState.authenticated(user, isDataInitialized: false));
       }
 
       // Perform assignment and sync only if transitioning *to* authenticated
@@ -112,6 +112,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           await _syncService.syncAll();
           print('AuthBloc: Sync completed successfully.');
 
+          // Initialize repositories before syncing
+          await _accountRepository.init();
+          await _categoryRepository.init();
+
+          // Now emit authenticated state with isDataInitialized = true
+          emit(AuthState.authenticated(user, isDataInitialized: true));
+
           _onSyncComplete?.call(); // This signals the UI layer to refresh
           print('AuthBloc: onSyncComplete callback invoked.');
         } catch (e, stacktrace) {
@@ -125,6 +132,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         _onSyncComplete?.call();
         print(
             'AuthBloc: User already authenticated, triggered onSyncComplete for potential refresh.');
+        // Also emit state with isDataInitialized = true for already authenticated users
+        emit(state.copyWith(isDataInitialized: true));
       }
     } else {
       // Always emit unauthenticated if user is null

@@ -8,6 +8,7 @@ import 'package:money_owl/backend/repositories/transaction_repository.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:money_owl/backend/services/auth_service.dart';
 import 'package:money_owl/backend/utils/defaults.dart';
+import 'package:money_owl/backend/utils/enums.dart';
 import 'package:money_owl/front/auth/auth_bloc/auth_bloc.dart'
     as auth_bloc; // Aliased to avoid name collision with other AuthBlocs
 import 'package:money_owl/front/common/loading_widget.dart';
@@ -82,11 +83,6 @@ Future<void> main() async {
   accountRepository.syncService = syncService;
   categoryRepository.syncService = syncService;
   txRepository.syncService = syncService;
-
-  print("Initializing repositories...");
-  await accountRepository.init();
-  await categoryRepository.init();
-  print("Repositories initialized.");
 
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
@@ -188,32 +184,58 @@ class MyApp extends StatelessWidget {
             );
           },
           home: BlocBuilder<auth_bloc.AuthBloc, auth_bloc.AuthState>(
-            builder: (context, state) {
-              switch (state.status) {
-                case auth_bloc.AuthStatus.authenticated:
-                  return const Navigation();
-                case auth_bloc.AuthStatus.unauthenticated:
-                  return FutureBuilder<bool>(
-                    future: _hasAnyLocalData(context),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
+            builder: (context, authState) {
+              if (authState.status == auth_bloc.AuthStatus.authenticated &&
+                  authState.isDataInitialized == true) {
+                // Provide DataManagementCubit only for authenticated users and after data is initialized
+                return BlocProvider<DataManagementCubit>(
+                  create: (context) => DataManagementCubit(
+                    context.read<TransactionRepository>(),
+                    context.read<AccountRepository>(),
+                    context.read<CategoryRepository>(),
+                    context.read<FilterCubit>(),
+                  ),
+                  child: BlocBuilder<DataManagementCubit, DataManagementState>(
+                    builder: (context, dataState) {
+                      final isReady =
+                          dataState.status == LoadingStatus.success &&
+                              dataState.allAccounts.isNotEmpty &&
+                              dataState.allCategories.isNotEmpty;
+                      if (isReady) {
+                        return const Navigation();
+                      } else {
                         return const Scaffold(
                           body: Center(child: CircularProgressIndicator()),
                         );
                       }
-                      if (snapshot.hasError) {
-                        print("Error checking local data: ${snapshot.error}");
-                        return const AuthScreen(isMandatory: false);
-                      }
-                      final bool hasLocalData = snapshot.data ?? false;
-                      return AuthScreen(isMandatory: hasLocalData);
                     },
-                  );
-                case auth_bloc.AuthStatus.unknown:
-                  return const Scaffold(
-                    body: Center(child: CircularProgressIndicator()),
-                  );
+                  ),
+                );
               }
+              if (authState.status == auth_bloc.AuthStatus.authenticated &&
+                  authState.isDataInitialized == false) {
+                // Authenticated but data not initialized yet
+                return const Scaffold(
+                  body: Center(child: CircularProgressIndicator()),
+                );
+              }
+              // Not authenticated: show login or splash
+              return FutureBuilder<bool>(
+                future: _hasAnyLocalData(context),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Scaffold(
+                      body: Center(child: CircularProgressIndicator()),
+                    );
+                  }
+                  if (snapshot.hasError) {
+                    print("Error checking local data: ${snapshot.error}");
+                    return const AuthScreen(isMandatory: false);
+                  }
+                  final bool hasLocalData = snapshot.data ?? false;
+                  return AuthScreen(isMandatory: hasLocalData);
+                },
+              );
             },
           ),
         ),

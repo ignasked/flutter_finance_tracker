@@ -196,53 +196,31 @@ class ImporterCubit extends Cubit<ImporterState> {
     TransactionRepository txRepo,
     CategoryRepository catRepo,
     AccountRepository accRepo,
-    DataManagementCubit dataCubit, // Pass DataManagementCubit to refresh
+    DataManagementCubit dataCubit,
   ) async {
     emit(state.copyWith(isLoading: true, error: null, lastOperation: null));
     try {
       // 1. Remove all user transactions
       await txRepo.removeAllForCurrentUser();
 
-      // 2. Remove non-default categories and accounts in parallel
+      // 2. Hard delete all categories and accounts for the user
       await Future.wait([
-        catRepo.removeNonDefaultForCurrentUser(),
-        accRepo.removeNonDefaultForCurrentUser(),
+        catRepo.hardDeleteAllForCurrentUser(),
+        accRepo.hardDeleteAllForCurrentUser(),
       ]);
 
-      List<Category> defaultCategories = catRepo.defaultCategoriesData;
-      List<Account> defaultAccounts = accRepo.defaultAccountsData;
-
-      for (int i = 0; i < defaultCategories.length; i++) {
-        // Set the userId to null for default categories
-        defaultCategories[i] = defaultCategories[i].copyWith(id: i + 1);
-      }
-
-      for (int i = 0; i < defaultAccounts.length; i++) {
-        // Set the userId to null for default accounts
-        defaultAccounts[i] = defaultAccounts[i].copyWith(id: i + 1);
-      }
-
-      // 3. Re-add default categories and accounts in parallel
-      // Ensure default data is available in repositories or Defaults
-      await Future.wait([
-        accRepo.putMany(defaultAccounts),
-        catRepo.putMany(defaultCategories),
-      ]);
-
-      // 4. Re-initialize repositories (if needed by their implementation)
-      // This might re-fetch defaults or reset internal state
+      // 3. Re-initialize repositories (creates defaults)
       await Future.wait([
         catRepo.init(),
         accRepo.init(),
       ]);
 
-      // 5. Refresh DataManagementCubit to reflect changes
-      await dataCubit
-          .refreshData(); // Call refreshData which handles loading/success state
+      // 4. Refresh DataManagementCubit
+      await dataCubit.refreshData();
 
       emit(state.copyWith(
         isLoading: false,
-        lastOperation: 'All user data deleted successfully.',
+        lastOperation: 'All user data deleted and defaults re-initialized.',
       ));
     } catch (e, stackTrace) {
       print("Error deleting all data: $e\n$stackTrace");
@@ -250,10 +228,8 @@ class ImporterCubit extends Cubit<ImporterState> {
       emit(state.copyWith(
         isLoading: false,
         error: errorMsg,
-        lastOperation: errorMsg, // Also set lastOperation to error for listener
+        lastOperation: errorMsg,
       ));
-      // Re-throw the error if you want calling code to potentially handle it too
-      // throw;
     }
   }
 

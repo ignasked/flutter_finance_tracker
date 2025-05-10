@@ -7,6 +7,7 @@ import 'package:money_owl/backend/utils/enums.dart';
 import 'package:money_owl/objectbox.g.dart';
 import 'package:money_owl/backend/services/sync_service.dart';
 import 'package:money_owl/backend/services/auth_service.dart';
+import 'package:uuid/uuid.dart'; // Make sure you have this import and the package in pubspec.yaml
 
 class CategoryRepository extends BaseRepository<Category> {
   final AuthService _authService;
@@ -123,275 +124,62 @@ class CategoryRepository extends BaseRepository<Category> {
     return enabledCategories.map((category) => category.title).join(', ');
   }
 
-  List<Category> get defaultCategoriesData => [
-        Category(
-          uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-111111111111', // Stable UUID 1
-          title: 'Food',
-          descriptionForAI: 'Expenses related to food and dining',
-          colorValue: AppStyle.predefinedColors[3].value, // Orange
-          iconCodePoint:
-              AppStyle.predefinedIcons[7].codePoint, // restaurant_outlined
-          typeValue: TransactionType.expense.index,
-        ),
-        Category(
-          uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-222222222222', // Stable UUID 2
-          title: 'Transportation',
-          descriptionForAI:
-              'Expenses related to transportation like fuel, public transit, taxis',
-          colorValue: AppStyle.predefinedColors[1].value, // Blue
-          iconCodePoint: AppStyle
-              .predefinedIcons[2].codePoint, // directions_car_filled_outlined
-          typeValue: TransactionType.expense.index,
-        ),
-        Category(
-          uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-333333333333', // Stable UUID 3
-          title: 'Accomodation',
-          descriptionForAI: 'Expenses related to housing, rent, hotels',
-          colorValue: AppStyle.predefinedColors[6].value, // Brown
-          iconCodePoint: AppStyle.predefinedIcons[9].codePoint, // home_outlined
-          typeValue: TransactionType.expense.index,
-        ),
-        Category(
-          uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-444444444444', // Stable UUID 4
-          title: 'Groceries',
-          descriptionForAI:
-              'Expenses related to grocery shopping and household supplies',
-          colorValue: AppStyle.predefinedColors[2].value, // Green
-          iconCodePoint:
-              AppStyle.predefinedIcons[8].codePoint, // shopping_cart_outlined
-          typeValue: TransactionType.expense.index,
-        ),
-        Category(
-          uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-555555555555', // Stable UUID 5
-          title: 'Junk Food',
-          descriptionForAI: 'Expenses related to snacks and fast food',
-          colorValue: AppStyle.predefinedColors[0].value, // Red
-          iconCodePoint:
-              AppStyle.predefinedIcons[1].codePoint, // fastfood_outlined
-          typeValue: TransactionType.expense.index,
-        ),
-        Category(
-          uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-666666666666', // Stable UUID 6
-          title: 'Services',
-          descriptionForAI:
-              'Expenses related to various services and subscriptions',
-          colorValue: AppStyle.predefinedColors[11].value, // Indigo
-          iconCodePoint: AppStyle
-              .predefinedIcons[10].codePoint, // miscellaneous_services_outlined
-          typeValue: TransactionType.expense.index,
-        ),
-        Category(
-          uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-777777777777', // Stable UUID 7
-          title: 'Fitness',
-          descriptionForAI:
-              'Expenses related to gym memberships and fitness activities',
-          colorValue: AppStyle.predefinedColors[10].value, // Deep Orange
-          iconCodePoint:
-              AppStyle.predefinedIcons[11].codePoint, // fitness_center_outlined
-          typeValue: TransactionType.expense.index,
-        ),
-        Category(
-          uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-888888888888', // Stable UUID 8
-          title: 'Entertainment',
-          descriptionForAI:
-              'Expenses related to entertainment and leisure activities',
-          colorValue: AppStyle.predefinedColors[4].value, // Purple
-          iconCodePoint:
-              AppStyle.predefinedIcons[12].codePoint, // sports_esports_outlined
-          typeValue: TransactionType.expense.index,
-        ),
-        Category(
-          uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-999999999999', // Stable UUID 9
-          title: 'Healthcare',
-          descriptionForAI:
-              'Expenses related to medical care and health services',
-          colorValue: AppStyle.predefinedColors[0].value, // Red
-          iconCodePoint:
-              AppStyle.predefinedIcons[5].codePoint, // local_hospital_outlined
-          typeValue: TransactionType.expense.index,
-        ),
-        Category(
-          uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-aaaaaaaaaaaa', // Stable UUID 10
-          title: 'Utilities',
-          descriptionForAI:
-              'Expenses related to utilities like electricity, water, internet',
-          colorValue: AppStyle.predefinedColors[1].value, // Blue
-          iconCodePoint:
-              AppStyle.predefinedIcons[13].codePoint, // power_settings_new
-          typeValue: TransactionType.expense.index,
-        ),
-        Category(
-          uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-bbbbbbbbbbbb', // Stable UUID 11
-          title: 'Clothing',
-          descriptionForAI: 'Expenses related to clothes and accessories',
-          colorValue: AppStyle.predefinedColors[5].value, // Pink
-          iconCodePoint:
-              AppStyle.predefinedIcons[14].codePoint, // shopping_bag_outlined
-          typeValue: TransactionType.expense.index,
-        ),
-        Category(
-          uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-cccccccccccc', // Stable UUID 12
-          title: 'Deposit', // Assuming this relates to recycling/returns
-          descriptionForAI: 'Money deposited or saved from bottle returns',
-          colorValue: AppStyle.predefinedColors[7].value, // Amber
-          iconCodePoint:
-              AppStyle.predefinedIcons[15].codePoint, // recycling_outlined
-          typeValue: TransactionType
-              .expense.index, // Should this be income? Keeping expense for now.
-        ),
-        Category(
-          uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-dddddddddddd', // Stable UUID 13
-          title: 'Other Expenses',
-          descriptionForAI:
-              'Miscellaneous expenses that don\'t fit other categories',
-          colorValue: AppStyle.predefinedColors[8].value, // Grey
-          iconCodePoint: AppStyle.predefinedIcons[19].codePoint, // more_horiz
-          typeValue: TransactionType.expense.index,
-        ),
-        Category(
-          uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-eeeeeeeeeeee', // Stable UUID 14
-          title: 'Salary',
-          descriptionForAI: 'Regular income from employment',
-          colorValue: AppStyle.predefinedColors[2].value, // Green
-          iconCodePoint: AppStyle.predefinedIcons[4].codePoint, // attach_money
-          typeValue: TransactionType.income.index,
-        ),
-        Category(
-          uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-ffffffffffff', // Stable UUID 15
-          title: 'Gifts',
-          descriptionForAI: 'Recieved gifts',
-          colorValue: AppStyle.predefinedColors[5].value, // Pink
-          iconCodePoint:
-              AppStyle.predefinedIcons[16].codePoint, // card_giftcard_outlined
-          typeValue: TransactionType.income.index,
-        ),
-        Category(
-          uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-000000000000', // Stable UUID 16
-          title: 'Side Hustle',
-          descriptionForAI: 'Income from side jobs or freelance work',
-          colorValue: AppStyle.predefinedColors[9].value, // Teal
-          iconCodePoint: AppStyle
-              .predefinedIcons[17].codePoint, // business_center_outlined
-          typeValue: TransactionType.income.index,
-        ),
-        Category(
-          uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-101010101010', // Stable UUID 17
-          title: 'Other Income',
-          descriptionForAI:
-              'Miscellaneous income that doesn\'t fit other categories',
-          colorValue: AppStyle.predefinedColors[8].value, // Grey
-          iconCodePoint: AppStyle.predefinedIcons[19].codePoint, // more_horiz
-          typeValue: TransactionType.income.index,
-        ),
-        Category(
-          uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-121212121212', // Stable UUID 18
-          title: 'Discount for item', // Using local_offer
-          descriptionForAI: 'Money saved through discounts and rebates',
-          colorValue: AppStyle.predefinedColors[2].value, // Green
-          iconCodePoint:
-              AppStyle.predefinedIcons[18].codePoint, // local_offer_outlined
-          typeValue: TransactionType.income.index,
-        ),
-        Category(
-          uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-131313131313', // Stable UUID 19
-          title: 'Overall discount', // Using local_offer
-          descriptionForAI: 'Money saved through discounts and rebates',
-          colorValue: AppStyle.predefinedColors[2].value, // Green
-          iconCodePoint:
-              AppStyle.predefinedIcons[18].codePoint, // local_offer_outlined
-          typeValue: TransactionType.income.index,
-        ),
-      ];
-
   Future<Category> getDefaultCategory() async {
     return await getById(Defaults().defaultCategoryId ?? 1) ??
-        defaultCategoriesData.first; // Fallback to first default category
+        Defaults()
+            .defaultCategoriesData
+            .first; // Fallback to first default category
   }
 
-  /// Initialize default categories if they don't exist (based on UUID)
-  /// Does NOT set the default instance in the Defaults singleton.
+  /// Initialize default categories if they don't exist for the current user.
+  /// Creates new instances with unique UUIDs.
   Future<void> _initializeDefaultCategories() async {
-    // Check if initialization is needed based on UUIDs, not a flag
     final userCondition = _userIdCondition();
     final notDeleted = _notDeletedCondition();
-    final primaryDefaultUuid =
-        defaultCategoriesData.first.uuid; // Assuming first is primary
 
-    // Check if the primary default category exists for the user context
-    final primaryCheckQuery = box
-        .query(Category_.uuid
-            .equals(primaryDefaultUuid)
-            .and(userCondition)
-            .and(notDeleted))
-        .build();
-    final bool primaryExists = primaryCheckQuery.count() > 0;
-    primaryCheckQuery.close();
+    // Check if the user already has ANY categories. This is a more reliable check.
+    final existingCategoriesQuery =
+        box.query(userCondition.and(notDeleted)).build();
+    final bool userHasCategories = (existingCategoriesQuery.count()) > 0;
+    existingCategoriesQuery.close();
 
-    if (primaryExists) {
+    if (userHasCategories) {
       print(
-          "Primary default category found (UUID: $primaryDefaultUuid). Ensuring others exist.");
-      await _ensureOtherDefaultCategoriesExist(userCondition);
-      return; // Initialization check done, defaults exist
+          "User already has categories. Skipping default category initialization.");
+      return;
     }
 
-    // If primary default NOT found, initialize defaults
-    print("Primary default category not found. Initializing defaults...");
+    // If user has no categories, initialize all defaults with new UUIDs
+    print("User has no categories. Initializing defaults with unique UUIDs...");
 
-    // Get existing category UUIDs for the current context
-    final existingUuidsQuery = box.query(userCondition).build();
-    final existingUuids =
-        (await existingUuidsQuery.findAsync()).map((c) => c.uuid).toSet();
-    existingUuidsQuery.close();
+    final List<Category> categoriesToAdd = [];
+    final Uuid uuidGenerator = Uuid(); // Create a Uuid instance once
 
-    // Filter default categories that don't exist yet based on UUID
-    final List<Category> categoriesToAdd = defaultCategoriesData
-        .where(
-            (defaultCategory) => !existingUuids.contains(defaultCategory.uuid))
-        .toList();
+    for (final template in Defaults().defaultCategoriesData) {
+      categoriesToAdd.add(
+        Category(
+          uuid: uuidGenerator
+              .v4(), // Generate a NEW, UNIQUE UUID for this instance
+          title: template.title,
+          descriptionForAI: template.descriptionForAI,
+          colorValue: template.colorValue,
+          iconCodePoint: template.iconCodePoint,
+          typeValue: template.typeValue,
+          isEnabled: template.isEnabled,
+        ),
+      );
+    }
 
-    // Batch insert the missing categories
     if (categoriesToAdd.isNotEmpty) {
       try {
         await putMany(categoriesToAdd, syncSource: SyncSource.local);
-        print('Added ${categoriesToAdd.length} default categories in batch.');
+        print(
+            'Added ${categoriesToAdd.length} default categories in batch with unique UUIDs.');
       } catch (e) {
         print('Error adding default categories in batch: $e');
       }
     } else {
-      print(
-          "All default categories already exist for the current context (checked by UUID).");
-    }
-
-    // No need to set default here, _setDefaultCategory will handle it after this.
-  }
-
-  // Helper to ensure non-primary default categories exist
-  Future<void> _ensureOtherDefaultCategoriesExist(
-      Condition<Category> userCondition) async {
-    final otherDefaultUuids =
-        defaultCategoriesData.skip(1).map((c) => c.uuid).toList();
-    if (otherDefaultUuids.isEmpty) return;
-
-    final existingUuidsQuery = box
-        .query(userCondition.and(Category_.uuid.oneOf(otherDefaultUuids)))
-        .build();
-    final existingUuids =
-        (await existingUuidsQuery.findAsync()).map((c) => c.uuid).toSet();
-    existingUuidsQuery.close();
-
-    final List<Category> categoriesToAdd = defaultCategoriesData
-        .skip(1) // Skip the primary one
-        .where((cat) => !existingUuids.contains(cat.uuid))
-        .toList();
-
-    if (categoriesToAdd.isNotEmpty) {
-      print(
-          'Ensuring other default categories exist: Adding ${categoriesToAdd.length} missing categories.');
-      try {
-        await putMany(categoriesToAdd, syncSource: SyncSource.local);
-      } catch (e) {
-        print('Error ensuring other default categories exist: $e');
-      }
+      print("Default categories data is empty. Nothing to add.");
     }
   }
 
@@ -512,10 +300,6 @@ class CategoryRepository extends BaseRepository<Category> {
       query.close();
 
       _setDefaultCategory(); // Ensure default category is set after fetching
-      // Defaults().setDefaultCategoryInstance(results.firstWhere(
-      //     (category) => category.id == Defaults().defaultCategoryId,
-      //     orElse: () => results.first)); // Set default category instance
-
       return results;
     } catch (e) {
       final context = _authService.currentUser?.id ?? 'local (unauthenticated)';
@@ -578,20 +362,17 @@ class CategoryRepository extends BaseRepository<Category> {
   /// Helper to check if a category is used by non-deleted transactions.
   bool _hasTransactionsForCategory(int categoryId) {
     final transactionBox = store.box<Transaction>();
-    // --- FIX: Query using the generated relation field 'category' ---
     final query = transactionBox
-        .query(Transaction_.category // Use the relation field directly
-            .equals(categoryId) // ObjectBox handles matching the target ID
+        .query(Transaction_.category
+            .equals(categoryId)
             .and(Transaction_.deletedAt.isNull())
-            .and(_transactionUserIdCondition())) // Moved declaration below
+            .and(_transactionUserIdCondition()))
         .build();
-    // --- END FIX ---
-    final count = query.count(); // Use async count
+    final count = query.count();
     query.close();
     return count > 0;
   }
 
-  // Moved this method here, before its first use in _hasTransactionsForCategory
   Condition<Transaction> _transactionUserIdCondition() {
     final currentUserId = _authService.currentUser?.id;
     return currentUserId != null
@@ -605,7 +386,7 @@ class CategoryRepository extends BaseRepository<Category> {
   Future<bool> remove(int id) async {
     final currentUserId = _authService.currentUser?.id;
     // Prevent deletion of default categories
-    if (id >= 1 && id <= defaultCategoriesData.length) {
+    if (id >= 1 && id <= Defaults().defaultCategoriesData.length) {
       print("Error: Cannot delete default category ID $id.");
       return false; // Indicate failure
     }
@@ -713,7 +494,6 @@ class CategoryRepository extends BaseRepository<Category> {
     }
 
     if (updatedItems.isNotEmpty) {
-      // Explicitly use 'this' to clarify it's a method call
       await putMany(updatedItems, syncSource: SyncSource.local);
       print(
           "Successfully assigned userId $newUserId to ${updatedItems.length} categories.");
@@ -738,21 +518,16 @@ class CategoryRepository extends BaseRepository<Category> {
     // Define common conditions
     final Condition<Category> notDeletedCondition =
         Category_.deletedAt.isNull();
-    // --- MODIFIED: Condition to target non-default IDs ---
     final Condition<Category> nonDefaultIdCondition =
-        Category_.id.greaterThan(defaultCategoriesData.length);
-    // --- END MODIFICATION ---
+        Category_.id.greaterThan(Defaults().defaultCategoriesData.length);
 
-    // Combine all conditions using the '&' operator
-    final Condition<Category> finalCondition = userCondition &
-        notDeletedCondition &
-        nonDefaultIdCondition; // Use the new ID condition
+    final Condition<Category> finalCondition =
+        userCondition & notDeletedCondition & nonDefaultIdCondition;
 
-    // Build the query with the combined condition
-    final query = box.query(finalCondition).build(); // Build the Query object
+    final query = box.query(finalCondition).build();
 
-    final categoriesToDelete = await query.findAsync(); // Find using the Query
-    query.close(); // Close the Query object after finding
+    final categoriesToDelete = await query.findAsync();
+    query.close();
 
     if (categoriesToDelete.isEmpty) {
       print(
@@ -764,8 +539,7 @@ class CategoryRepository extends BaseRepository<Category> {
     int skippedCount = 0;
     final now = DateTime.now();
     final nowUtc = now.toUtc();
-    final List<Category> itemsToSoftDelete =
-        []; // Collect items to push/update locally
+    final List<Category> itemsToSoftDelete = [];
 
     for (final item in categoriesToDelete) {
       final hasTransactions = _hasTransactionsForCategory(item.id);
@@ -775,13 +549,11 @@ class CategoryRepository extends BaseRepository<Category> {
         continue;
       }
       itemsToSoftDelete.add(item.copyWith(
-        // Add to list
         deletedAt: nowUtc,
         updatedAt: now,
       ));
     }
 
-    // --- MODIFIED: Push deletes using pushUpsertMany (Fire-and-Forget) ---
     if (syncService != null && itemsToSoftDelete.isNotEmpty) {
       print(
           "Pushing ${itemsToSoftDelete.length} category deletes using pushUpsertMany (no await).");
@@ -795,9 +567,7 @@ class CategoryRepository extends BaseRepository<Category> {
       print(
           "Warning: syncService is null in removeNonDefaultForCurrentUser. Cannot push deletes immediately.");
     }
-    // --- END MODIFIED ---
 
-    // Perform local batch update
     if (itemsToSoftDelete.isNotEmpty) {
       try {
         await box.putManyAsync(itemsToSoftDelete);
@@ -805,12 +575,11 @@ class CategoryRepository extends BaseRepository<Category> {
       } catch (e) {
         print(
             "Error during local putManyAsync in removeNonDefaultForCurrentUser: $e");
-        // Keep successCount based on push attempt
       }
     }
 
     print(
-        "Attempted soft remove for $successCount non-default categories (ID > ${defaultCategoriesData.length}) for user ${_authService.currentUser?.id ?? 'unauthenticated'}.${skippedCount > 0 ? " Skipped $skippedCount." : ""}");
+        "Attempted soft remove for $successCount non-default categories (ID > ${Defaults().defaultCategoriesData.length}) for user ${_authService.currentUser?.id ?? 'unauthenticated'}.${skippedCount > 0 ? " Skipped $skippedCount." : ""}");
     return successCount;
   }
 
@@ -840,10 +609,8 @@ class CategoryRepository extends BaseRepository<Category> {
       final currentUserId = _authService.currentUser?.id;
       final now = DateTime.now();
       final List<Category> processedEntities = [];
-      // Fetch existing entities to preserve createdAt if needed (more robust)
       final existingIds =
           entities.map((e) => e.id).where((id) => id != 0).toList();
-      // Handle potential nulls from getManyAsync
       final existingMap = {
         for (var e
             in (await box.getManyAsync(existingIds)).whereType<Category>())
@@ -852,7 +619,19 @@ class CategoryRepository extends BaseRepository<Category> {
 
       for (final entity in entities) {
         Category entityToSave;
-        if (entity.id == 0) {
+        if (entity.uuid == null && entity.id == 0) {
+          print(
+              "Warning: Category entity passed to putMany with null UUID and id 0. Generating one.");
+          entityToSave = entity.copyWith(
+            uuid: Uuid().v4(),
+            userId: currentUserId,
+            createdAt:
+                (entity.id == 0 || existingMap[entity.id]?.createdAt == null)
+                    ? now
+                    : existingMap[entity.id]!.createdAt,
+            updatedAt: now,
+          );
+        } else if (entity.id == 0) {
           entityToSave = entity.copyWith(
             userId: currentUserId,
             createdAt: now,
@@ -864,9 +643,8 @@ class CategoryRepository extends BaseRepository<Category> {
           entityToSave = entity.copyWith(
             userId: currentUserId,
             updatedAt: now,
-            // Preserve original createdAt if available, otherwise use now
             createdAt: existing?.createdAt ?? now,
-            // copyWith handles deletedAt logic
+            deletedAt: entity.deletedAt,
           );
         }
         processedEntities.add(entityToSave);
@@ -875,7 +653,6 @@ class CategoryRepository extends BaseRepository<Category> {
         resultIds =
             await super.putMany(processedEntities, syncSource: syncSource);
 
-        // --- MODIFIED: Use pushUpsertMany (Fire-and-Forget) ---
         if (resultIds.isNotEmpty && syncService != null) {
           print(
               "Pushing ${resultIds.length} categories after local putMany using pushUpsertMany (no await).");
@@ -897,7 +674,6 @@ class CategoryRepository extends BaseRepository<Category> {
           print(
               "Warning: syncService is null in CategoryRepository.putMany. Cannot push changes immediately.");
         }
-        // --- END MODIFIED ---
       } else {
         resultIds = [];
       }
@@ -908,23 +684,20 @@ class CategoryRepository extends BaseRepository<Category> {
   /// Checks if any non-deleted categories exist with a null userId.
   Future<bool> hasLocalOnlyData() async {
     try {
-      // Ensure default categories (ID 1-19) are excluded if they might have null userId initially
-      final defaultIds = defaultCategoriesData
+      final defaultIds = Defaults()
+          .defaultCategoriesData
           .map((c) => c.id)
           .where((id) => id != 0)
           .toList();
 
-      // Base condition: userId is null and not deleted
       Condition<Category> condition =
           Category_.userId.isNull().and(_notDeletedCondition());
 
-      // Add condition to exclude default IDs if any exist
       if (defaultIds.isNotEmpty) {
         condition = condition.and(Category_.id.notOneOf(defaultIds));
       }
 
       final query = box.query(condition).build();
-      // Use synchronous count()
       final count = query.count();
       query.close();
       return count > 0;
@@ -932,5 +705,41 @@ class CategoryRepository extends BaseRepository<Category> {
       print("Error checking for local-only category data: $e");
       return false;
     }
+  }
+
+  /// Hard deletes all categories for the currently logged-in user, including remote (Supabase) deletion.
+  Future<int> hardDeleteAllForCurrentUser() async {
+    final userCondition = _userIdCondition();
+    final query = box.query(userCondition).build();
+    final items = await query.findAsync();
+    query.close();
+    if (items.isEmpty) return 0;
+    final ids = items.map((c) => c.id).toList();
+
+    // --- Push remote deletes to Supabase (fire-and-forget) ---
+    if (syncService != null) {
+      for (final item in items) {
+        try {
+          // Use pushDeleteByUuid to ensure remote deletion by uuid (Supabase expects uuid as PK)
+          syncService!
+              .pushDeleteByUuid('categories', item.uuid)
+              .catchError((e) {
+            print(
+                "Supabase delete error for Category UUID \\${item.uuid}: \\${e.toString()}");
+          });
+        } catch (e) {
+          print(
+              "Exception during Supabase delete for Category UUID \\${item.uuid}: \\${e.toString()}");
+        }
+      }
+    } else {
+      print(
+          "Warning: syncService is null in hardDeleteAllForCurrentUser. Cannot push remote deletes.");
+    }
+    // --- End remote delete ---
+
+    await box.removeManyAsync(ids);
+    print("Hard deleted ${ids.length} categories for user (local and remote).");
+    return ids.length;
   }
 }

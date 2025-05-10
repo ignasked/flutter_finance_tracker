@@ -7,6 +7,7 @@ import 'package:money_owl/backend/services/sync_service.dart'; // Import SyncSer
 import 'package:money_owl/backend/services/auth_service.dart';
 import 'package:money_owl/backend/models/transaction.dart';
 import 'package:money_owl/backend/utils/app_style.dart'; // Import AppStyle
+import 'package:uuid/uuid.dart'; // Make sure you have this import and the package in pubspec.yaml
 
 class AccountRepository extends BaseRepository<Account> {
   final AuthService _authService;
@@ -17,6 +18,8 @@ class AccountRepository extends BaseRepository<Account> {
       : super(store);
 
   Future<void> init() async {
+    // Ensure Defaults are loaded before repository uses them, especially for defaultCurrency
+    await Defaults().loadDefaults();
     await _initializeDefaultAccounts(); // Keep initialization
     await _setDefaultAccount(); // Add call to set default instance separately
   }
@@ -51,34 +54,6 @@ class AccountRepository extends BaseRepository<Account> {
     }
   }
 
-  // Define default data with stable UUIDs
-  List<Account> get defaultAccountsData => [
-        Account(
-          uuid: 'f47ac10b-58cc-4372-a567-0e02b2c3d479', // Stable UUID for Bank
-          name: 'Bank Account',
-          typeValue: AccountType.bank.index,
-          currency: Defaults().defaultCurrency, // Use loaded default currency
-          currencySymbol: Defaults().defaultCurrencySymbol,
-          balance: 0.0,
-          colorValue:
-              AppStyle.predefinedColors[0].value, // Use color from AppStyle
-          iconCodePoint: AppStyle.predefinedIcons[20]
-              .codePoint, // Use account_balance_outlined from AppStyle
-        ),
-        Account(
-          uuid: 'a1b2c3d4-e5f6-7890-1234-567890abcdef', // Stable UUID for Cash
-          name: 'Cash',
-          typeValue: AccountType.cash.index,
-          currency: Defaults().defaultCurrency, // Use loaded default currency
-          currencySymbol: Defaults().defaultCurrencySymbol,
-          balance: 0.0,
-          colorValue:
-              AppStyle.predefinedColors[1].value, // Use color from AppStyle
-          iconCodePoint: AppStyle.predefinedIcons[21]
-              .codePoint, // Use account_balance_wallet_outlined from AppStyle
-        )
-      ];
-
   /// Factory method for asynchronous initialization
   static Future<AccountRepository> create(
       Store store, AuthService authService, SyncService syncService) async {
@@ -92,87 +67,65 @@ class AccountRepository extends BaseRepository<Account> {
   Future<void> _initializeDefaultAccounts() async {
     final userCondition = _userIdCondition();
     final notDeleted = _notDeletedCondition();
-    final primaryDefaultUuid = defaultAccountsData.first.uuid;
 
-    // 1. Check if the primary default account exists for the user context
-    final defaultAccQuery = box
-        .query(Account_.uuid
-            .equals(primaryDefaultUuid)
-            .and(userCondition)
-            .and(notDeleted))
-        .build();
-    final bool primaryExists = defaultAccQuery.count() > 0;
-    defaultAccQuery.close();
+    // 1. Check if the user already has ANY accounts.
+    final existingAccountsQuery =
+        box.query(userCondition.and(notDeleted)).build();
+    final bool userHasAccounts = existingAccountsQuery.count() > 0;
+    existingAccountsQuery.close();
 
-    // 2. If primary default exists, just ensure others are present
-    if (primaryExists) {
+    if (userHasAccounts) {
       print(
-          "Primary default account found (UUID: $primaryDefaultUuid). Ensuring others exist.");
-
-      // Ensure other default accounts also exist (optional, but good practice)
-      await _ensureOtherDefaultAccountsExist(userCondition);
-
-      return; // Initialization check done
+          "User already has accounts. Skipping default account initialization.");
+      return;
     }
 
-    // 3. If primary default NOT found, it might be first launch or new user context
-    print("Primary default account not found. Initializing defaults...");
+    // 2. If user has no accounts, initialize all defaults with new UUIDs
+    print("User has no accounts. Initializing defaults with unique UUIDs...");
 
-    // Get existing account UUIDs for the current context
-    final existingUuidsQuery = box.query(userCondition).build();
-    final existingUuids =
-        (await existingUuidsQuery.findAsync()).map((a) => a.uuid).toSet();
-    existingUuidsQuery.close();
+    final List<Account> accountsToAdd = [];
+    final Uuid uuidGenerator = Uuid(); // Create a Uuid instance
 
-    // Filter default accounts that don't exist yet based on UUID
-    final List<Account> accountsToAdd = defaultAccountsData
-        .where((defaultAccount) => !existingUuids.contains(defaultAccount.uuid))
-        .toList();
+    // Ensure Defaults are loaded so defaultCurrency is available
+    await Defaults().loadDefaults();
 
-    // Batch insert the missing accounts
+    for (final template in Defaults().defaultAccountsData) {
+      accountsToAdd.add(
+        Account(
+          uuid: uuidGenerator
+              .v4(), // Generate a NEW, UNIQUE UUID for this instance
+          name: template.name,
+          typeValue: template.typeValue,
+          currency: Defaults().defaultCurrency, // Use current default currency
+          currencySymbol:
+              Defaults().defaultCurrencySymbol, // Use current default symbol
+          balance: template.balance,
+          colorValue: template.colorValue,
+          iconCodePoint: template.iconCodePoint,
+          isEnabled: template.isEnabled,
+        ),
+      );
+    }
+
     if (accountsToAdd.isNotEmpty) {
       try {
-        print('Adding ${accountsToAdd.length} default accounts...');
-        // Use putMany which handles setting userId and timestamps for local source
+        // putMany will assign userId, createdAt, updatedAt
         await putMany(accountsToAdd, syncSource: SyncSource.local);
-        print('Added default accounts successfully.');
+        print(
+            'Added ${accountsToAdd.length} default accounts in batch with unique UUIDs.');
       } catch (e) {
-        print('Error adding default accounts: $e');
-        // Decide if we should proceed or rethrow
+        print('Error adding default accounts in batch: $e');
       }
     } else {
-      print("All default accounts already exist (UUID check).");
+      print("Default accounts data is empty. Nothing to add.");
     }
   }
 
   /// Helper to ensure non-primary default accounts exist.
   Future<void> _ensureOtherDefaultAccountsExist(
       Condition<Account> userCondition) async {
-    final otherDefaultUuids =
-        defaultAccountsData.skip(1).map((a) => a.uuid).toList();
-    if (otherDefaultUuids.isEmpty) return;
-
-    final existingUuidsQuery = box
-        .query(userCondition.and(Account_.uuid.oneOf(otherDefaultUuids)))
-        .build();
-    final existingUuids =
-        (await existingUuidsQuery.findAsync()).map((a) => a.uuid).toSet();
-    existingUuidsQuery.close();
-
-    final List<Account> accountsToAdd = defaultAccountsData
-        .skip(1)
-        .where((acc) => !existingUuids.contains(acc.uuid))
-        .toList();
-
-    if (accountsToAdd.isNotEmpty) {
-      print(
-          'Ensuring other default accounts exist: Adding ${accountsToAdd.length} missing accounts.');
-      try {
-        await putMany(accountsToAdd, syncSource: SyncSource.local);
-      } catch (e) {
-        print('Error ensuring other default accounts exist: $e');
-      }
-    }
+    print(
+        "Reviewing _ensureOtherDefaultAccountsExist: This method needs refactoring to use unique UUIDs and check by name or other user-specific unique properties.");
   }
 
   Condition<Account> _userIdCondition() {
@@ -452,7 +405,7 @@ class AccountRepository extends BaseRepository<Account> {
     final Condition<Account> notDeletedCondition = Account_.deletedAt.isNull();
 
     final Condition<Account> notDefaultCondition =
-        Account_.id.greaterThan(defaultAccountsData.length);
+        Account_.id.greaterThan(Defaults().defaultAccountsData.length);
 
     // Combine all conditions using the '&' operator
     final Condition<Account> finalCondition =
@@ -647,25 +600,48 @@ class AccountRepository extends BaseRepository<Account> {
       final currentUserId = _authService.currentUser?.id;
       final now = DateTime.now();
       final List<Account> processedEntities = [];
+      // Get existing entities from DB to preserve createdAt for updates
+      final existingIds =
+          entities.map((e) => e.id).where((id) => id != 0).toList();
+      final Map<int, Account> existingMap = {
+        for (var e
+            in (await box.getManyAsync(existingIds)).whereType<Account>())
+          e.id: e
+      };
+
       for (final entity in entities) {
         Account entityToSave;
-        if (entity.id == 0) {
+        // Ensure entity.uuid is already unique if it's a new item from defaults
+        if (entity.uuid == null && entity.id == 0) {
+          // This case should ideally not happen if _initializeDefaultAccounts sets UUIDs.
+          print(
+              "Warning: Account entity passed to putMany with null UUID and id 0. Generating one.");
+          entityToSave = entity.copyWith(
+            uuid: Uuid().v4(), // Generate UUID if missing for a new item
+            userId: currentUserId,
+            createdAt:
+                (entity.id == 0 || existingMap[entity.id]?.createdAt == null)
+                    ? now
+                    : existingMap[entity.id]!.createdAt,
+            updatedAt: now,
+            deletedAt: entity.deletedAt,
+          );
+        } else if (entity.id == 0) {
+          // New entity, UUID should have been pre-assigned by caller
           entityToSave = entity.copyWith(
             userId: currentUserId,
             createdAt: now,
             updatedAt: now,
-            deletedAt: entity.deletedAt, // Preserve if explicitly set
+            deletedAt: entity.deletedAt,
           );
         } else {
-          // Assume context check is less critical in batch, but ensure update time
+          // Existing entity
+          final existing = existingMap[entity.id];
           entityToSave = entity.copyWith(
-            userId: currentUserId, // Ensure context
+            userId: currentUserId,
             updatedAt: now,
-            // Preserve createdAt and deletedAt unless explicitly changed in the entity
-            createdAt:
-                entity.createdAt != DateTime.fromMillisecondsSinceEpoch(0)
-                    ? entity.createdAt
-                    : now, // Fallback, ideally fetch existing
+            createdAt: existing?.createdAt ?? now,
+            deletedAt: entity.deletedAt,
           );
         }
         processedEntities.add(entityToSave);
@@ -701,5 +677,38 @@ class AccountRepository extends BaseRepository<Account> {
       }
     }
     return resultIds;
+  }
+
+  Future<int> hardDeleteAllForCurrentUser() async {
+    final userCondition = _userIdCondition();
+    final query = box.query(userCondition).build();
+    final items = await query.findAsync();
+    query.close();
+    if (items.isEmpty) return 0;
+    final ids = items.map((c) => c.id).toList();
+
+    // --- Push remote deletes to Supabase (fire-and-forget) ---
+    if (syncService != null) {
+      for (final item in items) {
+        try {
+          // Use pushDeleteByUuid to ensure remote deletion by uuid (Supabase expects uuid as PK)
+          syncService!.pushDeleteByUuid('accounts', item.uuid).catchError((e) {
+            print(
+                "Supabase delete error for Account UUID ${item.uuid}: ${e.toString()}");
+          });
+        } catch (e) {
+          print(
+              "Exception during Supabase delete for Account UUID ${item.uuid}: ${e.toString()}");
+        }
+      }
+    } else {
+      print(
+          "Warning: syncService is null in hardDeleteAllForCurrentUser. Cannot push remote deletes.");
+    }
+    // --- End remote delete ---
+
+    await box.removeManyAsync(ids);
+    print("Hard deleted ${ids.length} accounts for user.");
+    return ids.length;
   }
 }

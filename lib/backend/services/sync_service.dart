@@ -382,6 +382,23 @@ class SyncService {
     }
   }
 
+  /// Deletes a single row from Supabase by uuid (String PK) and user_id.
+  Future<void> pushDeleteByUuid(String tableName, String uuid) async {
+    final currentUserId = _supabaseClient.auth.currentUser?.id;
+    if (currentUserId == null) return; // Don't push if not logged in
+    try {
+      print(
+          'Pushing single delete for $tableName item with uuid $uuid for user $currentUserId');
+      // RLS policy should prevent deleting others' data, but filtering here is safer.
+      await _supabaseClient.from(tableName).delete().match({
+        'uuid': uuid,
+        'user_id': currentUserId
+      }); // Match both uuid and user_id
+    } catch (e) {
+      print('Error pushing single delete for $tableName (uuid): $e');
+    }
+  }
+
   /// Pushes a single entity insert/update to Supabase immediately.
   /// Logs errors but does not throw them to avoid breaking local operations.
   Future<void> pushSingleUpsert<T>(T entity) async {
@@ -397,8 +414,6 @@ class SyncService {
       if ((entity as dynamic).userId != currentUserId) {
         print(
             "PushSingleUpsert: Entity userId (${(entity as dynamic).userId}) does not match current user ($currentUserId). Skipping push for $T.");
-        // Optionally, try to correct it if appropriate for the context
-        // entity = (entity as dynamic).copyWith(userId: currentUserId);
         return; // Skip push if context doesn't match
       }
     } catch (e) {
@@ -411,6 +426,39 @@ class SyncService {
     Map<String, dynamic> json = {};
 
     try {
+      // --- Defensive upsert for Transaction foreign keys ---
+      if (entity is Transaction) {
+        // Defensive: ensure referenced category and accounts exist remotely
+        final int? categoryId =
+            entity.category.targetId == 0 ? null : entity.category.targetId;
+        final int? fromAccountId = entity.fromAccount.targetId == 0
+            ? null
+            : entity.fromAccount.targetId;
+        final int? toAccountId =
+            entity.toAccount.targetId == 0 ? null : entity.toAccount.targetId;
+        // Push category if needed
+        if (categoryId != null) {
+          final category = await _categoryRepository.getById(categoryId);
+          if (category != null) {
+            await pushSingleUpsert<Category>(category);
+          }
+        }
+        // Push fromAccount if needed
+        if (fromAccountId != null) {
+          final fromAccount = await _accountRepository.getById(fromAccountId);
+          if (fromAccount != null) {
+            await pushSingleUpsert<Account>(fromAccount);
+          }
+        }
+        // Push toAccount if needed
+        if (toAccountId != null) {
+          final toAccount = await _accountRepository.getById(toAccountId);
+          if (toAccount != null) {
+            await pushSingleUpsert<Account>(toAccount);
+          }
+        }
+      }
+      // ...existing code for tableName/json selection and upsert...
       switch (T) {
         case Transaction:
           tableName = 'transactions';
@@ -451,11 +499,14 @@ class SyncService {
       }
 
       // Remove local-only fields like 'id' before upserting
-      json.remove('id');
+      json.remove('id'); // Always remove local ObjectBox id
       // Remove relation fields if they exist and are not just IDs/UUIDs
       json.remove('fromAccount');
       json.remove('toAccount');
       json.remove('category');
+
+      // Foreign key clarification: Only remote UUIDs should be present for relationships in the JSON.
+      // Do not include local IDs or full objects.
 
       await _supabaseClient.from(tableName).upsert(json, onConflict: 'uuid');
       print(
