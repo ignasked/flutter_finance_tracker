@@ -1,12 +1,10 @@
 import 'package:money_owl/backend/models/account.dart';
 import 'package:money_owl/backend/repositories/base_repository.dart';
 import 'package:money_owl/backend/utils/defaults.dart';
-import 'package:money_owl/backend/utils/enums.dart';
 import 'package:money_owl/objectbox.g.dart';
 import 'package:money_owl/backend/services/sync_service.dart'; // Import SyncService
 import 'package:money_owl/backend/services/auth_service.dart';
 import 'package:money_owl/backend/models/transaction.dart';
-import 'package:money_owl/backend/utils/app_style.dart'; // Import AppStyle
 import 'package:uuid/uuid.dart'; // Make sure you have this import and the package in pubspec.yaml
 
 class AccountRepository extends BaseRepository<Account> {
@@ -20,51 +18,11 @@ class AccountRepository extends BaseRepository<Account> {
   Future<void> init() async {
     // Ensure Defaults are loaded before repository uses them, especially for defaultCurrency
     await Defaults().loadDefaults();
-    await _initializeDefaultAccounts(); // Keep initialization
-    await _setDefaultAccount(); // Add call to set default instance separately
+    // Do not call initializeDefaultAccounts or setDefaultAccount here
   }
 
-  Future<void> _setDefaultAccount() async {
-    // Use getById which respects user context and deleted status
-    if (Defaults().defaultAccountId != null) {
-      final defaultAcc = await getById(Defaults().defaultAccountId!);
-      if (defaultAcc != null) {
-        Defaults().setDefaultAccountInstance(defaultAcc);
-        return; // Already set and instance loaded
-      } else {
-        // ID was saved but account not found (e.g., deleted), proceed to fallback
-        print(
-            "Warning: Default account ID ${Defaults().defaultAccountId} found in prefs, but account not found in DB. Resetting default.");
-      }
-    }
-
-    // Fallback logic if default ID isn't set or account wasn't found
-    final userCondition = _userIdCondition();
-    final anyAccQuery =
-        box.query(userCondition.and(_notDeletedCondition())).build();
-    final fallbackAcc = await anyAccQuery.findFirstAsync();
-    anyAccQuery.close();
-    if (fallbackAcc != null) {
-      Defaults().setDefaultAccountInstance(fallbackAcc);
-      await Defaults().saveDefaults(); // Save the new fallback default ID
-      print("Set fallback default account: ${fallbackAcc.name}");
-    } else {
-      print("Error: No account available to set as default.");
-      // Handle case where no accounts exist at all if necessary
-    }
-  }
-
-  /// Factory method for asynchronous initialization
-  static Future<AccountRepository> create(
-      Store store, AuthService authService, SyncService syncService) async {
-    // Ensure Defaults are loaded before repository uses them
-    await Defaults().loadDefaults();
-    return AccountRepository(store, authService, syncService);
-  }
-
-  /// Initializes default accounts if they don't exist (based on UUID)
-  /// Does NOT set the default instance in the Defaults singleton.
-  Future<void> _initializeDefaultAccounts() async {
+  // Make these public for AuthBloc to call after sync
+  Future<void> initializeDefaultAccounts() async {
     final userCondition = _userIdCondition();
     final notDeleted = _notDeletedCondition();
 
@@ -121,11 +79,42 @@ class AccountRepository extends BaseRepository<Account> {
     }
   }
 
-  /// Helper to ensure non-primary default accounts exist.
-  Future<void> _ensureOtherDefaultAccountsExist(
-      Condition<Account> userCondition) async {
-    print(
-        "Reviewing _ensureOtherDefaultAccountsExist: This method needs refactoring to use unique UUIDs and check by name or other user-specific unique properties.");
+  Future<void> setDefaultAccount() async {
+    // Use getById which respects user context and deleted status
+    if (Defaults().defaultAccountId != null) {
+      final defaultAcc = await getById(Defaults().defaultAccountId!);
+      if (defaultAcc != null) {
+        Defaults().setDefaultAccountInstance(defaultAcc);
+        return; // Already set and instance loaded
+      } else {
+        // ID was saved but account not found (e.g., deleted), proceed to fallback
+        print(
+            "Warning: Default account ID ${Defaults().defaultAccountId} found in prefs, but account not found in DB. Resetting default.");
+      }
+    }
+
+    // Fallback logic if default ID isn't set or account wasn't found
+    final userCondition = _userIdCondition();
+    final anyAccQuery =
+        box.query(userCondition.and(_notDeletedCondition())).build();
+    final fallbackAcc = await anyAccQuery.findFirstAsync();
+    anyAccQuery.close();
+    if (fallbackAcc != null) {
+      Defaults().setDefaultAccountInstance(fallbackAcc);
+      await Defaults().saveDefaults(); // Save the new fallback default ID
+      print("Set fallback default account: ${fallbackAcc.name}");
+    } else {
+      print("Error: No account available to set as default.");
+      // Handle case where no accounts exist at all if necessary
+    }
+  }
+
+  /// Factory method for asynchronous initialization
+  static Future<AccountRepository> create(
+      Store store, AuthService authService, SyncService syncService) async {
+    // Ensure Defaults are loaded before repository uses them
+    await Defaults().loadDefaults();
+    return AccountRepository(store, authService, syncService);
   }
 
   Condition<Account> _userIdCondition() {
@@ -202,7 +191,7 @@ class AccountRepository extends BaseRepository<Account> {
       final results = await query.findAsync();
       query.close();
 
-      _setDefaultAccount(); // Set default account instance after fetching all accounts
+      setDefaultAccount(); // Set default account instance after fetching all accounts
 
       return results;
     } catch (e) {
@@ -612,21 +601,7 @@ class AccountRepository extends BaseRepository<Account> {
       for (final entity in entities) {
         Account entityToSave;
         // Ensure entity.uuid is already unique if it's a new item from defaults
-        if (entity.uuid == null && entity.id == 0) {
-          // This case should ideally not happen if _initializeDefaultAccounts sets UUIDs.
-          print(
-              "Warning: Account entity passed to putMany with null UUID and id 0. Generating one.");
-          entityToSave = entity.copyWith(
-            uuid: Uuid().v4(), // Generate UUID if missing for a new item
-            userId: currentUserId,
-            createdAt:
-                (entity.id == 0 || existingMap[entity.id]?.createdAt == null)
-                    ? now
-                    : existingMap[entity.id]!.createdAt,
-            updatedAt: now,
-            deletedAt: entity.deletedAt,
-          );
-        } else if (entity.id == 0) {
+        if (entity.id == 0) {
           // New entity, UUID should have been pre-assigned by caller
           entityToSave = entity.copyWith(
             userId: currentUserId,

@@ -1,9 +1,7 @@
 import 'package:money_owl/backend/models/category.dart';
 import 'package:money_owl/backend/models/transaction.dart';
 import 'package:money_owl/backend/repositories/base_repository.dart';
-import 'package:money_owl/backend/utils/app_style.dart';
 import 'package:money_owl/backend/utils/defaults.dart';
-import 'package:money_owl/backend/utils/enums.dart';
 import 'package:money_owl/objectbox.g.dart';
 import 'package:money_owl/backend/services/sync_service.dart';
 import 'package:money_owl/backend/services/auth_service.dart';
@@ -19,8 +17,7 @@ class CategoryRepository extends BaseRepository<Category> {
 
   /// Asynchronous initialization method
   Future<void> init() async {
-    await _initializeDefaultCategories();
-    await _setDefaultCategory(); // Ensure this is also awaited
+    // Do not call initializeDefaultCategories or setDefaultCategory here
   }
 
   /// Factory method for asynchronous initialization
@@ -29,8 +26,59 @@ class CategoryRepository extends BaseRepository<Category> {
     return CategoryRepository(store, authService, syncService);
   }
 
-  /// Helper method to set default category asynchronously
-  Future<void> _setDefaultCategory() async {
+  /// Make these public for AuthBloc to call after sync
+  Future<void> initializeDefaultCategories() async {
+    final userCondition = _userIdCondition();
+    final notDeleted = _notDeletedCondition();
+
+    // Check if the user already has ANY categories. This is a more reliable check.
+    final existingCategoriesQuery =
+        box.query(userCondition.and(notDeleted)).build();
+    final bool userHasCategories = (existingCategoriesQuery.count()) > 0;
+    existingCategoriesQuery.close();
+
+    if (userHasCategories) {
+      print(
+          "User already has categories. Skipping default category initialization.");
+      return;
+    }
+
+    // If user has no categories, initialize all defaults with new UUIDs
+    print("User has no categories. Initializing defaults with unique UUIDs...");
+
+    final List<Category> categoriesToAdd = [];
+    final Uuid uuidGenerator = Uuid(); // Create a Uuid instance once
+
+    for (final template in Defaults().defaultCategoriesData) {
+      categoriesToAdd.add(
+        Category(
+          uuid: uuidGenerator
+              .v4(), // Generate a NEW, UNIQUE UUID for this instance
+          title: template.title,
+          descriptionForAI: template.descriptionForAI,
+          colorValue: template.colorValue,
+          iconCodePoint: template.iconCodePoint,
+          typeValue: template.typeValue,
+          isEnabled: template.isEnabled,
+        ),
+      );
+    }
+
+    if (categoriesToAdd.isNotEmpty) {
+      try {
+        await putMany(categoriesToAdd, syncSource: SyncSource.local);
+        print(
+            'Added ${categoriesToAdd.length} default categories in batch with unique UUIDs.');
+      } catch (e) {
+        print('Error adding default categories in batch: $e');
+      }
+    } else {
+      print("Default categories data is empty. Nothing to add.");
+    }
+  }
+
+  /// Make these public for AuthBloc to call after sync
+  Future<void> setDefaultCategory() async {
     // 1. Try loading using the ID stored in Defaults
     if (Defaults().defaultCategoryId != null) {
       final defaultCategory = await getById(Defaults().defaultCategoryId!);
@@ -129,58 +177,6 @@ class CategoryRepository extends BaseRepository<Category> {
         Defaults()
             .defaultCategoriesData
             .first; // Fallback to first default category
-  }
-
-  /// Initialize default categories if they don't exist for the current user.
-  /// Creates new instances with unique UUIDs.
-  Future<void> _initializeDefaultCategories() async {
-    final userCondition = _userIdCondition();
-    final notDeleted = _notDeletedCondition();
-
-    // Check if the user already has ANY categories. This is a more reliable check.
-    final existingCategoriesQuery =
-        box.query(userCondition.and(notDeleted)).build();
-    final bool userHasCategories = (existingCategoriesQuery.count()) > 0;
-    existingCategoriesQuery.close();
-
-    if (userHasCategories) {
-      print(
-          "User already has categories. Skipping default category initialization.");
-      return;
-    }
-
-    // If user has no categories, initialize all defaults with new UUIDs
-    print("User has no categories. Initializing defaults with unique UUIDs...");
-
-    final List<Category> categoriesToAdd = [];
-    final Uuid uuidGenerator = Uuid(); // Create a Uuid instance once
-
-    for (final template in Defaults().defaultCategoriesData) {
-      categoriesToAdd.add(
-        Category(
-          uuid: uuidGenerator
-              .v4(), // Generate a NEW, UNIQUE UUID for this instance
-          title: template.title,
-          descriptionForAI: template.descriptionForAI,
-          colorValue: template.colorValue,
-          iconCodePoint: template.iconCodePoint,
-          typeValue: template.typeValue,
-          isEnabled: template.isEnabled,
-        ),
-      );
-    }
-
-    if (categoriesToAdd.isNotEmpty) {
-      try {
-        await putMany(categoriesToAdd, syncSource: SyncSource.local);
-        print(
-            'Added ${categoriesToAdd.length} default categories in batch with unique UUIDs.');
-      } catch (e) {
-        print('Error adding default categories in batch: $e');
-      }
-    } else {
-      print("Default categories data is empty. Nothing to add.");
-    }
   }
 
   /// Get categories modified after a specific time (UTC) for the current context.
@@ -299,7 +295,7 @@ class CategoryRepository extends BaseRepository<Category> {
       final results = await query.findAsync();
       query.close();
 
-      _setDefaultCategory(); // Ensure default category is set after fetching
+      setDefaultCategory(); // Ensure default category is set after fetching
       return results;
     } catch (e) {
       final context = _authService.currentUser?.id ?? 'local (unauthenticated)';
@@ -619,11 +615,8 @@ class CategoryRepository extends BaseRepository<Category> {
 
       for (final entity in entities) {
         Category entityToSave;
-        if (entity.uuid == null && entity.id == 0) {
-          print(
-              "Warning: Category entity passed to putMany with null UUID and id 0. Generating one.");
+        if (entity.id == 0) {
           entityToSave = entity.copyWith(
-            uuid: Uuid().v4(),
             userId: currentUserId,
             createdAt:
                 (entity.id == 0 || existingMap[entity.id]?.createdAt == null)

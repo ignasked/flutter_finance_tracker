@@ -195,6 +195,17 @@ class SyncService {
 
       // 5. Batch write inserts
       if (itemsToInsert.isNotEmpty) {
+        final maxRemoteId = itemsToInsert
+            .map((e) => e.id as int)
+            .fold<int>(0, (prev, id) => id > prev ? id : prev);
+        if (maxRemoteId > 0) {
+          try {
+            await _bumpObjectBoxIdSequence<T>(repository, maxRemoteId);
+          } catch (e) {
+            print(
+                'Sync Down: Failed to bump ObjectBox next ID for $tableName: $e');
+          }
+        }
         print(
             'Sync Down: Inserting ${itemsToInsert.length} new $tableName items locally.');
         await repository.putMany(itemsToInsert,
@@ -349,6 +360,87 @@ class SyncService {
         rethrow;
       }
     }
+  }
+
+  /// Bumps ObjectBox's internal ID sequence to at least [targetId] for the given repository.
+  Future<void> _bumpObjectBoxIdSequence<T>(
+      dynamic repository, int targetId) async {
+    if (targetId <= 1) return; // No need to bump for IDs 0 or 1
+    final box = repository.box;
+    // Get current max ID in the box
+    int currentMaxId = 0;
+    try {
+      final allIds = box.getAllIds();
+      if (allIds.isNotEmpty) {
+        currentMaxId = allIds.reduce((a, b) => a > b ? a : b);
+      }
+    } catch (_) {}
+    if (currentMaxId >= targetId) return; // Already bumped
+    final int numToInsert = targetId - currentMaxId;
+    final List<int> dummyIds = [];
+    for (int i = 0; i < numToInsert; i++) {
+      dynamic dummy;
+      final now = DateTime.now();
+      if (T == Account) {
+        dummy = Account(
+          id: 0,
+          uuid: 'dummy-sync-id-${now.microsecondsSinceEpoch}-$i',
+          name: 'dummy',
+          currency: 'USD',
+          currencySymbol: ' ',
+          balance: 0.0,
+          typeValue: 0,
+          colorValue: 0,
+          iconCodePoint: 0,
+          isEnabled: false,
+          createdAt: now,
+          updatedAt: now,
+          userId: _supabaseClient.auth.currentUser?.id,
+          deletedAt: null,
+        );
+      } else if (T == Category) {
+        dummy = Category(
+          id: 0,
+          uuid: 'dummy-sync-id-${now.microsecondsSinceEpoch}-$i',
+          title: 'dummy',
+          descriptionForAI: 'dummy',
+          iconCodePoint: 0,
+          typeValue: 0,
+          isEnabled: false,
+          colorValue: 0,
+          createdAt: now,
+          updatedAt: now,
+          userId: _supabaseClient.auth.currentUser?.id,
+          deletedAt: null,
+        );
+      } else if (T == Transaction) {
+        dummy = Transaction.createWithIds(
+          id: 0,
+          uuid: 'dummy-sync-id-${now.microsecondsSinceEpoch}-$i',
+          title: 'dummy',
+          amount: 0.0,
+          description: 'dummy',
+          date: now,
+          categoryId: 0,
+          fromAccountId: 0,
+          toAccountId: 0,
+          createdAt: now,
+          updatedAt: now,
+          userId: _supabaseClient.auth.currentUser?.id,
+          metadata: null,
+          deletedAt: null,
+        );
+      } else {
+        break;
+      }
+      final newId = box.put(dummy);
+      dummyIds.add(newId);
+    }
+    // Remove all dummy objects
+    for (final id in dummyIds) {
+      box.remove(id);
+    }
+    print('Bumped ObjectBox next ID for ${T.toString()} to >= $targetId');
   }
 
   Future<void> pushUpsert<T extends dynamic>(String tableName, T item) async {

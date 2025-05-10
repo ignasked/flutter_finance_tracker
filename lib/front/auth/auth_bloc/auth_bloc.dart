@@ -112,9 +112,21 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           await _syncService.syncAll();
           print('AuthBloc: Sync completed successfully.');
 
-          // Initialize repositories before syncing
-          await _accountRepository.init();
-          await _categoryRepository.init();
+          // --- Robust Default Data Initialization After Sync ---
+          final accounts = await _accountRepository.getAll();
+          final categories = await _categoryRepository.getAll();
+          if (accounts.isEmpty && categories.isEmpty) {
+            print(
+                'AuthBloc: No accounts or categories found after sync. Initializing defaults...');
+            await _accountRepository.initializeDefaultAccounts();
+            await _categoryRepository.initializeDefaultCategories();
+            // Optionally, set default account/category after creation
+            await _accountRepository.setDefaultAccount();
+            await _categoryRepository.setDefaultCategory();
+          } else {
+            print(
+                'AuthBloc: Accounts or categories exist after sync. Skipping default initialization.');
+          }
 
           // Now emit authenticated state with isDataInitialized = true
           emit(AuthState.authenticated(user, isDataInitialized: true));
