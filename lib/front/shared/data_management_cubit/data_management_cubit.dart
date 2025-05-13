@@ -45,18 +45,13 @@ class DataManagementCubit extends Cubit<DataManagementState> {
     _filterSubscription = _filterCubit.stream.listen((filterState) {
       // Call the corrected _applyFiltersCache
       emit(state.copyWith(status: LoadingStatus.loading));
-      _applyFiltersCache(filterState);
+      _applyFilters(filterState);
       //emit(state.copyWith(status: LoadingStatus.success));
     });
   }
 
   Future<void> refreshData() async {
     // This is a refresh, so pass true
-    await _loadInitialData(isRefresh: true);
-  }
-
-  Future<void> refreshTransactions() async {
-    // This is also a refresh context
     await _loadInitialData(isRefresh: true);
   }
 
@@ -147,7 +142,7 @@ class DataManagementCubit extends Cubit<DataManagementState> {
     return enabledAccounts;
   }
 
-  void _applyFiltersCache(FilterState filterState) async {
+  void _applyFilters(FilterState filterState) async {
     try {
       // Apply the new filterState using the repository
       final List<Transaction> filteredRaw =
@@ -312,7 +307,18 @@ class DataManagementCubit extends Cubit<DataManagementState> {
       final savedTransaction = await _transactionRepository.getById(savedId);
 
       if (savedTransaction != null) {
-        _applyFiltersCache(_filterCubit.state);
+        // Reload all data to ensure allTransactions is up to date
+        final allTransactions = await _transactionRepository.getAll();
+        // final allAccounts = await _accountRepository.getAll();
+        // final allCategories = await _categoryRepository.getAll();
+        // Apply filters and update state
+        final filterState = _filterCubit.state;
+        emit(state.copyWith(
+          allTransactions: allTransactions,
+          // allAccounts: allAccounts,
+          // allCategories: allCategories,
+        ));
+        _applyFilters(filterState);
       } else {
         print("Error: Failed to fetch saved transaction after adding.");
         emit(state.copyWith(
@@ -331,7 +337,18 @@ class DataManagementCubit extends Cubit<DataManagementState> {
   Future addTransactions(List<Transaction> transactions) async {
     try {
       await _transactionRepository.putMany(transactions);
-      _applyFiltersCache(_filterCubit.state);
+      // Reload all data to ensure allTransactions is up to date
+      final allTransactions = await _transactionRepository.getAll();
+      // final allAccounts = await _accountRepository.getAll();
+      // final allCategories = await _categoryRepository.getAll();
+      // Apply filters and update state
+      final filterState = _filterCubit.state;
+      emit(state.copyWith(
+        allTransactions: allTransactions,
+        // allAccounts: allAccounts,
+        // allCategories: allCategories,
+      ));
+      _applyFilters(filterState);
     } catch (e, stacktrace) {
       print("Error adding multiple transactions to repository: $e");
       print(stacktrace);
@@ -344,7 +361,7 @@ class DataManagementCubit extends Cubit<DataManagementState> {
   Future updateTransaction(Transaction transaction) async {
     try {
       await _transactionRepository.put(transaction);
-      _applyFiltersCache(_filterCubit.state);
+      _applyFilters(_filterCubit.state);
     } catch (e, stacktrace) {
       print("Error updating transaction in repository: $e");
       print(stacktrace);
@@ -472,7 +489,7 @@ class DataManagementCubit extends Cubit<DataManagementState> {
 
           emit(state.copyWith(
               allCategories: updatedCategories, status: LoadingStatus.success));
-          _applyFiltersCache(_filterCubit.state);
+          _applyFilters(_filterCubit.state);
         } else {
           print(
               "Warning: Updated category ID ${updatedCategory.id} not found in current allCategories list.");
@@ -510,7 +527,7 @@ class DataManagementCubit extends Cubit<DataManagementState> {
           ..removeWhere((c) => c.id == categoryId);
         emit(state.copyWith(
             allCategories: updatedCategories, status: LoadingStatus.success));
-        _applyFiltersCache(_filterCubit.state);
+        _applyFilters(_filterCubit.state);
       } else {
         throw Exception("Failed to delete category from repository.");
       }
@@ -531,7 +548,7 @@ class DataManagementCubit extends Cubit<DataManagementState> {
           ..add(savedAccount);
         emit(state.copyWith(
             allAccounts: updatedAccounts, status: LoadingStatus.success));
-        _applyFiltersCache(_filterCubit.state);
+        _applyFilters(_filterCubit.state);
       } else {
         throw Exception("Failed to fetch saved account after adding.");
       }
@@ -598,7 +615,7 @@ class DataManagementCubit extends Cubit<DataManagementState> {
           ..removeWhere((a) => a.id == accountId);
         emit(state.copyWith(
             allAccounts: updatedAccounts, status: LoadingStatus.success));
-        _applyFiltersCache(_filterCubit.state);
+        _applyFilters(_filterCubit.state);
       } else {
         throw Exception("Failed to delete account from repository.");
       }

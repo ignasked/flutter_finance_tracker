@@ -43,17 +43,16 @@ class CategoryRepository extends BaseRepository<Category> {
       return;
     }
 
-    // If user has no categories, initialize all defaults with new UUIDs
-    print("User has no categories. Initializing defaults with unique UUIDs...");
+    print(
+        "User has no categories. Initializing defaults with unique UUIDs and letting ObjectBox assign IDs...");
 
     final List<Category> categoriesToAdd = [];
-    final Uuid uuidGenerator = Uuid(); // Create a Uuid instance once
-
+    final Uuid uuidGenerator = Uuid();
     for (final template in Defaults().defaultCategoriesData) {
       categoriesToAdd.add(
         Category(
-          uuid: uuidGenerator
-              .v4(), // Generate a NEW, UNIQUE UUID for this instance
+          id: 0, // Let ObjectBox assign the ID
+          uuid: uuidGenerator.v4(),
           title: template.title,
           descriptionForAI: template.descriptionForAI,
           colorValue: template.colorValue,
@@ -66,9 +65,25 @@ class CategoryRepository extends BaseRepository<Category> {
 
     if (categoriesToAdd.isNotEmpty) {
       try {
-        await putMany(categoriesToAdd, syncSource: SyncSource.local);
+        final ids =
+            await putMany(categoriesToAdd, syncSource: SyncSource.local);
         print(
-            'Added ${categoriesToAdd.length} default categories in batch with unique UUIDs.');
+            'Added ${categoriesToAdd.length} default categories in batch. Assigned IDs: $ids');
+        // Fetch the saved categories with their assigned IDs
+        final savedCategories = await getManyByIds(ids);
+        // Upsert to Supabase with the assigned IDs
+        if (syncService != null) {
+          await syncService!.pushUpsertMany<Category>(savedCategories);
+        }
+        // --- Set the default category instance in Defaults by title match ---
+        final defaultTitle =
+            Defaults().defaultCategory.title.trim().toLowerCase();
+        final newDefault = savedCategories.firstWhere(
+          (cat) => cat.title.trim().toLowerCase() == defaultTitle,
+          orElse: () => savedCategories.first,
+        );
+        Defaults().setDefaultCategoryInstance(newDefault);
+        await Defaults().saveDefaults();
       } catch (e) {
         print('Error adding default categories in batch: $e');
       }

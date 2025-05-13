@@ -674,7 +674,10 @@ class SyncService {
         }
 
         // Remove local-only fields
-        json.remove('id');
+        if (entityType == Transaction) {
+          json.remove(
+              'id'); // Only remove 'id' for Transaction, not for Account/Category
+        }
         json.remove('fromAccount');
         json.remove('toAccount');
         json.remove('category');
@@ -710,6 +713,10 @@ class SyncService {
         default:
           continue; // Should not happen based on grouping logic
       }
+
+      // Debug print to verify IDs are present and non-null
+      print(
+          "PushUpsertMany: JSON batch for $entityType: ${jsonList.map((e) => e.toString()).join(', ')}");
 
       print(
           "PushUpsertMany: Pushing ${jsonList.length} items of type $entityType to $tableName...");

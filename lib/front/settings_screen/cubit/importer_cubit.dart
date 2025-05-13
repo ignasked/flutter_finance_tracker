@@ -200,16 +200,18 @@ class ImporterCubit extends Cubit<ImporterState> {
   ) async {
     emit(state.copyWith(isLoading: true, error: null, lastOperation: null));
     try {
-      // 1. Remove all user transactions
-      await txRepo.removeAllForCurrentUser();
-
-      // 2. Hard delete all categories and accounts for the user
+      // --- HARD DELETE FROM SUPABASE AND LOCAL ---
+      await txRepo.hardDeleteAllForCurrentUser();
       await Future.wait([
         catRepo.hardDeleteAllForCurrentUser(),
         accRepo.hardDeleteAllForCurrentUser(),
       ]);
 
-      // 3. Re-initialize repositories (creates defaults)
+      // 2. Initialize default categories and accounts (must be done before init)
+      await catRepo.initializeDefaultCategories();
+      await accRepo.initializeDefaultAccounts();
+
+      // 3. Re-initialize repositories (if needed for any cache/state)
       await Future.wait([
         catRepo.init(),
         accRepo.init(),
@@ -256,6 +258,28 @@ class ImporterCubit extends Cubit<ImporterState> {
     // Parse JSON data
     final List<dynamic> jsonList = jsonDecode(jsonData) as List;
 
+    // Build lookup maps for category/account by title/name (case-insensitive)
+    final Map<String, int> categoryTitleToId = {
+      for (var cat in availableCategories)
+        cat.title.trim().toLowerCase(): cat.id
+    };
+    final Map<String, int> accountNameToId = {
+      for (var acc in availableAccounts) acc.name.trim().toLowerCase(): acc.id
+    };
+    // Build maps from default ID to title/name
+    final Map<int, String> defaultCategoryIdToTitle = {
+      for (var cat in Defaults().defaultCategoriesData)
+        cat.id: cat.title.trim().toLowerCase()
+    };
+    final Map<int, String> defaultAccountIdToName = {
+      for (var acc in Defaults().defaultAccountsData)
+        acc.id: acc.name.trim().toLowerCase()
+    };
+
+    // --- Get current default IDs for fallback ---
+    final int currentDefaultCategoryId = Defaults().defaultCategory.id;
+    final int currentDefaultAccountId = Defaults().defaultAccount.id;
+
     // Process each transaction
     final List<Transaction> transactions = [];
     int errorCount = 0;
@@ -270,53 +294,124 @@ class ImporterCubit extends Cubit<ImporterState> {
             continue;
           }
 
-          // --- Parse IDs ---
-          // CORRECTED: Parse flat category_id, use default ID if null/missing
-          int categoryId =
-              json['category_id'] as int? ?? Defaults().defaultCategory.id;
-          // CORRECTED: Parse flat from_account_id, use default ID if null/missing
-          int fromAccountId =
-              json['from_account_id'] as int? ?? Defaults().defaultAccount.id;
-          // CORRECTED: Parse flat to_account_id (nullable)
+          // --- Map category_id to current DB ---
+          int? categoryId = json['category_id'] as int?;
+          // 1. Try to find by ID in availableCategories
+          if (categoryId != null &&
+              availableCategories.any((c) => c.id == categoryId)) {
+            // Use as-is
+          } else {
+            // 2. Try to find by title (for defaults or custom)
+            String? categoryTitle;
+            if (categoryId != null &&
+                defaultCategoryIdToTitle.containsKey(categoryId)) {
+              categoryTitle = defaultCategoryIdToTitle[categoryId];
+            } else if (json['category_title'] != null) {
+              categoryTitle =
+                  (json['category_title'] as String).trim().toLowerCase();
+            } else if (json['category'] != null &&
+                json['category'] is Map &&
+                (json['category']['title'] != null)) {
+              categoryTitle =
+                  (json['category']['title'] as String).trim().toLowerCase();
+            }
+            if (categoryTitle != null &&
+                categoryTitleToId.containsKey(categoryTitle)) {
+              categoryId = categoryTitleToId[categoryTitle];
+            } else {
+              categoryId = currentDefaultCategoryId;
+            }
+          }
+
+          // --- Map from_account_id to current DB ---
+          int? fromAccountId = json['from_account_id'] as int?;
+          if (fromAccountId != null &&
+              availableAccounts.any((a) => a.id == fromAccountId)) {
+            // Use as-is
+          } else {
+            String? accountName;
+            if (fromAccountId != null &&
+                defaultAccountIdToName.containsKey(fromAccountId)) {
+              accountName = defaultAccountIdToName[fromAccountId];
+            } else if (json['from_account_name'] != null) {
+              accountName =
+                  (json['from_account_name'] as String).trim().toLowerCase();
+            } else if (json['from_account'] != null &&
+                json['from_account'] is Map &&
+                (json['from_account']['name'] != null)) {
+              accountName =
+                  (json['from_account']['name'] as String).trim().toLowerCase();
+            }
+            if (accountName != null &&
+                accountNameToId.containsKey(accountName)) {
+              fromAccountId = accountNameToId[accountName];
+            } else {
+              fromAccountId = currentDefaultAccountId;
+            }
+          }
+
+          // --- Map to_account_id to current DB ---
           int? toAccountId = json['to_account_id'] as int?;
+          if (toAccountId != null &&
+              availableAccounts.any((a) => a.id == toAccountId)) {
+            // Use as-is
+          } else if (toAccountId != null) {
+            String? accountName;
+            if (defaultAccountIdToName.containsKey(toAccountId)) {
+              accountName = defaultAccountIdToName[toAccountId];
+            } else if (json['to_account_name'] != null) {
+              accountName =
+                  (json['to_account_name'] as String).trim().toLowerCase();
+            } else if (json['to_account'] != null &&
+                json['to_account'] is Map &&
+                (json['to_account']['name'] != null)) {
+              accountName =
+                  (json['to_account']['name'] as String).trim().toLowerCase();
+            }
+            if (accountName != null &&
+                accountNameToId.containsKey(accountName)) {
+              toAccountId = accountNameToId[accountName];
+            } else {
+              toAccountId = currentDefaultAccountId;
+            }
+          }
+
+          // --- Ensure IDs are non-null for Transaction.createWithIds ---
+          final int finalCategoryId = categoryId ?? currentDefaultCategoryId;
+          final int finalFromAccountId =
+              fromAccountId ?? currentDefaultAccountId;
+          final int? finalToAccountId = toAccountId ??
+              (toAccountId == null ? null : currentDefaultAccountId);
 
           // --- Parse other fields ---
           final id = json['id'] as int? ?? 0; // Use 0 for ObjectBox if missing
-          // --- FIX: Parse UUID ---
-          final uuid = json['uuid'] as String?; // Parse UUID (nullable)
-          // --- END FIX ---
+          final uuid = json['uuid'] as String?;
           final title = json['title'] as String? ?? 'Unnamed Transaction';
           final amount = (json['amount'] as num?)?.toDouble() ?? 0.0;
           final date = _parseDate(json['date']) ?? DateTime.now();
           final description = json['description'] as String?;
-          // --- FIX: Use correct keys from toJson (created_at, updated_at, deleted_at) ---
           final createdAt = _parseDate(json['created_at']);
           final updatedAt = _parseDate(json['updated_at']);
           final deletedAt = _parseDate(json['deleted_at']);
-          // --- END FIX ---
-          final userId = json['user_id'] as String?; // Parse userId
+          final userId = json['user_id'] as String?;
           final metadata = json['metadata'] as Map<String, dynamic>?;
 
-          // --- FIX: Use the factory constructor Transaction.createWithIds ---
           final transaction = Transaction.createWithIds(
-            id: id, // Pass parsed ID (or 0)
-            uuid: uuid, // Pass parsed UUID (factory handles generation if null)
+            id: id,
+            uuid: uuid,
             title: title,
             amount: amount,
             date: date,
             description: description,
-            // Pass the IDs directly
-            categoryId: categoryId,
-            fromAccountId: fromAccountId,
-            toAccountId: toAccountId,
-            // Pass parsed dates or let factory handle defaults
+            categoryId: finalCategoryId,
+            fromAccountId: finalFromAccountId,
+            toAccountId: finalToAccountId,
             createdAt: createdAt,
             updatedAt: updatedAt,
-            userId: userId, // Pass userId
-            deletedAt: deletedAt, // Pass deletedAt
+            userId: userId,
+            deletedAt: deletedAt,
             metadata: metadata,
           );
-          // --- END FIX ---
 
           transactions.add(transaction);
         } catch (e, stacktrace) {
@@ -324,7 +419,6 @@ class ImporterCubit extends Cubit<ImporterState> {
           print('Error parsing imported transaction JSON: $e');
           print('Problematic JSON: $json');
           print('Stacktrace: $stacktrace');
-          // Skip problematic transactions
         }
       }
     }
@@ -389,7 +483,7 @@ class ImporterCubit extends Cubit<ImporterState> {
       for (var tx in transactions) {
         try {
           // --- FIX: Use the model's toJson method ---
-          transactionMaps.add(tx.toJson());
+          transactionMaps.add(tx.toExportJson());
           // --- END FIX ---
         } catch (e) {
           print(

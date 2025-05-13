@@ -253,8 +253,7 @@ class SettingsScreen extends StatelessWidget {
           ElevatedButton(
             onPressed: () => Navigator.pop(dialogContext, true),
             style: AppStyle.dangerButtonStyle.copyWith(
-              backgroundColor:
-                  WidgetStateProperty.all(AppStyle.secondaryColor),
+              backgroundColor: WidgetStateProperty.all(AppStyle.secondaryColor),
             ),
             child: const Text('Logout'),
           ),
@@ -568,7 +567,6 @@ class SettingsScreen extends StatelessWidget {
 
     final txCubit = context.read<DataManagementCubit>();
     final importerCubit = context.read<ImporterCubit>();
-    final txRepo = context.read<TransactionRepository>();
 
     final existingTransactions = txCubit.state.filteredTransactions;
 
@@ -590,8 +588,9 @@ class SettingsScreen extends StatelessWidget {
       if (context.mounted) {
         showLoadingPopup(context, message: 'Importing data...');
       }
-      await txRepo.putMany(newTransactions);
+      await txCubit.addTransactions(newTransactions);
       await txCubit.refreshData();
+      //await txCubit.refreshData();
       if (context.mounted) {
         hideLoadingPopup(context);
       }
@@ -674,7 +673,7 @@ class SettingsScreen extends StatelessWidget {
 
     if (transactionsToAdd != null && transactionsToAdd.isNotEmpty) {
       await txRepo.putMany(transactionsToAdd.cast());
-      await txCubit.refreshTransactions();
+      await txCubit.refreshData();
     }
   }
 

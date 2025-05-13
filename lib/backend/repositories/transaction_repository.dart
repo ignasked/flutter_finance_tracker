@@ -300,23 +300,6 @@ class TransactionRepository extends BaseRepository<Transaction> {
     }
 
     try {
-      // --- MODIFIED: Push deletes using pushUpsertMany (Fire-and-Forget) ---
-      if (syncService != null && itemsToSoftDelete.isNotEmpty) {
-        print(
-            "Pushing ${itemsToSoftDelete.length} transaction deletes using pushUpsertMany (no await).");
-        // Push the state *as it will be* after the local write
-        syncService!
-            .pushUpsertMany<Transaction>(itemsToSoftDelete)
-            .catchError((pushError) {
-          print(
-              "Background push error during pushUpsertMany for deleting Transactions: $pushError");
-        });
-      } else if (syncService == null) {
-        print(
-            "Warning: syncService is null in removeAllForCurrentUser. Cannot push deletes immediately.");
-      }
-      // --- END MODIFIED ---
-
       // Use box.putManyAsync directly
       await box.putManyAsync(itemsToSoftDelete);
       print(
@@ -326,6 +309,43 @@ class TransactionRepository extends BaseRepository<Transaction> {
       print("Error during direct putManyAsync in removeAllForCurrentUser: $e");
       return 0; // Return 0 as local write failed, though push was attempted
     }
+  }
+
+  /// Hard deletes all transactions for the currently logged-in user, including remote (Supabase) deletion.
+  Future<int> hardDeleteAllForCurrentUser() async {
+    final userCondition = _userIdCondition();
+    final query = box.query(userCondition).build();
+    final items = await query.findAsync();
+    query.close();
+    if (items.isEmpty) return 0;
+    final ids = items.map((t) => t.id).toList();
+
+    // --- Push remote deletes to Supabase (fire-and-forget) ---
+    if (syncService != null) {
+      for (final item in items) {
+        try {
+          // Use pushDeleteByUuid to ensure remote deletion by uuid (Supabase expects uuid as PK)
+          syncService!
+              .pushDeleteByUuid('transactions', item.uuid)
+              .catchError((e) {
+            print(
+                "Supabase delete error for Transaction UUID ${item.uuid}: ${e.toString()}");
+          });
+        } catch (e) {
+          print(
+              "Exception during Supabase delete for Transaction UUID ${item.uuid}: ${e.toString()}");
+        }
+      }
+    } else {
+      print(
+          "Warning: syncService is null in hardDeleteAllForCurrentUser. Cannot push remote deletes.");
+    }
+    // --- End remote delete ---
+
+    await box.removeManyAsync(ids);
+    print(
+        "Hard deleted ${ids.length} transactions for user (local and remote).");
+    return ids.length;
   }
 
   /// Override removeAll from BaseRepository.

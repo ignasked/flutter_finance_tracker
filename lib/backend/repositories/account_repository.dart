@@ -38,25 +38,21 @@ class AccountRepository extends BaseRepository<Account> {
       return;
     }
 
-    // 2. If user has no accounts, initialize all defaults with new UUIDs
-    print("User has no accounts. Initializing defaults with unique UUIDs...");
+    print(
+        "User has no accounts. Initializing defaults with unique UUIDs and letting ObjectBox assign IDs...");
 
     final List<Account> accountsToAdd = [];
-    final Uuid uuidGenerator = Uuid(); // Create a Uuid instance
-
-    // Ensure Defaults are loaded so defaultCurrency is available
+    final Uuid uuidGenerator = Uuid();
     await Defaults().loadDefaults();
-
     for (final template in Defaults().defaultAccountsData) {
       accountsToAdd.add(
         Account(
-          uuid: uuidGenerator
-              .v4(), // Generate a NEW, UNIQUE UUID for this instance
+          id: 0, // Let ObjectBox assign the ID
+          uuid: uuidGenerator.v4(),
           name: template.name,
           typeValue: template.typeValue,
-          currency: Defaults().defaultCurrency, // Use current default currency
-          currencySymbol:
-              Defaults().defaultCurrencySymbol, // Use current default symbol
+          currency: Defaults().defaultCurrency,
+          currencySymbol: Defaults().defaultCurrencySymbol,
           balance: template.balance,
           colorValue: template.colorValue,
           iconCodePoint: template.iconCodePoint,
@@ -67,10 +63,23 @@ class AccountRepository extends BaseRepository<Account> {
 
     if (accountsToAdd.isNotEmpty) {
       try {
-        // putMany will assign userId, createdAt, updatedAt
-        await putMany(accountsToAdd, syncSource: SyncSource.local);
+        final ids = await putMany(accountsToAdd, syncSource: SyncSource.local);
         print(
-            'Added ${accountsToAdd.length} default accounts in batch with unique UUIDs.');
+            'Added ${accountsToAdd.length} default accounts in batch. Assigned IDs: $ids');
+        // Fetch the saved accounts with their assigned IDs
+        final savedAccounts = await getManyByIds(ids);
+        // Upsert to Supabase with the assigned IDs
+        if (syncService != null) {
+          await syncService!.pushUpsertMany<Account>(savedAccounts);
+        }
+        // --- Set the default account instance in Defaults by name match ---
+        final defaultName = Defaults().defaultAccount.name.trim().toLowerCase();
+        final newDefault = savedAccounts.firstWhere(
+          (acc) => acc.name.trim().toLowerCase() == defaultName,
+          orElse: () => savedAccounts.first,
+        );
+        Defaults().setDefaultAccountInstance(newDefault);
+        await Defaults().saveDefaults();
       } catch (e) {
         print('Error adding default accounts in batch: $e');
       }

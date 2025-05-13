@@ -227,6 +227,19 @@ class Transaction extends Equatable {
     };
   }
 
+  Map<String, dynamic> toExportJson() {
+    final categoryObj = category.target;
+    final fromAccountObj = fromAccount.target;
+    final toAccountObj = toAccount.target;
+
+    return {
+      ...toJson(), // All standard fields
+      'category_title': categoryObj?.title,
+      'from_account_name': fromAccountObj?.name,
+      'to_account_name': toAccountObj?.name,
+    };
+  }
+
   @override
   List<Object?> get props => [
         id,

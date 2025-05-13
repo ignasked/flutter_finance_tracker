@@ -163,17 +163,12 @@ class DateSelectionOptionsSheet extends StatelessWidget {
             onPressed: () {
               final allTransactions = dataManagementCubit.state.allTransactions;
               if (allTransactions.isNotEmpty) {
-                // Find the actual min and max dates from all transactions
-                DateTime minDate = allTransactions.last.date;
-                DateTime maxDate = allTransactions.first.date;
-
+                // Find the actual min and max dates from all transactions (regardless of order)
+                DateTime minDate = allTransactions[0].date;
+                DateTime maxDate = allTransactions[0].date;
                 for (var tx in allTransactions) {
-                  if (tx.date.isBefore(minDate)) {
-                    minDate = tx.date;
-                  }
-                  if (tx.date.isAfter(maxDate)) {
-                    maxDate = tx.date;
-                  }
+                  if (tx.date.isBefore(minDate)) minDate = tx.date;
+                  if (tx.date.isAfter(maxDate)) maxDate = tx.date;
                 }
                 // Select the full range covering all transactions
                 dateCubit.selectDateRange(minDate, maxDate, false);

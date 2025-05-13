@@ -111,8 +111,12 @@ class ReceiptAnalyzerWidget extends StatelessWidget {
     // Add transactions if the user confirmed
     if (addedTransactions != null && addedTransactions.isNotEmpty) {
       // Add to repository through TransactionsCubit
-      context.read<DataManagementCubit>().addTransactions(addedTransactions);
+      await context
+          .read<DataManagementCubit>()
+          .addTransactions(addedTransactions);
 
+      if (!context.mounted) return;
+      await context.read<DataManagementCubit>().refreshData();
       // Show success message
       //_showSuccessSnackbar(context, addedTransactions.length);
       if (!context.mounted) return;
@@ -322,24 +326,4 @@ class ReceiptAnalyzerWidget extends StatelessWidget {
         ),
       );
   }
-
-  // Show success snackbar
-  // void _showSuccessSnackbar(BuildContext context, int count) {
-  //   ScaffoldMessenger.of(context)
-  //     ..hideCurrentSnackBar()
-  //     ..showSnackBar(
-  //       SnackBar(
-  //         content: Text(
-  //           '$count transactions added!',
-  //           style: AppStyle.bodyText.copyWith(color: ColorPalette.onPrimary),
-  //         ),
-  //         backgroundColor: AppStyle.incomeColor,
-  //         behavior: SnackBarBehavior.floating,
-  //         shape: RoundedRectangleBorder(
-  //           borderRadius: BorderRadius.circular(AppStyle.borderRadiusMedium),
-  //         ),
-  //         margin: const EdgeInsets.all(AppStyle.paddingSmall),
-  //       ),
-  //     );
-  // }
 }
