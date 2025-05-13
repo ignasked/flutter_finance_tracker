@@ -53,7 +53,11 @@ class FilterCubit extends Cubit<FilterState> {
   }
 
   void changeIsIncome(bool? isIncome) {
-    emit(state.copyWith(isIncome: isIncome));
+    if (isIncome == null) {
+      emit(state.copyWith(resetIncome: true));
+    } else {
+      emit(state.copyWith(isIncome: isIncome));
+    }
   }
 
   void resetFilters() {

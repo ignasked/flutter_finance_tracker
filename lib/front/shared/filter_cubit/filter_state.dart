@@ -38,6 +38,7 @@ class FilterState extends Equatable {
     double? minAmount,
     bool? isIncome,
     bool? singleDay,
+    bool? resetIncome = false,
   }) {
     return FilterState(
       selectedAccount:
@@ -48,7 +49,7 @@ class FilterState extends Equatable {
           ? null
           : (endDate ?? this.endDate), // Clear endDate if singleDay is true
       minAmount: minAmount ?? this.minAmount,
-      isIncome: isIncome ?? this.isIncome,
+      isIncome: (resetIncome == true) ? null : (isIncome ?? this.isIncome),
       singleDay: singleDay ?? this.singleDay,
     );
   }

@@ -662,7 +662,7 @@ class SettingsScreen extends StatelessWidget {
 
       if (allImportedTransactions != null) {
         final existingIds =
-            txCubit.state.allTransactions.map((tx) => tx.id).toSet();
+            List.from(txCubit.state.allTransactions).map((tx) => tx.id).toSet();
         transactionsToAdd = allImportedTransactions
             .where((tx) => !existingIds.contains(tx.id))
             .toList();

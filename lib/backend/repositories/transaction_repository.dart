@@ -508,7 +508,7 @@ class TransactionRepository extends BaseRepository<Transaction> {
 
       if (filterState.isIncome != null) {
         Condition<Transaction> typeCondition;
-        if (filterState.isIncome!) {
+        if (filterState.isIncome == true) {
           typeCondition = Transaction_.amount.greaterThan(0);
         } else {
           typeCondition = Transaction_.amount.lessThan(0);
@@ -527,11 +527,22 @@ class TransactionRepository extends BaseRepository<Transaction> {
         queryBuilder.link(Transaction_.fromAccount,
             Account_.id.equals(filterState.selectedAccount!.id));
       }
+
+      // --- Robust category filter ---
       if (filterState.selectedCategories.isNotEmpty) {
-        final categoryIds =
-            filterState.selectedCategories.map((c) => c.id).toList();
-        queryBuilder.link(
-            Transaction_.category, Category_.id.oneOf(categoryIds));
+        // Only use category IDs that exist in the current DB (avoid deleted/missing)
+        final categoryIds = filterState.selectedCategories
+            .map((c) => c.id)
+            .where((id) => id != 0)
+            .toSet()
+            .toList();
+        if (categoryIds.isNotEmpty) {
+          queryBuilder.link(
+              Transaction_.category, Category_.id.oneOf(categoryIds));
+        } else {
+          // No valid categories to filter by, return empty result
+          return [];
+        }
       }
 
       queryBuilder.order(Transaction_.date, flags: Order.descending);

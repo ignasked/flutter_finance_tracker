@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart'; // Import material for Color/IconData if needed by ViewModel
 import 'package:intl/intl.dart'; // Import intl for DateFormat if needed by ViewModel mapping
+import 'package:collection/collection.dart'; // Import collection for firstWhereOrNull
 
 import 'package:bloc/bloc.dart';
 import 'package:money_owl/backend/models/account.dart';
@@ -55,6 +56,24 @@ class DataManagementCubit extends Cubit<DataManagementState> {
     await _loadInitialData(isRefresh: true);
   }
 
+  /// Ensures selectedCategories in the filter state reference the current allCategories instances by id.
+  void rehydrateSelectedCategories() {
+    final currentCategories = state.allCategories;
+    final selected = _filterCubit.state.selectedCategories;
+    if (selected.isEmpty) return;
+    final rehydrated = selected
+        .map((cat) => currentCategories.firstWhereOrNull((c) => c.id == cat.id))
+        .whereType<Category>()
+        .toList();
+    if (rehydrated.length != selected.length) {
+      // Some categories are missing (e.g., deleted), update filter state
+      _filterCubit.changeSelectedCategories(rehydrated);
+    } else if (!rehydrated.every((c) => selected.any((s) => s.id == c.id))) {
+      // Even if same length, ensure instances are up to date
+      _filterCubit.changeSelectedCategories(rehydrated);
+    }
+  }
+
   Future<void> _loadInitialData({bool isRefresh = false}) async {
     // Only emit loading if it's NOT a refresh triggered after sync/action
     if (!isRefresh) {
@@ -65,6 +84,9 @@ class DataManagementCubit extends Cubit<DataManagementState> {
       final allTransactions = await _transactionRepository.getAll();
       final allAccounts = await _accountRepository.getAll();
       final allCategories = await _categoryRepository.getAll();
+
+      // --- Rehydrate selectedCategories after loading categories ---
+      rehydrateSelectedCategories();
 
       // --- Apply filters, map, and summarize directly ---
       final filterState = _filterCubit.state;
