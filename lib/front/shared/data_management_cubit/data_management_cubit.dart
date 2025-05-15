@@ -331,16 +331,13 @@ class DataManagementCubit extends Cubit<DataManagementState> {
       if (savedTransaction != null) {
         // Reload all data to ensure allTransactions is up to date
         final allTransactions = await _transactionRepository.getAll();
-        // final allAccounts = await _accountRepository.getAll();
-        // final allCategories = await _categoryRepository.getAll();
         // Apply filters and update state
         final filterState = _filterCubit.state;
         emit(state.copyWith(
           allTransactions: allTransactions,
-          // allAccounts: allAccounts,
-          // allCategories: allCategories,
         ));
         _applyFilters(filterState);
+        //refreshData();
       } else {
         print("Error: Failed to fetch saved transaction after adding.");
         emit(state.copyWith(
