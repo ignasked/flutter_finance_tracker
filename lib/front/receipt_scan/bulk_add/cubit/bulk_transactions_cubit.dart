@@ -61,9 +61,7 @@ class BulkTransactionsCubit extends Cubit<BulkTransactionsState> {
 
       emit(state.copyWith(loadingStatus: LoadingStatus.success)); // Set success
     } catch (e) {
-      // Basic error handling, consider more specific error states if needed
       emit(state.copyWith(loadingStatus: LoadingStatus.failure)); // Set failure
-      // Optionally log the error: print('Error initializing BulkTransactionsCubit: $e');
     }
   }
 
@@ -103,16 +101,11 @@ class BulkTransactionsCubit extends Cubit<BulkTransactionsState> {
     }
     return viewModels;
   }
-  // --- End New Mapping Method ---
 
-  // --- New method to centralize mapping and emitting ---
   void _mapAndEmitTransactions() {
     final viewModels = _mapTransactionsToViewModels(state.transactions);
     emit(state.copyWith(displayedTransactions: viewModels));
   }
-  // --- End New method ---
-
-  // --- Update existing methods to call mapping ---
 
   void processDiscounts() {
     if (state.discountsApplied) return; // Avoid applying twice
@@ -184,14 +177,12 @@ class BulkTransactionsCubit extends Cubit<BulkTransactionsState> {
 
   // Apply global discounts (Internal logic remains similar, uses copyWith)
   List<Transaction> _applyGlobalDiscounts(List<Transaction> inputTransactions) {
-    // --- FIX: Fetch category using cached map ---
     final globalDiscounts = inputTransactions.where((tx) {
       final category = allCategories.firstWhere(
           (c) => c.id == tx.category.targetId,
           orElse: () => Defaults().defaultCategory);
       return _isCategoryName(category, 'Overall discount');
     }).toList();
-    // --- END FIX ---
 
     if (globalDiscounts.isEmpty) return inputTransactions;
 
@@ -200,7 +191,6 @@ class BulkTransactionsCubit extends Cubit<BulkTransactionsState> {
 
     if (totalDiscountAmount <= 0) return inputTransactions;
 
-    // --- FIX: Fetch category using cached map ---
     final List<Transaction> remainingTransactions =
         inputTransactions.where((tx) {
       final category = allCategories.firstWhere(
@@ -216,7 +206,6 @@ class BulkTransactionsCubit extends Cubit<BulkTransactionsState> {
       return !_isCategoryName(category, 'Discount for item') &&
           !_isCategoryName(category, 'Overall discount');
     }).toList();
-    // --- END FIX ---
 
     if (regularTransactions.isEmpty) return remainingTransactions;
 
@@ -227,11 +216,9 @@ class BulkTransactionsCubit extends Cubit<BulkTransactionsState> {
 
     final List<Transaction> updatedTransactions = [];
     for (final tx in remainingTransactions) {
-      // --- FIX: Fetch category using cached map ---
       final category = allCategories.firstWhere(
           (c) => c.id == tx.category.targetId,
           orElse: () => Defaults().defaultCategory);
-      // --- END FIX ---
 
       if (!_isCategoryName(category, 'Discount for item') &&
           !_isCategoryName(category, 'Overall discount')) {
@@ -264,7 +251,6 @@ class BulkTransactionsCubit extends Cubit<BulkTransactionsState> {
     if (index >= 0 && index < state.transactions.length) {
       final updatedTransactions = List<Transaction>.from(state.transactions)
         ..removeAt(index);
-      // Also update original if needed, or handle restore logic carefully
       final updatedOriginal =
           List<Transaction>.from(state.originalTransactions);
       if (index < updatedOriginal.length) {
@@ -342,16 +328,12 @@ class BulkTransactionsCubit extends Cubit<BulkTransactionsState> {
 
     for (var transaction in state.transactions) {
       final categoryId = transaction.category.targetId;
-      // --- FIX: Fetch category using cached map ---
       final category = allCategories.firstWhere((c) => c.id == categoryId,
           orElse: () => Defaults().defaultCategory);
-      // --- END FIX ---
 
       categoryTotals[categoryId] =
           (categoryTotals[categoryId] ?? 0.0) + transaction.amount;
-      // --- FIX: Remove redundant null check ---
       if (!categoryMap.containsKey(categoryId)) {
-        // --- END FIX ---
         categoryMap[categoryId] = category;
       }
       metadataMap.putIfAbsent(categoryId, () => []).add(transaction.metadata);

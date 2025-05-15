@@ -143,7 +143,6 @@ class TransactionListWidget extends StatelessWidget {
   // --- Build Dismissible Item (Corrected Logic) ---
   Widget _buildDismissibleItem(
       BuildContext context, TransactionViewModel item, Key key) {
-    // --- FIX: Use ObjectKey in bulk add context for potentially non-unique IDs ---
     final dismissibleKey = isBulkAddContext ? ObjectKey(item) : key;
 
     return Dismissible(
@@ -177,7 +176,6 @@ class TransactionListWidget extends StatelessWidget {
             );
           },
         );
-        // --- NO cubit calls here ---
       },
       background: Container(
         color: AppStyle.expenseColor,
@@ -185,7 +183,6 @@ class TransactionListWidget extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 20.0),
         child: const Icon(Icons.delete_outline, color: Colors.white),
       ),
-      // --- onDismissed: Contains the actual deletion logic ---
       onDismissed: (direction) {
         // This code runs *only if* confirmDismiss returned true
         if (isBulkAddContext) {
@@ -226,7 +223,6 @@ class TransactionListWidget extends StatelessWidget {
       child: _buildTransactionTile(context, item),
     );
   }
-  // --- End Corrected Logic ---
 
   // --- Build Transaction Tile (Adapted for ViewModel and Edit Navigation) ---
   Widget _buildTransactionTile(

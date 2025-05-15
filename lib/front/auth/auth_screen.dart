@@ -74,7 +74,7 @@ class AuthScreen extends StatelessWidget {
                 ],
                 colored: true,
                 redirectUrl:
-                    'owlandroid://com.games_from_garage.money_owl', // Your redirect URL
+                    'owlandroid://com.games_from_garage.money_owl', // Redirect URL
                 onSuccess: (Session session) {
                   print('Social sign in successful');
                   // No navigation needed here

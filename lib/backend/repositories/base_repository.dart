@@ -155,7 +155,6 @@ abstract class BaseRepository<T> {
       final nowUtc = DateTime.now().toUtc();
       final updatedItem = (item as dynamic).copyWith(
         deletedAt: nowUtc,
-        // Ensure updatedAt is also updated for sync purposes
         updatedAt: DateTime.now(),
       );
 

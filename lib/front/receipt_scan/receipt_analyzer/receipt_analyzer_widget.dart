@@ -117,8 +117,6 @@ class ReceiptAnalyzerWidget extends StatelessWidget {
 
       if (!context.mounted) return;
       await context.read<DataManagementCubit>().refreshData();
-      // Show success message
-      //_showSuccessSnackbar(context, addedTransactions.length);
       if (!context.mounted) return;
       // Close the bottom sheet
       Navigator.pop(context);

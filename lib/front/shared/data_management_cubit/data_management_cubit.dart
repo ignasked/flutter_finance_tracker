@@ -47,7 +47,6 @@ class DataManagementCubit extends Cubit<DataManagementState> {
       // Call the corrected _applyFiltersCache
       emit(state.copyWith(status: LoadingStatus.loading));
       _applyFilters(filterState);
-      //emit(state.copyWith(status: LoadingStatus.success));
     });
   }
 
@@ -358,8 +357,6 @@ class DataManagementCubit extends Cubit<DataManagementState> {
       await _transactionRepository.putMany(transactions);
       // Reload all data to ensure allTransactions is up to date
       final allTransactions = await _transactionRepository.getAll();
-      // final allAccounts = await _accountRepository.getAll();
-      // final allCategories = await _categoryRepository.getAll();
       // Apply filters and update state
       final filterState = _filterCubit.state;
       emit(state.copyWith(
@@ -409,7 +406,6 @@ class DataManagementCubit extends Cubit<DataManagementState> {
       print(
           "Warning: Transaction ID $transactionId not found in displayed list for immediate removal.");
       // Optionally still proceed with repo delete, or emit failure?
-      // Let's proceed with repo delete attempt anyway.
     }
 
     // 2. Emit the updated state IMMEDIATELY (synchronously)
@@ -432,13 +428,11 @@ class DataManagementCubit extends Cubit<DataManagementState> {
         print(
             "Error deleting transaction $transactionId from repository (returned false). State might be inconsistent.");
         // Optionally: Emit a specific error state or re-fetch data to correct inconsistency
-        // For now, just log the error. A subsequent refreshData would fix it.
         // emit(state.copyWith(status: LoadingStatus.failure, errorMessage: "Failed to delete transaction from storage"));
       } else {
         print(
             "Successfully deleted transaction $transactionId from repository in background.");
         // Optional: If you absolutely need filters reapplied *after* delete confirmation,
-        // you could call _applyFiltersCache here, but it might cause a flicker.
         // _applyFiltersCache(_filterCubit.state);
       }
     }).catchError((e, stacktrace) {

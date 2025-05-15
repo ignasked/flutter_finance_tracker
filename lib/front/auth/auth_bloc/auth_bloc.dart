@@ -11,7 +11,7 @@ import 'package:money_owl/backend/services/auth_service.dart';
 import 'package:money_owl/backend/services/sync_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 
-part 'auth_event.dart';
+part '../../../backend/utils/auth_event.dart';
 part 'auth_state.dart';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {

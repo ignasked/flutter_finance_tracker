@@ -63,11 +63,6 @@ class CalculateBalancesUtils {
     for (final transaction in transactions) {
       final currency = transaction.fromAccount.target?.currency ??
           Defaults().defaultCurrency;
-      // if (currency == 'UNK') {
-      //   print(
-      //       "Warning: Transaction ID ${transaction.id} has unknown currency.");
-      //   continue;
-      // }
 
       netBalanceByCurrency.update(
         currency,

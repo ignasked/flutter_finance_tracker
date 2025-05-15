@@ -1,12 +1,10 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-// Import Account
 import 'package:money_owl/backend/models/transaction.dart';
 import 'package:money_owl/backend/services/currency_service.dart'; // Import CurrencyService
 import 'package:money_owl/backend/utils/calculate_balances_utils.dart';
 import 'package:money_owl/backend/utils/currency_utils.dart'; // Import CurrencyUtils
 import 'package:money_owl/backend/utils/defaults.dart'; // Import Defaults
 import 'package:money_owl/front/shared/filter_cubit/filter_state.dart';
-// Import for min/max
 
 import 'chart_state.dart';
 
@@ -37,11 +35,9 @@ class ChartCubit extends Cubit<ChartState> {
     final Map<String, double> categoryTotals = {};
 
     for (final transaction in transactions) {
-      // --- ADD Null check and default value ---
       final category = transaction.category.target;
       final categoryTitle = category?.title ??
           'Uncategorized'; // Use default title if category is null
-      // --- END ADD ---
 
       // Ensure amount is not null before adding
       final amountToAdd = transaction.amount;

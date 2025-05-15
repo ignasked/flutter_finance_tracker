@@ -32,6 +32,6 @@ class TransactionSummaryState extends Equatable {
   List<Object?> get props => [
         totalIncome,
         totalExpenses,
-        balance, // Only balance needed now
+        balance,
       ];
 }

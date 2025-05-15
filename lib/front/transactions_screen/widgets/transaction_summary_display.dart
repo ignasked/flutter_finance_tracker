@@ -48,26 +48,6 @@ class TransactionSummaryDisplay extends StatelessWidget {
                 ),
               ),
 
-              // _buildVerticalDivider(),
-
-              // Expanded(
-              //   child: _buildSummaryFigure(
-              //     label: 'Net',
-              //     amountString: state.summary.absoluteEndingBalanceString,
-              //     currencySymbol: currencySymbol,
-              //     // Style for balance - maybe slightly more prominent?
-              //     style: AppStyle.titleStyle.copyWith(
-              //       // Using titleStyle instead of heading2 for compactness
-              //       fontWeight: FontWeight.w600, // Make it boldish
-              //       color: AppStyle.textColorPrimary,
-              //     ),
-              //     // Optional: Add an icon for balance
-              //     icon: Icons.functions,
-              //     iconColor: AppStyle.primaryColor, // Or textColorSecondary
-              //   ),
-              //   flex: 15,
-              // ),
-
               _buildVerticalDivider(),
 
               // --- Income Figure ---
@@ -105,7 +85,6 @@ class TransactionSummaryDisplay extends StatelessWidget {
   }
 
 // Helper widget to build the Income/Expense figures consistently
-  // Helper widget remains the same, builds a Column for label/amount
   Widget _buildSummaryFigure({
     required String label,
     required String amountString,

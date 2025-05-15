@@ -35,7 +35,6 @@ class TransactionFilterSheet extends StatefulWidget {
 class _TransactionFilterSheetState extends State<TransactionFilterSheet> {
   late List<Category> _selectedCategories;
   late bool? _isIncome;
-  // Add state for minAmount if you implement it
 
   @override
   void initState() {

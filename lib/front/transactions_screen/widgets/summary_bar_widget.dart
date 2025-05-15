@@ -36,7 +36,7 @@ class SummaryBarWidget extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // Centered Stats Section: Balance, Income, Expenses
-              // This still reads from AccountTransactionCubit for the summary values
+              // This reads from AccountTransactionCubit for the summary values
               const TransactionSummaryDisplay(),
 
               const SizedBox(

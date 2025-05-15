@@ -202,7 +202,6 @@ class Defaults {
 
   List<Category> get defaultCategoriesData => [
         Category(
-          // uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-111111111111', // Stable UUID 1
           title: 'Food',
           descriptionForAI: 'Expenses related to food and dining',
           colorValue: AppStyle.predefinedColors[3].value, // Orange
@@ -211,7 +210,6 @@ class Defaults {
           typeValue: TransactionType.expense.index,
         ),
         Category(
-          // uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-222222222222', // Stable UUID 2
           title: 'Transportation',
           descriptionForAI:
               'Expenses related to transportation like fuel, public transit, taxis',
@@ -221,7 +219,6 @@ class Defaults {
           typeValue: TransactionType.expense.index,
         ),
         Category(
-          // uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-333333333333', // Stable UUID 3
           title: 'Accomodation',
           descriptionForAI: 'Expenses related to housing, rent, hotels',
           colorValue: AppStyle.predefinedColors[6].value, // Brown
@@ -229,7 +226,6 @@ class Defaults {
           typeValue: TransactionType.expense.index,
         ),
         Category(
-          // uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-444444444444', // Stable UUID 4
           title: 'Groceries',
           descriptionForAI:
               'Expenses related to grocery shopping and household supplies',
@@ -239,7 +235,6 @@ class Defaults {
           typeValue: TransactionType.expense.index,
         ),
         Category(
-          // uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-555555555555', // Stable UUID 5
           title: 'Junk Food',
           descriptionForAI: 'Expenses related to snacks and fast food',
           colorValue: AppStyle.predefinedColors[0].value, // Red
@@ -248,7 +243,6 @@ class Defaults {
           typeValue: TransactionType.expense.index,
         ),
         Category(
-          // uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-666666666666', // Stable UUID 6
           title: 'Services',
           descriptionForAI:
               'Expenses related to various services and subscriptions',
@@ -258,7 +252,6 @@ class Defaults {
           typeValue: TransactionType.expense.index,
         ),
         Category(
-          // uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-777777777777', // Stable UUID 7
           title: 'Fitness',
           descriptionForAI:
               'Expenses related to gym memberships and fitness activities',
@@ -268,7 +261,6 @@ class Defaults {
           typeValue: TransactionType.expense.index,
         ),
         Category(
-          // uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-888888888888', // Stable UUID 8
           title: 'Entertainment',
           descriptionForAI:
               'Expenses related to entertainment and leisure activities',
@@ -278,7 +270,6 @@ class Defaults {
           typeValue: TransactionType.expense.index,
         ),
         Category(
-          // uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-999999999999', // Stable UUID 9
           title: 'Healthcare',
           descriptionForAI:
               'Expenses related to medical care and health services',
@@ -288,7 +279,6 @@ class Defaults {
           typeValue: TransactionType.expense.index,
         ),
         Category(
-          // uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-aaaaaaaaaaaa', // Stable UUID 10
           title: 'Utilities',
           descriptionForAI:
               'Expenses related to utilities like electricity, water, internet',
@@ -298,7 +288,6 @@ class Defaults {
           typeValue: TransactionType.expense.index,
         ),
         Category(
-          // uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-bbbbbbbbbbbb', // Stable UUID 11
           title: 'Clothing',
           descriptionForAI: 'Expenses related to clothes and accessories',
           colorValue: AppStyle.predefinedColors[5].value, // Pink
@@ -307,7 +296,6 @@ class Defaults {
           typeValue: TransactionType.expense.index,
         ),
         Category(
-          // uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-cccccccccccc', // Stable UUID 12
           title: 'Deposit', // Assuming this relates to recycling/returns
           descriptionForAI: 'Money deposited or saved from bottle returns',
           colorValue: AppStyle.predefinedColors[7].value, // Amber
@@ -317,7 +305,6 @@ class Defaults {
               .expense.index, // Should this be income? Keeping expense for now.
         ),
         Category(
-          // uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-dddddddddddd', // Stable UUID 13
           title: 'Other Expenses',
           descriptionForAI:
               'Miscellaneous expenses that don\'t fit other categories',
@@ -326,7 +313,6 @@ class Defaults {
           typeValue: TransactionType.expense.index,
         ),
         Category(
-          // uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-eeeeeeeeeeee', // Stable UUID 14
           title: 'Salary',
           descriptionForAI: 'Regular income from employment',
           colorValue: AppStyle.predefinedColors[2].value, // Green
@@ -334,7 +320,6 @@ class Defaults {
           typeValue: TransactionType.income.index,
         ),
         Category(
-          // uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-ffffffffffff', // Stable UUID 15
           title: 'Gifts',
           descriptionForAI: 'Recieved gifts',
           colorValue: AppStyle.predefinedColors[5].value, // Pink
@@ -343,7 +328,6 @@ class Defaults {
           typeValue: TransactionType.income.index,
         ),
         Category(
-          // uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-000000000000', // Stable UUID 16
           title: 'Side Hustle',
           descriptionForAI: 'Income from side jobs or freelance work',
           colorValue: AppStyle.predefinedColors[9].value, // Teal
@@ -352,7 +336,6 @@ class Defaults {
           typeValue: TransactionType.income.index,
         ),
         Category(
-          // uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-101010101010', // Stable UUID 17
           title: 'Other Income',
           descriptionForAI:
               'Miscellaneous income that doesn\'t fit other categories',
@@ -361,7 +344,6 @@ class Defaults {
           typeValue: TransactionType.income.index,
         ),
         Category(
-          // uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-121212121212', // Stable UUID 18
           title: 'Discount for item', // Using local_offer
           descriptionForAI: 'Money saved through discounts and rebates',
           colorValue: AppStyle.predefinedColors[2].value, // Green
@@ -370,7 +352,6 @@ class Defaults {
           typeValue: TransactionType.income.index,
         ),
         Category(
-          // uuid: 'c1d1e1f1-a1b2-c3d4-e5f6-131313131313', // Stable UUID 19
           title: 'Overall discount', // Using local_offer
           descriptionForAI: 'Money saved through discounts and rebates',
           colorValue: AppStyle.predefinedColors[2].value, // Green
@@ -383,7 +364,6 @@ class Defaults {
   // Define default data with stable UUIDs
   List<Account> get defaultAccountsData => [
         Account(
-          // uuid: 'f47ac10b-58cc-4372-a567-0e02b2c3d479', // Stable UUID for Bank - Commented out, good for template
           name: 'Bank Account',
           typeValue: AccountType.bank.index,
           currency: Defaults().defaultCurrency,
@@ -393,7 +373,6 @@ class Defaults {
           iconCodePoint: AppStyle.predefinedIcons[20].codePoint,
         ),
         Account(
-          // uuid: 'a1b2c3d4-e5f6-7890-1234-567890abcdef', // Stable UUID for Cash - Commented out, good for template
           name: 'Cash',
           typeValue: AccountType.cash.index,
           currency: Defaults().defaultCurrency,

@@ -2,18 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:formz/formz.dart';
 import 'package:money_owl/backend/models/transaction.dart';
-import 'package:money_owl/backend/models/transaction_result.dart'; // Import TransactionResult
+import 'package:money_owl/backend/models/transaction_result.dart';
 import 'package:money_owl/backend/utils/app_style.dart';
 import 'package:money_owl/backend/utils/enums.dart';
 import 'package:money_owl/front/transaction_form_screen/cubit/transaction_form_cubit.dart';
 import 'package:intl/intl.dart';
-import 'package:money_owl/front/shared/data_management_cubit/data_management_cubit.dart'; // Add import for DataManagementCubit
+import 'package:money_owl/front/shared/data_management_cubit/data_management_cubit.dart';
 import 'package:money_owl/front/transaction_form_screen/widgets/account_dropdown.dart';
 import 'package:money_owl/front/transaction_form_screen/widgets/category_dropdown.dart';
 
 class TransactionFormScreen extends StatelessWidget {
   final Transaction? transaction; // Nullable for adding vs editing
-  //final int? index; // Transaction index in transactionList
 
   const TransactionFormScreen({super.key, this.transaction});
 
@@ -33,9 +32,6 @@ class _TransactionForm extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Don't access state directly here, as it might not be initialized yet
-    // Instead, use BlocBuilder for all state-dependent widgets
-
     return BlocListener<TransactionFormCubit, TransactionFormState>(
       listener: (context, state) {
         if (state.status.isSuccess &&
@@ -86,7 +82,6 @@ class _TransactionForm extends StatelessWidget {
         body: SafeArea(
           // Ensure content avoids notches/system areas
           child: Padding(
-            // Apply horizontal padding here
             padding:
                 const EdgeInsets.symmetric(horizontal: AppStyle.paddingMedium),
             child: Column(
@@ -230,7 +225,6 @@ class _TransactionForm extends StatelessWidget {
                                 }
                               },
                               // --- Styling ---
-                              // --- Styling using ButtonStyle directly ---
                               style: ButtonStyle(
                                 // --- Foreground Color (Controls BOTH Text and Icon) ---
                                 foregroundColor:
@@ -243,7 +237,6 @@ class _TransactionForm extends StatelessWidget {
                                   // This color applies to text AND icon when NOT selected
                                   return unselectedForegroundColor; // Should be AppStyle.textColorSecondary
                                 }),
-                                // --- Shape requires WidgetStateProperty wrapper here ---
                                 shape: WidgetStateProperty.all<OutlinedBorder>(
                                   // Use .all for constant shape
                                   RoundedRectangleBorder(
@@ -279,13 +272,6 @@ class _TransactionForm extends StatelessWidget {
                                             horizontal: AppStyle.paddingMedium,
                                             vertical:
                                                 AppStyle.paddingSmall / 1.5)),
-
-                                // Add elevation, mouse cursor etc. wrapped in WidgetStateProperty if needed
-                                // elevation: WidgetStateProperty.all<double>(0), // Example
-
-                                // Side property might be applicable here if shape doesn't handle it fully,
-                                // but ButtonStyle's side also expects WidgetStateProperty<BorderSide?>?
-                                // side: WidgetStateProperty.resolveWith<BorderSide?>((states) { ... })
                               ),
                               showSelectedIcon: true,
                               multiSelectionEnabled: false,
@@ -299,17 +285,13 @@ class _TransactionForm extends StatelessWidget {
                           buildWhen: (previous, current) =>
                               previous.account != current.account,
                           builder: (context, state) {
-                            // --- FIX: Fetch accounts list ---
                             final accountsList = context
                                 .read<DataManagementCubit>()
                                 .getEnabledAccountsCache();
-                            // --- END FIX ---
 
                             return AccountDropdown(
                               selectedAccount: state.account,
-                              // --- FIX: Pass the fetched accounts list ---
                               accounts: accountsList,
-                              // --- END FIX ---
                               onChanged: (account) {
                                 if (account != null) {
                                   context
@@ -441,7 +423,6 @@ class _TransactionForm extends StatelessWidget {
                             }
                           },
                         ),
-                        // No need for extra SizedBox at the end, padding is handled by SingleChildScrollView
                       ],
                     ),
                   ),

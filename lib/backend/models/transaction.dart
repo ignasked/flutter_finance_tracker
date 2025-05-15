@@ -7,7 +7,7 @@ import 'package:uuid/uuid.dart'; // Import uuid package
 
 @Entity()
 
-/// Represents a financial transaction with details such as title, amount, type (income/expense), category, and date.
+/// Represents a financial transaction.
 // ignore: must-be-immutable
 class Transaction extends Equatable {
   @Id()
@@ -33,23 +33,35 @@ class Transaction extends Equatable {
   String? userId;
 
   // --- ToOne Relations ---
-  // ObjectBox links these to the targetId stored internally
+  /// The transaction's category.
   final ToOne<Category> category = ToOne<Category>();
+
+  /// The account debited or credited.
   final ToOne<Account> fromAccount = ToOne<Account>();
+
+  /// The destination account for transfers.
   final ToOne<Account> toAccount = ToOne<Account>();
 
   @Transient()
   Map<String, dynamic>? metadata;
 
+  /// True if income (amount > 0).
   bool get isIncome => amount > 0;
+
+  /// True if expense (amount < 0).
   bool get isExpense => amount < 0;
-  // isTransfer uses targetId, which is an internal ObjectBox property for ToOne relations
+
+  /// True if it's a transfer (toAccount is set).
   bool get isTransfer => toAccount.targetId != 0;
 
-  /// Getter to determine if the transaction is deleted
+  /// True if deleted (deletedAt is not null).
   bool get isDeleted => deletedAt != null;
 
-  // --- Main Constructor (Used by ObjectBox and app code) ---
+  // --- Main Constructor ---
+  /// Creates a [Transaction].
+  /// UUID and createdAt are auto-generated if not provided.
+  /// updatedAt defaults to createdAt or now.
+  /// ObjectBox assigns id if 0.
   Transaction({
     this.id = 0, // ObjectBox will assign an ID if 0
     String? uuid, // Accept optional UUID (e.g., from sync)
@@ -66,7 +78,10 @@ class Transaction extends Equatable {
         createdAt = createdAt ?? DateTime.now(),
         updatedAt = updatedAt ?? (createdAt ?? DateTime.now());
 
-  // --- Factory Constructor (for convenience when creating with IDs) ---
+  // --- Factory Constructor ---
+  /// Creates a [Transaction] with explicit integer IDs for related entities.
+  /// Useful when database IDs of related objects are known.
+  /// `toAccountId` can be null or 0 for non-transfers.
   factory Transaction.createWithIds({
     int id = 0,
     String? uuid,
@@ -104,7 +119,12 @@ class Transaction extends Equatable {
     return transaction;
   }
 
-  // --- Updated copyWith to use the factory constructor ---
+  // --- copyWith ---
+  /// Creates a copy of this [Transaction] with updated fields.
+  /// Uses [Transaction.createWithIds] internally.
+  /// `updatedAt` is set to now.
+  /// `setToAccountIdNull = true` sets `toAccount.targetId` to 0.
+  /// `setDeletedAtNull = true` sets `deletedAt` to null.
   Transaction copyWith({
     int? id,
     String? uuid,
@@ -157,9 +177,13 @@ class Transaction extends Equatable {
     );
   }
 
-  // --- Updated fromJson Factory (Hybrid Approach) ---
-  // Prioritizes integer IDs from JSON for local linking (compatibility).
-  // Still parses UUIDs and other fields.
+  // --- fromJson Factory ---
+  /// Creates a [Transaction] from a JSON map.
+  /// Prioritizes integer IDs (e.g., `category_id`) for local linking.
+  /// Parses UUIDs if present.
+  /// Dates are parsed from ISO 8601 strings to local time.
+  /// Defaults are applied for missing/invalid `title` or `amount`.
+  /// Parses local ObjectBox `id`.
   factory Transaction.fromJson(Map<String, dynamic> json) {
     // Helper to parse dates safely
     DateTime? parseDate(dynamic value) =>
@@ -193,8 +217,12 @@ class Transaction extends Equatable {
     );
   }
 
-  // --- Updated toJson (Hybrid Approach) ---
-  // Sends both integer IDs and UUIDs for relationships.
+  // --- toJson ---
+  /// Converts this [Transaction] to a JSON map.
+  /// Includes integer IDs (e.g., `category_id`) and UUIDs for related entities.
+  /// Includes local ObjectBox `id` (null if 0).
+  /// Dates are converted to UTC and ISO 8601 string format.
+  /// `updated_at` is set to current UTC time.
   Map<String, dynamic> toJson() {
     // Access the target objects to get their UUIDs
     final categoryObj = category.target;
@@ -227,6 +255,7 @@ class Transaction extends Equatable {
     };
   }
 
+  /// Converts to JSON for export, including related object titles/names.
   Map<String, dynamic> toExportJson() {
     final categoryObj = category.target;
     final fromAccountObj = fromAccount.target;

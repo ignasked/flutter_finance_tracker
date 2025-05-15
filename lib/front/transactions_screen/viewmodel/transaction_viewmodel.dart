@@ -10,7 +10,7 @@ class TransactionViewModel extends Equatable {
   final Color categoryColor;
   final IconData categoryIcon;
   final String displayDate; // Formatted date string
-  final DateTime date; // --- ADDED: Original date for sorting/grouping ---
+  final DateTime date;
   final bool isIncome;
   final String accountName;
 
@@ -22,7 +22,7 @@ class TransactionViewModel extends Equatable {
     required this.categoryColor,
     required this.categoryIcon,
     required this.displayDate,
-    required this.date, // --- ADDED ---
+    required this.date,
     required this.isIncome,
     required this.accountName,
   });
@@ -36,7 +36,7 @@ class TransactionViewModel extends Equatable {
         categoryColor,
         categoryIcon,
         displayDate,
-        date, // --- ADDED ---
+        date,
         isIncome,
         accountName,
       ];

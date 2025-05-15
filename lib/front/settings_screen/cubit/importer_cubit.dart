@@ -482,9 +482,7 @@ class ImporterCubit extends Cubit<ImporterState> {
 
       for (var tx in transactions) {
         try {
-          // --- FIX: Use the model's toJson method ---
           transactionMaps.add(tx.toExportJson());
-          // --- END FIX ---
         } catch (e) {
           print(
               'Error exporting transaction ID ${tx.id} (UUID: ${tx.uuid}): $e');

@@ -21,7 +21,6 @@ class DateBarWidget extends StatelessWidget {
         return BlocBuilder<DateCubit, DateState>(
           builder: (context, state) {
             final dateCubit = context.read<DateCubit>();
-            // If you need allTransactions, you can access dataState.allTransactions here
             return Container(
               padding: const EdgeInsets.symmetric(
                   vertical: AppStyle.paddingSmall / 2,
@@ -126,7 +125,6 @@ class DateSelectionOptionsSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Just use the BlocBuilder directly, do NOT use BlocProvider.value here
     return BlocBuilder<DataManagementCubit, DataManagementState>(
       builder: (context, dataState) {
         final dateCubit = context.read<DateCubit>();
